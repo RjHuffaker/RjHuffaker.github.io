@@ -32,65 +32,41 @@
             this.total = setupArray[12];
         }
     }
-    
+
     ActiveSetup.prototype.display = function(){
-        return "ID: "+this.id+"\n"
-            +this.address+"\n"
-            +this.city+", "+this.state+" "+this.zipCode+"\n"
-            +"Longitude: "+this.longitude+"\n"
-            +"Latitude: "+this.latitude+"\n"
-            +"Service: "+this.service+"\n"
-            +"Week: "+this.week+"\n"
-            +"Week Day: "+this.weekDay+"\n"
-            +"Schedule: "+this.schedule+"\n"
-            +"Tech: "+this.tech+"\n"
-            +"Total: "+this.total+"\n";
+        return "ID: "+this.id+"\n"+
+            this.address+"\n"+
+            this.city+", "+this.state+" "+this.zipCode+"\n"+
+            "Longitude: "+this.longitude+"\n"+
+            "Latitude: "+this.latitude+"\n"+
+            "Service: "+this.service+"\n"+
+            "Week: "+this.week+"\n"+
+            "Week Day: "+this.weekDay+"\n"+
+            "Schedule: "+this.schedule+"\n"+
+            "Tech: "+this.tech+"\n"+
+            "Total: "+this.total+"\n";
     };
-    /*
-    ActiveSetup.prototype.getHypot = function(longitude, latitude){
-        var _testW = Math.abs(longitude - this.longitude);
-        var _testH = Math.abs(latitude - this.latitude);
-        return Math.hypot(_testW, _testH).toFixed(6);
-    };
-    
-    ActiveSetup.prototype.getDist = function(latitude,longitude) {
-        var R = 6371; // Radius of the earth in km
-        var dLat = deg2rad(latitude-this.latitude);  // deg2rad below
-        var dLon = deg2rad(longitude-this.longitude); 
-        var a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(deg2rad(this.latitude)) * Math.cos(deg2rad(latitude)) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2)
-            ; 
-        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-        var d = R * c; // Distance in km
-        return d;
-        
-        function deg2rad(deg) {
-            return deg * (Math.PI/180)
-        }
-    }
-    */
+
     ActiveSetup.prototype.getDist = function(longitude,latitude){
         var p = 0.017453292519943295;    // Math.PI / 180
         var c = Math.cos;
-        var a = 0.5 - c((latitude-this.latitude) * p)/2 + 
-              c(this.latitude * p) * c(latitude * p) * 
+        var a = 0.5 - c((latitude-this.latitude) * p)/2 +
+              c(this.latitude * p) * c(latitude * p) *
               (1 - c((longitude-this.longitude) * p))/2;
 
         return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
     }
-    
+
     function distance(lat1, lon1, lat2, lon2) {
         var p = 0.017453292519943295;    // Math.PI / 180
         var c = Math.cos;
-        var a = 0.5 - c((lat2 - lat1) * p)/2 + 
-              c(lat1 * p) * c(lat2 * p) * 
+        var a = 0.5 - c((lat2 - lat1) * p)/2 +
+              c(lat1 * p) * c(lat2 * p) *
               (1 - c((lon2 - lon1) * p))/2;
-              
+
         return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
     }
-        
+
 
     initializeScorpinator();
 
@@ -329,7 +305,11 @@
                 getNearestActiveSetup(data, function(data){
                     var alertDisplay = "Scheduled Nearby: \n";
                     for(var i = 0; i < data.length; i++){
-                        alertDisplay = alertDisplay.concat(data[i].schedule+" within "+data[i].hyp+"\n");
+                        if(data[i].hyp > 1){
+                            alertDisplay = alertDisplay.concat(data[i].schedule+" within "+data[i].hyp+" KM\n");
+                        } else {
+                            alertDisplay = alertDisplay.concat(data[i].schedule+" within "+data[i].hyp*1000+" M\n");
+                        }
                     }
                     alert(alertDisplay);
                 });
@@ -350,7 +330,7 @@
                 for(var ii = 0; ii < fiveNearest.length; ii++){
                     var nearSetup = fiveNearest[ii];
                     if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
-                        setup.hyp = setup.getDist(_long, _lat);
+                        setup.hyp = setup.getDist(_long, _lat).toFixed(3);
                         fiveNearest.splice(ii, 0, setup);
                         fiveNearest = fiveNearest.slice(0, 5);
                         break;
@@ -360,7 +340,7 @@
                 fiveNearest.push(setup);
             }
         }
-        
+
         console.log(fiveNearest);
         callback(fiveNearest);
     }
