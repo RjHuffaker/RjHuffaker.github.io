@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Scorpinator 1.001
+// @name         Scorpinator
 // @namespace    http://tampermonkey.net/
-// @version      1.001
+// @version      1.002
 // @downloadURL  http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to a particular use-case.
 // @author       You
@@ -294,7 +294,7 @@
 
     function manualProximinator(){
         var button = document.createElement("button");
-        button.innerHTML = "Get Nearest Active Setup";
+        button.innerHTML = "Get Nearest Active Setups";
         button.style.display = "inline";
 
         var reviewHistoryDiv = document.getElementsByClassName("reviewHistory")[0];
