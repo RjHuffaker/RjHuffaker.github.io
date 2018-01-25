@@ -15,6 +15,83 @@
 
     var activeSetups;
 
+    class ActiveSetup {
+        constructor(setupArray) {
+            this.id = setupArray[0];
+            this.address = setupArray[1];
+            this.city = setupArray[2];
+            this.state = setupArray[3];
+            this.zipCode = setupArray[4];
+            this.latitude = parseFloat(setupArray[5]);
+            this.longitude = parseFloat(setupArray[6]);
+            this.service = setupArray[7];
+            this.week = setupArray[8];
+            this.weekDay = setupArray[9];
+            this.schedule = setupArray[10];
+            this.tech = setupArray[11];
+            this.total = setupArray[12];
+        }
+    }
+    
+    ActiveSetup.prototype.display = function(){
+        return "ID: "+this.id+"\n"
+            +this.address+"\n"
+            +this.city+", "+this.state+" "+this.zipCode+"\n"
+            +"Longitude: "+this.longitude+"\n"
+            +"Latitude: "+this.latitude+"\n"
+            +"Service: "+this.service+"\n"
+            +"Week: "+this.week+"\n"
+            +"Week Day: "+this.weekDay+"\n"
+            +"Schedule: "+this.schedule+"\n"
+            +"Tech: "+this.tech+"\n"
+            +"Total: "+this.total+"\n";
+    };
+    /*
+    ActiveSetup.prototype.getHypot = function(longitude, latitude){
+        var _testW = Math.abs(longitude - this.longitude);
+        var _testH = Math.abs(latitude - this.latitude);
+        return Math.hypot(_testW, _testH).toFixed(6);
+    };
+    
+    ActiveSetup.prototype.getDist = function(latitude,longitude) {
+        var R = 6371; // Radius of the earth in km
+        var dLat = deg2rad(latitude-this.latitude);  // deg2rad below
+        var dLon = deg2rad(longitude-this.longitude); 
+        var a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(deg2rad(this.latitude)) * Math.cos(deg2rad(latitude)) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2)
+            ; 
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        var d = R * c; // Distance in km
+        return d;
+        
+        function deg2rad(deg) {
+            return deg * (Math.PI/180)
+        }
+    }
+    */
+    ActiveSetup.prototype.getDist = function(longitude,latitude){
+        var p = 0.017453292519943295;    // Math.PI / 180
+        var c = Math.cos;
+        var a = 0.5 - c((latitude-this.latitude) * p)/2 + 
+              c(this.latitude * p) * c(latitude * p) * 
+              (1 - c((longitude-this.longitude) * p))/2;
+
+        return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+    }
+    
+    function distance(lat1, lon1, lat2, lon2) {
+        var p = 0.017453292519943295;    // Math.PI / 180
+        var c = Math.cos;
+        var a = 0.5 - c((lat2 - lat1) * p)/2 + 
+              c(lat1 * p) * c(lat2 * p) * 
+              (1 - c((lon2 - lon1) * p))/2;
+              
+        return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
+    }
+        
+
     initializeScorpinator();
 
     function initializeScorpinator(){
@@ -83,9 +160,8 @@
     }
 
 
-
     function retrieveActiveSetups(){
-        httpGetAsync("http://127.0.0.1:1337/residential",
+        httpGetAsync("https://rjhuffaker.github.io/residentialCoordinates.csv",
         function(response){
             activeSetups = TSVToArray(response);
         });
@@ -251,8 +327,11 @@
         button.addEventListener ("click", function(e) {
             fetchGeocodes(getLocationAddress(), function(data){
                 getNearestActiveSetup(data, function(data){
-                    console.log(data.toString().replace("\"","").replaceAll(",","\n"));
-                    alert(data.toString().replace("\"","").replaceAll(",","\n"));
+                    var alertDisplay = "Scheduled Nearby: \n";
+                    for(var i = 0; i < data.length; i++){
+                        alertDisplay = alertDisplay.concat(data[i].schedule+" within "+data[i].hyp+"\n");
+                    }
+                    alert(alertDisplay);
                 });
             });
         });
@@ -262,20 +341,28 @@
         var t = activeSetups.length;
         var lowest = 10000;
         var nearest = {};
-        var _longitude = parseFloat(data.longitude);
-        var _latitude = parseFloat(data.latitude);
+        var fiveNearest = [];
+        var _long = parseFloat(data.longitude);
+        var _lat = parseFloat(data.latitude);
         for(var i = 1; i < t; i++){
-            var setup = activeSetups[i];
-            var _testW = Math.abs(_longitude - parseFloat(setup[6]));
-            var _testH = Math.abs(_latitude - parseFloat(setup[5]));
-            var hyp = Math.hypot(_testW, _testH);
-
-            if(hyp < lowest && getLocationId() !== setup[0]){
-                nearest = setup;
-                lowest = hyp;
+            var setup = new ActiveSetup(activeSetups[i]);
+            if(fiveNearest.length > 0){
+                for(var ii = 0; ii < fiveNearest.length; ii++){
+                    var nearSetup = fiveNearest[ii];
+                    if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+                        setup.hyp = setup.getDist(_long, _lat);
+                        fiveNearest.splice(ii, 0, setup);
+                        fiveNearest = fiveNearest.slice(0, 5);
+                        break;
+                    }
+                }
+            } else {
+                fiveNearest.push(setup);
             }
         }
-        callback(nearest);
+        
+        console.log(fiveNearest);
+        callback(fiveNearest);
     }
 
     function autoSetupTaskinator(){
@@ -297,7 +384,7 @@
                 }
             }
         }
-        
+
         button.addEventListener ("click", function(e) {
             e.stopPropagation();
             console.log("did something");
@@ -362,7 +449,7 @@
 
                 serviceOrder.instructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
             }
-            
+
             return serviceOrder;
         }
     }
