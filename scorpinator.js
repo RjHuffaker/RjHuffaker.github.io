@@ -307,9 +307,9 @@
                     var alertDisplay = "Scheduled Nearby: \n";
                     for(var i = 0; i < data.length; i++){
                         if(data[i].hyp > 1){
-                            alertDisplay = alertDisplay.concat(data[i].zipCode+" "+alertDisplay.concat(data[i].tech+" "+data[i].schedule+" within "+data[i].hyp+" KM\n");
+                            alertDisplay = alertDisplay.concat(data[i].zipCode+" "+data[i].tech+" "+data[i].schedule+" within "+data[i].hyp+" KM\n");
                         } else {
-                            alertDisplay = alertDisplay.concat(data[i].zipCode+" "+alertDisplay.concat(data[i].tech+" "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
+                            alertDisplay = alertDisplay.concat(data[i].zipCode+" "+data[i].tech+" "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
                         }
                     }
                     alert(alertDisplay);
