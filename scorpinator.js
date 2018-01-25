@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://tampermonkey.net/
-// @version      1.003
-// @downloadURL  http://RjHuffaker.github.io/scorpinator.js
+// @version      1.004
+// @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to a particular use-case.
 // @author       You
 // @match        http://app.pestpac.com/*
