@@ -260,6 +260,7 @@
         var saveButton = document.getElementById("butSave");
         var addressInput = document.getElementById("Address");
         var streetLabel, streetSearchLabel, streetSearchInput;
+        var directionsInput;
 
         if(window.location.href.indexOf("billto/edit.asp") > -1){
             if(addressInput.value.indexOf(".") > -1){
@@ -273,6 +274,7 @@
             }
         } else if(window.location.href.indexOf("location/edit.asp") > -1){
             streetSearchInput = document.getElementById("Street");
+            directionsInput = document.getElementById("Directions");
 
             if(addressInput.value.indexOf(".") > -1){
 
@@ -287,6 +289,14 @@
                 streetSearchLabel.style.fontWeight = "bold";
 
                 saveButton.style.border = "2px solid red";
+
+            }
+
+            directionsInput.value = directionsInput.value.replace("scorpions text reminders", "TEXT REMINDERS - Scorpions");
+
+            if(!directionsInput.value.match(/\*/g)){
+
+                directionsInput.value = "** "+directionsInput.value;
 
             }
         }
