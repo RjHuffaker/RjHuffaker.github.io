@@ -25,12 +25,13 @@
             this.zipCode = setupArray[4];
             this.latitude = parseFloat(setupArray[5]);
             this.longitude = parseFloat(setupArray[6]);
-            this.service = setupArray[7];
-            this.week = setupArray[8];
-            this.weekDay = setupArray[9];
-            this.schedule = setupArray[10];
-            this.tech = setupArray[11];
-            this.total = setupArray[12];
+			this.division = setupArray[7];
+            this.service = setupArray[8];
+            this.week = setupArray[9];
+            this.weekDay = setupArray[10];
+            this.schedule = setupArray[11];
+            this.tech = setupArray[12];
+            this.total = setupArray[13];
         }
     }
 
@@ -40,6 +41,7 @@
             this.city+", "+this.state+" "+this.zipCode+"\n"+
             "Longitude: "+this.longitude+"\n"+
             "Latitude: "+this.latitude+"\n"+
+			"Division:"+this.division+"\n"+
             "Service: "+this.service+"\n"+
             "Week: "+this.week+"\n"+
             "Week Day: "+this.weekDay+"\n"+
@@ -145,7 +147,7 @@
 
 
     function retrieveActiveSetups(){
-        httpGetAsync("https://rjhuffaker.github.io/residentialCoordinates.csv",
+        httpGetAsync("https://rjhuffaker.github.io/residential.csv",
         function(response){
             activeSetups = TSVToArray(response);
         });
@@ -335,9 +337,9 @@
                         var alertDisplay = "Scheduled Nearby: \n";
                         for(var i = 0; i < data.length; i++){
                             if(data[i].hyp > 1){
-                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
+                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
                             } else {
-                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
+                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
                             }
                         }
                         alert(alertDisplay);
