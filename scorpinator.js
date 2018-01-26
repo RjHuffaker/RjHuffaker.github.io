@@ -334,15 +334,15 @@
                 console.log("Proximinating...");
                 fetchGeocodes(getLocationAddress(), function(data){
                     getNearestActiveSetup(data, function(data){
-                        var alertDisplay = "Scheduled Nearby: \n";
+                        var displayData = "Scheduled Nearby: \n";
                         for(var i = 0; i < data.length; i++){
                             if(data[i].hyp > 1){
-                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
+                                displayData = displayData.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
                             } else {
-                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
+                                displayData = displayData.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
                             }
                         }
-                        alert(alertDisplay);
+                        alert(displayData);
                     });
                 });
             });
