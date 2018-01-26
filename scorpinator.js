@@ -56,7 +56,7 @@
               (1 - c((longitude-this.longitude) * p))/2;
 
         return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
-    }
+    };
 
     function distance(lat1, lon1, lat2, lon2) {
         var p = 0.017453292519943295;    // Math.PI / 180
@@ -85,23 +85,30 @@
         autoGeocodinator();
         autoDepunctuationinator();
         manualProximinator();
+
     //    autoSetupTaskinator();
 
     }
 
     function getLocationAddress(){
-        var addressTable = document.getElementById("location-address-block");
-        if(!addressTable) return;
-        var addressTableRows = addressTable.children[0].children;
         var address = "";
-        for(var i = 0; i < addressTableRows.length; i++){
-            if(!addressTableRows[i].children[0].children[0]){
-                if(!addressTableRows[i].name){
-                    if(address) address = address.concat(", ");
+        var addressTable = document.getElementById("location-address-block");
+        if(addressTable){
+            var addressTableRows = addressTable.children[0].children;
+            for(var i = 0; i < addressTableRows.length; i++){
+                if(!addressTableRows[i].children[0].children[0]){
+                    if(!addressTableRows[i].name){
+                        if(address) address = address.concat(", ");
 
-                    address = address.concat(addressTableRows[i].children[0].innerHTML);
+                        address = address.concat(addressTableRows[i].children[0].innerHTML);
+                    }
                 }
             }
+        } else {
+            address = document.getElementById("Address").value+" "+
+                document.getElementById("City").value+" "+
+                document.getElementById("Zip").value;
+
         }
         return address;
     }
@@ -292,6 +299,8 @@
 
             }
 
+            directionsInput.value = directionsInput.value.replace("scorpions txt reminders", "TEXT REMINDERS - Scorpions");
+
             directionsInput.value = directionsInput.value.replace("scorpions text reminders", "TEXT REMINDERS - Scorpions");
 
             if(!directionsInput.value.match(/\*/g)){
@@ -303,29 +312,39 @@
     }
 
     function manualProximinator(){
-        var button = document.createElement("button");
-        button.innerHTML = "Get Nearest Active Setups";
-        button.style.display = "inline";
 
-        var reviewHistoryDiv = document.getElementsByClassName("reviewHistory")[0];
+        if((window.location.href.indexOf("LocationID") > -1)||(window.location.href.indexOf("location") > -1)){
 
-        if(reviewHistoryDiv) reviewHistoryDiv.appendChild(button);
+            var button = document.createElement("button");
+            button.innerHTML = "Nearest";
+            button.classList.add("input-nav10");
 
-        button.addEventListener ("click", function(e) {
-            fetchGeocodes(getLocationAddress(), function(data){
-                getNearestActiveSetup(data, function(data){
-                    var alertDisplay = "Scheduled Nearby: \n";
-                    for(var i = 0; i < data.length; i++){
-                        if(data[i].hyp > 1){
-                            alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
-                        } else {
-                            alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
+
+
+            var attachPoint = document.getElementById("page-header");
+          //  var reviewHistoryDiv = document.getElementsByClassName("reviewHistory")[0];
+
+            if(attachPoint) attachPoint.appendChild(button);
+
+            button.addEventListener ("click", function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                console.log("Proximinating...");
+                fetchGeocodes(getLocationAddress(), function(data){
+                    getNearestActiveSetup(data, function(data){
+                        var alertDisplay = "Scheduled Nearby: \n";
+                        for(var i = 0; i < data.length; i++){
+                            if(data[i].hyp > 1){
+                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
+                            } else {
+                                alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
+                            }
                         }
-                    }
-                    alert(alertDisplay);
+                        alert(alertDisplay);
+                    });
                 });
             });
-        });
+        }
     }
 
     function getNearestActiveSetup(data, callback){
