@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Scorpinator
-// @namespace    http://tampermonkey.net/
-// @version      1.004
+// @namespace    http://RjHuffaker.github.io
+// @version      1.005
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
-// @description  Provides various helper functions to PestPac, customized to a particular use-case.
+// @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
 // @match        http://app.pestpac.com/*
 // @grant        none
@@ -307,9 +307,9 @@
                     var alertDisplay = "Scheduled Nearby: \n";
                     for(var i = 0; i < data.length; i++){
                         if(data[i].hyp > 1){
-                            alertDisplay = alertDisplay.concat(data[i].zipCode+" "+data[i].tech+" "+data[i].schedule+" within "+data[i].hyp+" KM\n");
+                            alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
                         } else {
-                            alertDisplay = alertDisplay.concat(data[i].zipCode+" "+data[i].tech+" "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
+                            alertDisplay = alertDisplay.concat(data[i].zipCode+" / "+data[i].tech+" on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
                         }
                     }
                     alert(alertDisplay);
@@ -322,28 +322,28 @@
         var t = activeSetups.length;
         var lowest = 10000;
         var nearest = {};
-        var fiveNearest = [];
+        var nearestList = [];
         var _long = parseFloat(data.longitude);
         var _lat = parseFloat(data.latitude);
         for(var i = 1; i < t; i++){
             var setup = new ActiveSetup(activeSetups[i]);
-            if(fiveNearest.length > 0){
-                for(var ii = 0; ii < fiveNearest.length; ii++){
-                    var nearSetup = fiveNearest[ii];
+            if(nearestList.length > 0){
+                for(var ii = 0; ii < nearestList.length; ii++){
+                    var nearSetup = nearestList[ii];
                     if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
                         setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                        fiveNearest.splice(ii, 0, setup);
-                        fiveNearest = fiveNearest.slice(0, 5);
+                        nearestList.splice(ii, 0, setup);
+                        nearestList = nearestList.slice(0, 10);
                         break;
                     }
                 }
             } else {
-                fiveNearest.push(setup);
+                nearestList.push(setup);
             }
         }
 
-        console.log(fiveNearest);
-        callback(fiveNearest);
+        console.log(nearestList);
+        callback(nearestList);
     }
 
     function autoSetupTaskinator(){
