@@ -5,7 +5,7 @@
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
-// @match        http://app.pestpac.com/*
+// @match        https://app.pestpac.com/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
