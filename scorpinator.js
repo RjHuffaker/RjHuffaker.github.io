@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.007
+// @version      1.008
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -14,7 +14,7 @@
     'use strict';
     /*jshint esnext: true */
 
-    var activeSetups;
+    var activeSetups, scorpModal, scorpHeader, scorpContent, scorpIcon;
 
     class ActiveSetup {
         constructor(setupArray) {
@@ -34,21 +34,6 @@
             this.total = setupArray[13];
         }
     }
-
-    ActiveSetup.prototype.display = function(){
-        return "ID: "+this.id+"\n"+
-            this.address+"\n"+
-            this.city+", "+this.state+" "+this.zipCode+"\n"+
-            "Longitude: "+this.longitude+"\n"+
-            "Latitude: "+this.latitude+"\n"+
-			"Division:"+this.division+"\n"+
-            "Service: "+this.service+"\n"+
-            "Week: "+this.week+"\n"+
-            "Week Day: "+this.weekDay+"\n"+
-            "Schedule: "+this.schedule+"\n"+
-            "Tech: "+this.tech+"\n"+
-            "Total: "+this.total+"\n";
-    };
 
     ActiveSetup.prototype.getDist = function(longitude,latitude){
         var p = 0.017453292519943295;    // Math.PI / 180
@@ -74,23 +59,13 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        var navLogo = document.getElementsByClassName("left-nav-logo")[0];
-        if(navLogo){
-            navLogo.src = "http://cdn.mysitemyway.com/etc-mysitemyway/icons/legacy-previews/icons/red-white-pearls-icons-culture/032777-red-white-pearl-icon-culture-astrology2-scorpion.png";
-            navLogo.height = 73;
-            navLogo.width = 73;
-            navLogo.style.marginTop = "-20px";
-            navLogo.style.marginBottom = "-20px";
-        }
-
-        retrieveActiveSetups();
-        autoGeocodinator();
-        autoDepunctuationinator();
-        manualProximinator();
-
+        console.log("howdy");
+    //    retrieveActiveSetups();
+    //    autoGeocodinator();
+    //    autoDepunctuationinator();
     //    autoSetupTaskinator();
-
     }
+
 
     function getLocationAddress(){
         var address = "";
@@ -98,10 +73,9 @@
         if(addressTable){
             var addressTableRows = addressTable.children[0].children;
             for(var i = 0; i < addressTableRows.length; i++){
-                if(!addressTableRows[i].children[0].children[0]){
-                    if(!addressTableRows[i].name){
+                if(!addressTableRows[i].getAttribute("name")){
+                    if(!addressTableRows[i].children[0].children[0]){
                         if(address) address = address.concat(", ");
-
                         address = address.concat(addressTableRows[i].children[0].innerHTML);
                     }
                 }
@@ -112,11 +86,8 @@
                 document.getElementById("Zip").value;
 
         }
-        return address;
-    }
 
-    function getLocationId(){
-        return document.getElementById("locationHeaderDetailLink").children[0].innerHTML;
+        return address;
     }
 
     function httpGetAsync(theUrl, callback) {
@@ -130,9 +101,10 @@
     }
 
     function fetchGeocodes(address, callback){
+        address = address.replaceAll(", ", "+");
         address = address.replaceAll(" ", "+");
 
-        var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+",+AZ&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
+        var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+"+AZ,+AZ&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
 
         httpGetAsync(requestString, function(data){
             var dataObj = JSON.parse(data);
@@ -150,6 +122,8 @@
         httpGetAsync("https://rjhuffaker.github.io/residential.csv",
         function(response){
             activeSetups = TSVToArray(response);
+            scorpinatorPopup();
+            autoProximinator();
         });
     }
 
@@ -264,6 +238,177 @@
     }
 
 
+    function scorpinatorPopup(){
+        if((window.location.href.indexOf("LocationID") > -1)||(window.location.href.indexOf("SetupID") > -1)||(window.location.href.indexOf("OrderID") > -1)){
+
+            scorpContent = document.createElement("div");
+            scorpContent.style.margin = "10px";
+
+            scorpHeader = document.createElement("div");
+            scorpHeader.style.height = "115px";
+            scorpHeader.style.backgroundColor = "rgb(153, 10, 32)";
+
+            scorpHeader.style.textAlign = "center";
+            scorpHeader.innerHTML = "<span style='font-family: Verdana; color: white; font-size:300%;'><br>Scorpinator</span>";
+
+            scorpIcon = document.createElement("img");
+            scorpIcon.src = "https://rjhuffaker.github.io/scorpIcon.png";
+            scorpIcon.style.height = "40px";
+            scorpIcon.style.width = "40px";
+            scorpIcon.style.position = "fixed";
+            scorpIcon.style.right = "60px";
+            scorpIcon.style.bottom = "0";
+            scorpIcon.style.marginBottom = "10px";
+            scorpIcon.style.cursor = "pointer";
+            scorpIcon.style.opacity = "0.6";
+
+            scorpModal = document.createElement("div");
+            scorpModal.className += "scorp-modal";
+            scorpModal.style.height = "600px";
+            scorpModal.style.width = "400px";
+            scorpModal.style.position = "fixed";
+            scorpModal.style.bottom = "52px";
+            scorpModal.style.right = "-10px";
+            scorpModal.style.visibility = "hidden";
+
+            var scorpContainer = document.createElement("div");
+            scorpContainer.style.height = "568px";
+            scorpContainer.style.width = "368px";
+            scorpContainer.style.position = "relative";
+            scorpContainer.style.top = "15px";
+            scorpContainer.style.left = "15px";
+            scorpContainer.style.border = "1px solid #bbb";
+            scorpContainer.style.backgroundColor = "white";
+            scorpContainer.style.boxShadow = "0px 0px 20px #888";
+
+            var caretDiv = document.createElement("div");
+            caretDiv.style.width = "0";
+            caretDiv.style.height = "0";
+            caretDiv.style.position = "absolute";
+            caretDiv.style.left = "295px";
+            caretDiv.style.top = "584px";
+            caretDiv.style.borderTop = "15px solid white";
+            caretDiv.style.borderRight = "15px solid transparent";
+            caretDiv.style.borderLeft = "15px solid transparent";
+
+            var caretDivBorder = document.createElement("div");
+            caretDivBorder.style.width = "0";
+            caretDivBorder.style.height = "0";
+            caretDivBorder.style.position = "absolute";
+            caretDivBorder.style.left = "295px";
+            caretDivBorder.style.top = "585px";
+            caretDivBorder.style.borderTop = "15px solid #bbb";
+            caretDivBorder.style.borderRight = "15px solid transparent";
+            caretDivBorder.style.borderLeft = "15px solid transparent";
+
+            var bodyElement = document.getElementsByTagName('body')[0];
+
+            bodyElement.appendChild(scorpIcon);
+            bodyElement.appendChild(scorpModal);
+
+            scorpModal.appendChild(scorpContainer);
+            scorpModal.appendChild(caretDivBorder);
+            scorpModal.appendChild(caretDiv);
+
+            scorpContainer.appendChild(scorpHeader);
+            scorpContainer.appendChild(scorpContent);
+
+            scorpIcon.addEventListener( 'mouseover', function() {
+                scorpIcon.style.opacity = "1.0";
+            });
+            scorpIcon.addEventListener( 'mouseout', function() {
+                scorpIcon.style.opacity = "0.6";
+            });
+
+            scorpIcon.addEventListener("click", function(e) {
+                if(scorpModal.style.visibility === "hidden"){
+                    scorpModal.style.visibility = "visible";
+                } else {
+                    scorpModal.style.visibility = "hidden";
+                }
+
+                fetchGeocodes(getLocationAddress(), function(data){
+                    getNearestActiveSetup(data, function(data){
+                        scorpContent.innerHTML = formatSetupData(data);
+                    });
+                });
+            });
+
+        }
+    }
+
+    function autoProximinator(){
+        if((window.location.href.indexOf("LocationID") > -1)||(window.location.href.indexOf("SetupID") > -1)||(window.location.href.indexOf("OrderID") > -1)){
+
+            fetchGeocodes(getLocationAddress(), function(data){
+                getNearestActiveSetup(data, function(data){
+                    scorpContent.innerHTML = formatSetupData(data);
+                });
+            });
+        }
+
+        function getNearestActiveSetup(data, callback){
+            var t = activeSetups.length;
+            var lowest = 10000;
+            var nearest = {};
+            var nearestList = [];
+            var _long = parseFloat(data.longitude);
+            var _lat = parseFloat(data.latitude);
+            for(var i = 1; i < t; i++){
+                var setup = new ActiveSetup(activeSetups[i]);
+                if(nearestList.length > 0){
+                    for(var ii = 0; ii < nearestList.length; ii++){
+                        var nearSetup = nearestList[ii];
+                        if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+                            setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                            nearestList.splice(ii, 0, setup);
+                            nearestList = nearestList.slice(0, 10);
+                            break;
+                        }
+                    }
+                } else {
+                    nearestList.push(setup);
+                }
+            }
+
+            callback(nearestList);
+        }
+
+        function formatSetupData(data){
+            var displayData = '<h2>Scheduled Nearby:</h2>'+
+                '<style>'+
+                'div.scorp-modal table { width: 100% }'+
+                '</style>'+
+                '<table border="1">'+
+                '<tbody>'+
+                '<tr>'+
+                '<th>Zip Code</th>'+
+                '<th>Technician</th>'+
+                '<th>Division</th>'+
+                '<th>Schedule</th>'+
+                '<th>Distance</th>'+
+                '</tr>';
+
+            for(var i = 0; i < data.length; i++){
+                if(data[i].hyp > 1){
+                    displayData = displayData.concat(
+                        '<tr><td>'+data[i].zipCode.substring(0,5)+'</td><td>'+data[i].tech+'</td><td>'+data[i].division+'</td><td>'+data[i].schedule+'</td><td>'+data[i].hyp+' KM</td></tr>'
+                    );
+                } else {
+                    displayData = displayData.concat(
+                        '<tr><td>'+data[i].zipCode.substring(0,5)+'</td><td>'+data[i].tech+'</td><td>'+data[i].division+'</td><td>'+data[i].schedule+'</td><td>'+data[i].hyp*1000+' M</td></tr>'
+                    );
+                }
+            }
+            displayData = displayData.concat('</tbody></table>');
+            return displayData;
+        }
+
+    }
+
+
+
+
     function autoDepunctuationinator(){
         var editButton = document.getElementById("butEdit");
         var saveButton = document.getElementById("butSave");
@@ -313,75 +458,8 @@
         }
     }
 
-    function manualProximinator(){
-
-        if((window.location.href.indexOf("LocationID") > -1)||(window.location.href.indexOf("location") > -1)){
-
-            var button = document.createElement("button");
-            button.innerHTML = "Nearest";
-            button.classList.add("input-nav10");
-
-
-
-            var attachPoint = document.getElementById("page-header");
-          //  var reviewHistoryDiv = document.getElementsByClassName("reviewHistory")[0];
-
-            if(attachPoint) attachPoint.appendChild(button);
-
-            button.addEventListener ("click", function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log("Proximinating...");
-                fetchGeocodes(getLocationAddress(), function(data){
-                    getNearestActiveSetup(data, function(data){
-                        var displayData = "Scheduled Nearby: \n";
-                        for(var i = 0; i < data.length; i++){
-                            if(data[i].hyp > 1){
-                                displayData = displayData.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp+" KM\n");
-                            } else {
-                                displayData = displayData.concat(data[i].zipCode+" / "+data[i].tech+" ("+data[i].division+") on "+data[i].schedule+" within "+data[i].hyp*1000+" M\n");
-                            }
-                        }
-                        alert(displayData);
-                    });
-                });
-            });
-        }
-    }
-
-    function getNearestActiveSetup(data, callback){
-        var t = activeSetups.length;
-        var lowest = 10000;
-        var nearest = {};
-        var nearestList = [];
-        var _long = parseFloat(data.longitude);
-        var _lat = parseFloat(data.latitude);
-        for(var i = 1; i < t; i++){
-            var setup = new ActiveSetup(activeSetups[i]);
-            if(nearestList.length > 0){
-                for(var ii = 0; ii < nearestList.length; ii++){
-                    var nearSetup = nearestList[ii];
-                    if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
-                        setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                        nearestList.splice(ii, 0, setup);
-                        nearestList = nearestList.slice(0, 10);
-                        break;
-                    }
-                }
-            } else {
-                nearestList.push(setup);
-            }
-        }
-
-        console.log(nearestList);
-        callback(nearestList);
-    }
 
     function autoSetupTaskinator(){
-
-        var button = document.createElement("button");
-        button.innerHTML = "Task";
-        button.style.display = "inline";
 
         var ordersTable = document.getElementById("OrdersTable");
         var ordersTableRows = null;
@@ -389,62 +467,65 @@
             ordersTableRows = ordersTable.children[0].children;
 
             for(var i = 0; i < ordersTableRows.length; i++){
+                var container = document.createElement("td");
+                container.style.width = "64px";
+
+                ordersTableRows[i].insertBefore(container, ordersTableRows[i].firstChild);
+
                 if(!ordersTableRows[i].classList.contains("noncollapsible")){
-                    button.id = "setupTask"+i;
-                    ordersTableRows[i].children[0].innerHTML = "";
-                    ordersTableRows[i].children[0].appendChild(button);
+                    var button1 = document.createElement("button");
+                    var button2 = document.createElement("button");
+
+                    button1.innerHTML = "S";
+                    button1.style.minWidth = "0px";
+                    button1.style.width = "32px";
+                    button1.style.display = "inline";
+                    button2.innerHTML = "F";
+                    button2.style.minWidth = "0px";
+                    button2.style.width = "32px";
+                    button2.style.display = "inline";
+
+                    button1.id = "setupTask"+i;
+                    button2.id = "followUpTask"+i;
+                    container.appendChild(button1);
+                    container.appendChild(button2);
+
+                    button1.addEventListener("click", function(e) {
+                        e.stopPropagation();
+                        var addTask = document.getElementById("addTask");
+                        var collapsedAddTask = document.getElementById("collapsedAddTask");
+                        var row = e.target.id.replace("setupTask","");
+
+                        if(addTask){
+                            addTask.click();
+                        } else {
+                            collapsedAddTask.click();
+                        }
+
+                        createSetupTask(row);
+                        console.log(row);
+
+                        console.log(retrieveServiceOrder(row));
+                    });
+
+                    button2.addEventListener("click", function(e) {
+                        e.stopPropagation();
+                        var addTask = document.getElementById("addTask");
+                        var collapsedAddTask = document.getElementById("collapsedAddTask");
+                        var row = e.target.id.replace("followUpTask","");
+
+                        if(addTask){
+                            addTask.click();
+                        } else {
+                            collapsedAddTask.click();
+                        }
+
+                        createFollowUpTask(row);
+
+                    });
+
+
                 }
-            }
-        }
-
-        button.addEventListener ("click", function(e) {
-            e.stopPropagation();
-            console.log("did something");
-            var addTask = document.getElementById("addTask");
-            var collapsedAddTask = document.getElementById("collapsedAddTask");
-            var row = e.target.id.replace("setupTask","");
-            /*
-            if(addTask){
-                addTask.click();
-            } else {
-                collapsedAddTask.click();
-            }
-
-            console.log(serviceOrders);
-            */
-
-            createSetupTask(row);
-
-            getNearestActiveSetup();
-        });
-
-        function createSetupTask(row){
-            var serviceOrder = retrieveServiceOrder(row);
-            switch (serviceOrder.service){
-                case "BED BUGS":
-                    console.log("TODO: Create task for follow-up service 2-weeks out.");
-                    break;
-                case "FREE ESTIMATE":
-                    console.log("TODO: Check to see if service was requested.");
-                    break;
-                case "FREE ESTIMATE C":
-                    console.log("TODO: Do commercial estimate stuff.");
-                    break;
-                case "IN":
-                    console.log("Create task for new service setup.");
-                    break;
-                case "RE-START":
-                    console.log("TODO: Create task for new service setup.");
-                    break;
-                case "ROACH":
-                    console.log("TODO: Create task for 2 additional follow-up services.");
-                    break;
-                case "TICK":
-                    console.log("TODO: Create task for follow-up service 2-weeks out.");
-                    break;
-                default:
-                    console.log("TODO: Don't know what to do with this.");
-
             }
         }
 
@@ -454,16 +535,114 @@
             if(!ordersTableRows[row].classList.contains("noncollapsible")){
                 var orderColumns = ordersTableRows[row].children;
 
-                serviceOrder.id = orderColumns[2].children[0].innerHTML.trim();
-                serviceOrder.date = orderColumns[3].innerHTML.slice(14,22);
-                serviceOrder.tech = orderColumns[8].children[0].innerHTML.trim().replace("&nbsp;","");
-                serviceOrder.service = orderColumns[9].children[0].innerHTML.trim();
+                serviceOrder.id = orderColumns[3].children[0].innerHTML.trim();
+                serviceOrder.date = orderColumns[4].innerHTML.slice(14,22);
+                serviceOrder.tech = orderColumns[9].children[0].innerHTML.trim().replace("&nbsp;","");
+                serviceOrder.service = orderColumns[10].children[0].innerHTML.trim();
 
                 serviceOrder.instructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
             }
 
             return serviceOrder;
         }
+
+        function createSetupTask(row){
+            var serviceOrder = retrieveServiceOrder(row);
+
+            var taskNameInput = document.getElementById("subject");
+            var prioritySelect = document.getElementById("priority");
+            var taskTypeSelect = document.getElementById("taskType");
+            var dueDateInput = document.getElementById("dueDate");
+            var taskForButton = document.getElementById("selectTaskFor");
+
+            switch (serviceOrder.service){
+                case "BED BUGS":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "12";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    taskNameInput.value = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
+                    break;
+                case "FREE ESTIMATE":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "16";
+                    taskNameInput.value = "New $?? ";
+                    break;
+                case "FREE ESTIMATE C":
+                    console.log("TODO: Do commercial estimate stuff.");
+                    break;
+                case "IN":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "16";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    break;
+                case "RE-START":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "16";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    break;
+                case "ROACH":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "12";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    taskNameInput.value = "Generate 2 more GR treatments @ $100 ea";
+                    break;
+                case "TICK":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "12";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    taskNameInput.value = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
+                    break;
+                default:
+                    console.log("TODO: Don't know what to do with this.");
+            }
+
+            if(serviceOrder.instructions.indexOf("45mo") > -1){
+                taskNameInput.value = "New $45M ";
+            } else if(serviceOrder.instructions.indexOf("49mo") > -1){
+                taskNameInput.value = "New $49M ";
+            } else if(serviceOrder.instructions.indexOf("55mo") > -1){
+                taskNameInput.value = "New $55M ";
+            } else if(serviceOrder.instructions.indexOf("60mo") > -1){
+                taskNameInput.value = "New $60M ";
+            } else if(serviceOrder.instructions.indexOf("55eom") > -1){
+                taskNameInput.value = "New $55B ";
+            } else if(serviceOrder.instructions.indexOf("65eom") > -1){
+                taskNameInput.value = "New $65B ";
+            } else if(serviceOrder.instructions.indexOf("69eom") > -1){
+                taskNameInput.value = "New $69B ";
+            } else if(serviceOrder.instructions.indexOf("75eom") > -1){
+                taskNameInput.value = "New $75B ";
+            } else if(serviceOrder.instructions.indexOf("79eom") > -1){
+                taskNameInput.value = "New $79B ";
+            }
+
+        }
+
+        function createFollowUpTask(row){
+            var serviceOrder = retrieveServiceOrder(row);
+            var taskNameInput = document.getElementById("subject");
+            var prioritySelect = document.getElementById("priority");
+            var taskTypeSelect = document.getElementById("taskType");
+            var dueDateInput = document.getElementById("dueDate");
+            var taskForButton = document.getElementById("selectTaskFor");
+
+            prioritySelect.value = "2";
+            taskNameInput.value = "Follow up for initial";
+            taskTypeSelect.value = "16";
+            dueDateInput.value = getFutureDate(serviceOrder.date, 14);
+        }
+
+        function getFutureDate(startDate, daysOut){
+            var newDate = new Date(startDate);
+            newDate.setDate(newDate.getDate() + daysOut);
+            var dd = newDate.getDate();
+            var mm = newDate.getMonth()+1;
+            var yy = newDate.getFullYear();
+            return mm+"/"+dd+"/"+yy;
+        }
+
     }
+
+    
 
 })();
