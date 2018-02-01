@@ -1,4 +1,4 @@
-function autoDepunctuationator(){
+export function autoDepunctuationator(){
 	console.log("autoDepunctionating");
 	var editButton = document.getElementById("butEdit");
 	var saveButton = document.getElementById("butSave");
