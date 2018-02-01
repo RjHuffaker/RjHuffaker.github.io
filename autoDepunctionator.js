@@ -1,4 +1,4 @@
-function autoDepunctuationinator(){
+function autoDepunctuationator(){
 	var editButton = document.getElementById("butEdit");
 	var saveButton = document.getElementById("butSave");
 	var addressInput = document.getElementById("Address");
