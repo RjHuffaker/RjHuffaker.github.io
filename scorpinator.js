@@ -60,10 +60,7 @@
 
     function initializeScorpinator(){
         console.log("howdy");
-    //    retrieveActiveSetups();
-    //    autoGeocodinator();
-    //    autoDepunctuationinator();
-    //    autoSetupTaskinator();
+        retrieveActiveSetups();
     }
 
 
@@ -123,7 +120,6 @@
         function(response){
             activeSetups = TSVToArray(response);
             scorpinatorPopup();
-            autoProximinator();
         });
     }
 
