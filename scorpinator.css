@@ -1,3 +1,7 @@
-.scorpmodal {
-	border: 10px solid red;
+div.scorp-modal{
+	border: 1px solid green;
+}
+
+div.scorp-modal table{
+	width: 100%;
 }
