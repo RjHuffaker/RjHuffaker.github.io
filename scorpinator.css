@@ -44,6 +44,8 @@
 
 #scorp-modal table {
 	width: 100%;
+	border-collapse: collapse;
+	border: 1px solid #999;
 }
 
 #caret-div {
