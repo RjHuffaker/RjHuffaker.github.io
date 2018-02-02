@@ -41,9 +41,28 @@
 	margin: 10px;
 }
 
-
-
-
 #scorp-modal table {
 	width: 100%;
+}
+
+#caret-div {
+	height: 0;
+	width: 0;
+	position: absolute;
+	top: 584px;
+	left: 295px;
+	border-top: 15px solid white;
+	border-right: 15px solid transparent;
+	border-left: 15px solid transparent;
+}
+
+#caret-div-border {
+	height: 0;
+	width: 0;
+	position: absolute;
+	top: 585px;
+	left: 295px;
+	border-top: 15px solid #bbb;
+	border-right: 15px solid transparent;
+	border-left: 15px solid transparent;
 }
