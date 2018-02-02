@@ -1,4 +1,15 @@
-div.scorp-modal{
+#scorp-icon {
+	height: 40px;
+	width: 40px;
+	position: fixed;
+	right: 60px;
+	bottom: 0;
+	margin-bottom: 10px;
+	cursor: pointer;
+	opacity: 0.6;
+}
+
+#scorp-modal {
 	height: 600px;
 	width: 400px;
 	position: fixed;
@@ -7,10 +18,32 @@ div.scorp-modal{
 	visibility: hidden;
 }
 
-div.scorp-modal table{
-	width: 100%;
+#scorp-container {
+	height: 568px;
+	width: 368px;
+	position: relative;
+	top: 15px;
+	left: 15px;
+	border: 1px solid #bbb;
+	background-color: white;
+}
+
+#scorp-header {
+	height: 115px;
+	background-color: rgb(153, 10, 32);
+	text-align: center;
+	font-family: Verdana;
+	font-size: 300%;
+	color: white;
 }
 
 #scorp-content {
-	border: 1px solid green;
+	margin: 10px;
+}
+
+
+
+
+#scorp-modal table {
+	width: 100%;
 }
