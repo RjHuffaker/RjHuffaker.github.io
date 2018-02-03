@@ -1,9 +1,21 @@
+// ==UserScript==
+// @name         AutoTaskinator
+// @namespace    http://RjHuffaker.github.io
+// @version      1.00
+// @updateURL    http://RjHuffaker.github.io/autoTaskinator.js
+// @description  Streamlines the process of entering tasks
+// @author       RjHuffaker
+// @match        https://app.pestpac.com/location/detail.asp*
+// @grant        none
+// ==/UserScript==
 
+(function() {
     'use strict';
     /*jshint esnext: true */
 
+    autoTaskinator();
 
-    export default function autoTaskinator(){
+    function autoTaskinator(){
         console.log("autoTaskinating");
 
         var ordersTable = document.getElementById("OrdersTable");
@@ -186,3 +198,4 @@
             return mm+"/"+dd+"/"+yy;
         }
     }
+})();
