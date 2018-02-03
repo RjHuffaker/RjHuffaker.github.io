@@ -1,6 +1,6 @@
 
 
-    export function autoTaskinator(){
+    function autoTaskinator(){
         console.log("autoTaskinating");
 
         var ordersTable = document.getElementById("OrdersTable");
