@@ -1,11 +1,9 @@
 
-
-export (function() {
     'use strict';
     /*jshint esnext: true */
 
 
-    function autoTaskinator(){
+    export default function autoTaskinator(){
         console.log("autoTaskinating");
 
         var ordersTable = document.getElementById("OrdersTable");
@@ -188,4 +186,3 @@ export (function() {
             return mm+"/"+dd+"/"+yy;
         }
     }
-})();
