@@ -1,5 +1,10 @@
 
 
+export (function() {
+    'use strict';
+    /*jshint esnext: true */
+
+
     function autoTaskinator(){
         console.log("autoTaskinating");
 
@@ -183,3 +188,4 @@
             return mm+"/"+dd+"/"+yy;
         }
     }
+})();
