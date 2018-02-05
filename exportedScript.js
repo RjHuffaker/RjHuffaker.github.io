@@ -1,3 +1,3 @@
-function(){
+function helloConsole(){
 	console.log("HELLO!!");
-}
+};
