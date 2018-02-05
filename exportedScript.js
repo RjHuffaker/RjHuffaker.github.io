@@ -1,3 +1,3 @@
-export default function helloConsole(){
+default function helloConsole(){
 	console.log("HELLO!!");
 }
