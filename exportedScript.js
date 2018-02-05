@@ -1,3 +1,3 @@
-export function helloConsole(){
+function helloConsole(){
 	console.log("HELLO!!");
 }
