@@ -72,6 +72,7 @@
 
     function initializeScorpinator(){
         console.log("howdy");
+
         httpGetAsync("https://rjhuffaker.github.io/residential.csv",
         function(response){
             activeSetups = tsvToObjectArray(response);
@@ -84,6 +85,22 @@
         link.href = 'https://RjHuffaker.github.io/scorpinator.css';
         document.getElementsByTagName("HEAD")[0].appendChild(link);
 
+        textinator();
+
+    }
+
+    textinator();
+
+    function textinator(){
+        if(!document.getElementById("location-phone-link")) return;
+        var contactLinks = document.getElementsByClassName("contact-link-span");
+
+        for(var i = 0; i < contactLinks.length; i++){
+            console.log(contactLinks[i]);
+            contactLinks[i].onclick = null;
+            contactLinks[i].style.cursor = "inherit";
+            contactLinks[i].href = "#";
+        }
     }
 
     function httpGetAsync(theUrl, callback) {
@@ -231,7 +248,7 @@
                     } else if(activeSetups[i].schedule[4] === "B"){
                         multiplier = 0.5;
                     } else if(activeSetups[i].schedule[4] === "q"){
-                        multiplier = 0.33;
+                        multiplier = 0.25;
                     }
 
                     _tech.schedule[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
@@ -263,6 +280,8 @@
             }
         }
 
+        console.log(techList);
+
         callback(nearestList);
     }
 
@@ -285,7 +304,7 @@
             _tr.insertCell().innerHTML = data[i].schedule;
             _tr.insertCell().innerHTML = data[i].tech+"/"+data[i].division;
             _tr.insertCell().innerHTML = data[i].hyp+" km";
-
+            _tr.insertCell().innerHTML = data[i].heat;
 
             if(data[i].heat < 450){
                 _tr.style.textShadow = "1px 1px 0 rgb(0,0,255)";
@@ -334,5 +353,5 @@
 
         scorpContent.appendChild(_table);
     }
-	
+
 })();
