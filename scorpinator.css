@@ -11,7 +11,7 @@
 
 #scorp-modal {
 	height: 600px;
-	width: 400px;
+	width: 500px;
 	position: fixed;
 	bottom: 52px;
 	right: -10px;
@@ -20,7 +20,7 @@
 
 #scorp-container {
 	height: 568px;
-	width: 368px;
+	width: 468px;
 	position: relative;
 	top: 15px;
 	left: 15px;
@@ -53,7 +53,7 @@
 	width: 0;
 	position: absolute;
 	top: 584px;
-	left: 295px;
+	left: 395px;
 	border-top: 15px solid white;
 	border-right: 15px solid transparent;
 	border-left: 15px solid transparent;
@@ -64,7 +64,7 @@
 	width: 0;
 	position: absolute;
 	top: 585px;
-	left: 295px;
+	left: 395px;
 	border-top: 15px solid #bbb;
 	border-right: 15px solid transparent;
 	border-left: 15px solid transparent;
