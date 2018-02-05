@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.012
+// @version      1.013
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -85,21 +85,21 @@
         link.href = 'https://RjHuffaker.github.io/scorpinator.css';
         document.getElementsByTagName("HEAD")[0].appendChild(link);
 
-        textinator();
+        contactinator();
 
     }
 
-    textinator();
-
-    function textinator(){
+    function contactinator(){
         if(!document.getElementById("location-phone-link")) return;
         var contactLinks = document.getElementsByClassName("contact-link-span");
-
+        var urlString = window.location.search.replace("?", "");
         for(var i = 0; i < contactLinks.length; i++){
-            console.log(contactLinks[i]);
-            contactLinks[i].onclick = null;
-            contactLinks[i].style.cursor = "inherit";
-            contactLinks[i].href = "#";
+            if(contactLinks[i].hasAttribute("onclick")){
+                contactLinks[i].onclick = null;
+                contactLinks[i].style.cursor = "inherit";
+            } else if(contactLinks[i].children[1]){
+                contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
+            }
         }
     }
 
