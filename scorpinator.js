@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.01
+// @version      1.011
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -72,9 +72,6 @@
 
     function initializeScorpinator(){
         console.log("howdy");
-		autoDepunctuationator();
-		
-		
         httpGetAsync("https://rjhuffaker.github.io/residential.csv",
         function(response){
             activeSetups = tsvToObjectArray(response);
