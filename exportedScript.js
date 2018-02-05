@@ -1,3 +1,3 @@
-var helloConsole = function(){
+function(){
 	console.log("HELLO!!");
 }
