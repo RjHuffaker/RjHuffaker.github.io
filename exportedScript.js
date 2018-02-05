@@ -1,3 +1,3 @@
-default function helloConsole(){
+module.exports = function(){
 	console.log("HELLO!!");
 }
