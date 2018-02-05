@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.009
+// @version      1.01
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -35,6 +35,18 @@
         }
     }
 
+    class technician {
+        constructor(name){
+            this.name = name;
+            this.schedule = {
+                "1MON": 0, "1TUE": 0, "1WED": 0, "1THU": 0, "1FRI": 0,
+                "2MON": 0, "2TUE": 0, "2WED": 0, "2THU": 0, "2FRI": 0,
+                "3MON": 0, "3TUE": 0, "3WED": 0, "3THU": 0, "3FRI": 0,
+                "4MON": 0, "4TUE": 0, "4WED": 0, "4THU": 0, "4FRI": 0
+            };
+        }
+    }
+
     ActiveSetup.prototype.getDist = function(longitude,latitude){
         var p = 0.017453292519943295;    // Math.PI / 180
         var c = Math.cos;
@@ -60,31 +72,21 @@
 
     function initializeScorpinator(){
         console.log("howdy");
-        retrieveActiveSetups();
-    }
+		autoDepunctuationator();
+		
+		
+        httpGetAsync("https://rjhuffaker.github.io/residential.csv",
+        function(response){
+            activeSetups = tsvToObjectArray(response);
+            scorpinatorPopup();
+        });
 
+        var link = window.document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'https://RjHuffaker.github.io/scorpinator.css';
+        document.getElementsByTagName("HEAD")[0].appendChild(link);
 
-    function getLocationAddress(){
-        var address = "";
-        var addressTable = document.getElementById("location-address-block");
-        if(addressTable){
-            var addressTableRows = addressTable.children[0].children;
-            for(var i = 0; i < addressTableRows.length; i++){
-                if(!addressTableRows[i].getAttribute("name")){
-                    if(!addressTableRows[i].children[0].children[0]){
-                        if(address) address = address.concat(", ");
-                        address = address.concat(addressTableRows[i].children[0].innerHTML);
-                    }
-                }
-            }
-        } else {
-            address = document.getElementById("Address").value+" "+
-                document.getElementById("City").value+" "+
-                document.getElementById("Zip").value;
-
-        }
-
-        return address;
     }
 
     function httpGetAsync(theUrl, callback) {
@@ -111,251 +113,229 @@
 
             callback(geoCodes);
         });
-
     }
 
-
-    function retrieveActiveSetups(){
-        httpGetAsync("https://rjhuffaker.github.io/residential.csv",
-        function(response){
-            activeSetups = TSVToArray(response);
-            scorpinatorPopup();
-        });
-    }
-
-    function TSVToArray(strData){
-
-        var strDelimiter = "\t";
-
-        var objPattern = new RegExp(
-            (
-                // Delimiters.
-                "(\\" + strDelimiter + "|\\r?\\n|\\r|^)" +
-
-                // Quoted fields.
-                "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
-
-                // Standard fields.
-                "([^\"\\" + strDelimiter + "\\r\\n]*))"
-            ),
-            "gi"
-            );
-
-        // Create an array to hold our data. Give the array
-        // a default empty first row.
-        var arrData = [[]];
-
-        // Create an array to hold our individual pattern
-        // matching groups.
-        var arrMatches = null;
-
-        // Keep looping over the regular expression matches
-        // until we can no longer find a match.
-        while (arrMatches = objPattern.exec( strData )){
-
-            // Get the delimiter that was found.
-            var strMatchedDelimiter = arrMatches[ 1 ];
-
-            // Check to see if the given delimiter has a length
-            // (is not the start of string) and if it matches
-            // field delimiter. If id does not, then we know
-            // that this delimiter is a row delimiter.
-            if (
-                strMatchedDelimiter.length &&
-                strMatchedDelimiter !== strDelimiter
-                ){
-
-                // Since we have reached a new row of data,
-                // add an empty row to our data array.
-                arrData.push( [] );
-
+    function getLocationAddress(){
+        var address = "";
+        var addressTable = document.getElementById("location-address-block");
+        if(addressTable){
+            var addressTableRows = addressTable.children[0].children;
+            for(var i = 0; i < addressTableRows.length; i++){
+                if(!addressTableRows[i].getAttribute("name")){
+                    if(!addressTableRows[i].children[0].children[0]){
+                        if(address) address = address.concat(", ");
+                        address = address.concat(addressTableRows[i].children[0].innerHTML);
+                    }
+                }
             }
-
-            var strMatchedValue;
-
-            // Now that we have our delimiter out of the way,
-            // let's check to see which kind of value we
-            // captured (quoted or unquoted).
-            if (arrMatches[ 2 ]){
-
-                // We found a quoted value. When we capture
-                // this value, unescape any double quotes.
-                strMatchedValue = arrMatches[ 2 ].replace(
-                    new RegExp( "\"\"", "g" ),
-                    "\""
-                    );
-
-            } else {
-
-                // We found a non-quoted value.
-                strMatchedValue = arrMatches[ 3 ];
-            }
-
-            // Now that we have our value string, let's add
-            // it to the data array.
-            arrData[ arrData.length - 1 ].push( strMatchedValue );
+        } else {
+            address = document.getElementById("Address").value+" "+
+                document.getElementById("City").value+" "+
+                document.getElementById("Zip").value;
         }
-
-        // Return the parsed data.
-        return( arrData );
+        return address;
     }
 
+    function tsvToObjectArray(tsv){
+        var lines=tsv.split("\n");
+        var result = [];
+
+        for(var i=1;i<lines.length;i++){
+            var currentline=lines[i].split("\t");
+
+            result.push(new ActiveSetup(currentline));
+        }
+        return result;
+    }
 
     function scorpinatorPopup(){
-        if((window.location.href.indexOf("LocationID") > -1)||(window.location.href.indexOf("SetupID") > -1)||(window.location.href.indexOf("OrderID") > -1)){
+        scorpIcon = document.createElement("img");
+        scorpIcon.src = "https://rjhuffaker.github.io/scorpIcon.png";
+        scorpIcon.id = "scorp-icon";
 
-            scorpContent = document.createElement("div");
-            scorpContent.style.margin = "10px";
+        scorpContent = document.createElement("div");
+        scorpContent.id = "scorp-content";
 
-            scorpHeader = document.createElement("div");
-            scorpHeader.style.height = "115px";
-            scorpHeader.style.backgroundColor = "rgb(153, 10, 32)";
+        scorpHeader = document.createElement("div");
+        scorpHeader.id = "scorp-header";
+        scorpHeader.innerHTML = "<span><br>Scorpinator</span>";
 
-            scorpHeader.style.textAlign = "center";
-            scorpHeader.innerHTML = "<span style='font-family: Verdana; color: white; font-size:300%;'><br>Scorpinator</span>";
+        scorpModal = document.createElement("div");
+        scorpModal.id = "scorp-modal";
 
-            scorpIcon = document.createElement("img");
-            scorpIcon.src = "https://rjhuffaker.github.io/scorpIcon.png";
-            scorpIcon.style.height = "40px";
-            scorpIcon.style.width = "40px";
-            scorpIcon.style.position = "fixed";
-            scorpIcon.style.right = "60px";
-            scorpIcon.style.bottom = "0";
-            scorpIcon.style.marginBottom = "10px";
-            scorpIcon.style.cursor = "pointer";
+        var scorpContainer = document.createElement("div");
+        scorpContainer.id = "scorp-container";
+
+        var caretDiv = document.createElement("div");
+        caretDiv.id = "caret-div";
+
+        var caretDivBorder = document.createElement("div");
+        caretDivBorder.id = "caret-div-border";
+
+        var bodyElement = document.getElementsByTagName('body')[0];
+
+        bodyElement.appendChild(scorpIcon);
+        bodyElement.appendChild(scorpModal);
+
+        scorpModal.appendChild(scorpContainer);
+        scorpModal.appendChild(caretDivBorder);
+        scorpModal.appendChild(caretDiv);
+
+        scorpContainer.appendChild(scorpHeader);
+        scorpContainer.appendChild(scorpContent);
+
+        scorpIcon.addEventListener( 'mouseover', function() {
+            scorpIcon.style.opacity = "1.0";
+        });
+        scorpIcon.addEventListener( 'mouseout', function() {
             scorpIcon.style.opacity = "0.6";
+        });
 
-            scorpModal = document.createElement("div");
-            scorpModal.className += "scorp-modal";
-            scorpModal.style.height = "600px";
-            scorpModal.style.width = "400px";
-            scorpModal.style.position = "fixed";
-            scorpModal.style.bottom = "52px";
-            scorpModal.style.right = "-10px";
-            scorpModal.style.visibility = "hidden";
+        scorpModal.style.visibility = "hidden";
 
-            var scorpContainer = document.createElement("div");
-            scorpContainer.style.height = "568px";
-            scorpContainer.style.width = "368px";
-            scorpContainer.style.position = "relative";
-            scorpContainer.style.top = "15px";
-            scorpContainer.style.left = "15px";
-            scorpContainer.style.border = "1px solid #bbb";
-            scorpContainer.style.backgroundColor = "white";
-            scorpContainer.style.boxShadow = "0px 0px 20px #888";
+        scorpIcon.addEventListener("click", function(e) {
+            if(scorpModal.style.visibility === "hidden"){
+                scorpModal.style.visibility = "visible";
+            } else {
+                scorpModal.style.visibility = "hidden";
+            }
 
-            var caretDiv = document.createElement("div");
-            caretDiv.style.width = "0";
-            caretDiv.style.height = "0";
-            caretDiv.style.position = "absolute";
-            caretDiv.style.left = "295px";
-            caretDiv.style.top = "584px";
-            caretDiv.style.borderTop = "15px solid white";
-            caretDiv.style.borderRight = "15px solid transparent";
-            caretDiv.style.borderLeft = "15px solid transparent";
-
-            var caretDivBorder = document.createElement("div");
-            caretDivBorder.style.width = "0";
-            caretDivBorder.style.height = "0";
-            caretDivBorder.style.position = "absolute";
-            caretDivBorder.style.left = "295px";
-            caretDivBorder.style.top = "585px";
-            caretDivBorder.style.borderTop = "15px solid #bbb";
-            caretDivBorder.style.borderRight = "15px solid transparent";
-            caretDivBorder.style.borderLeft = "15px solid transparent";
-
-            var bodyElement = document.getElementsByTagName('body')[0];
-
-            bodyElement.appendChild(scorpIcon);
-            bodyElement.appendChild(scorpModal);
-
-            scorpModal.appendChild(scorpContainer);
-            scorpModal.appendChild(caretDivBorder);
-            scorpModal.appendChild(caretDiv);
-
-            scorpContainer.appendChild(scorpHeader);
-            scorpContainer.appendChild(scorpContent);
-
-            scorpIcon.addEventListener( 'mouseover', function() {
-                scorpIcon.style.opacity = "1.0";
-            });
-            scorpIcon.addEventListener( 'mouseout', function() {
-                scorpIcon.style.opacity = "0.6";
-            });
-
-            scorpIcon.addEventListener("click", function(e) {
-                if(scorpModal.style.visibility === "hidden"){
-                    scorpModal.style.visibility = "visible";
-                } else {
-                    scorpModal.style.visibility = "hidden";
-                }
-
-                fetchGeocodes(getLocationAddress(), function(data){
-                    getNearestActiveSetup(data, function(data){
-                        scorpContent.innerHTML = formatSetupData(data);
-                    });
+            fetchGeocodes(getLocationAddress(), function(data){
+                getNearestActiveSetup(data, function(data){
+                    scorpContent.innerHTML = "";
+                    formatScorpContent(data);
                 });
             });
-
-        }
-
-        function getNearestActiveSetup(data, callback){
-            var t = activeSetups.length;
-            var lowest = 10000;
-            var nearest = {};
-            var nearestList = [];
-            var _long = parseFloat(data.longitude);
-            var _lat = parseFloat(data.latitude);
-            for(var i = 1; i < t; i++){
-                var setup = new ActiveSetup(activeSetups[i]);
-                if(nearestList.length > 0){
-                    for(var ii = 0; ii < nearestList.length; ii++){
-                        var nearSetup = nearestList[ii];
-                        if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
-                            setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                            nearestList.splice(ii, 0, setup);
-                            nearestList = nearestList.slice(0, 10);
-                            break;
-                        }
-                    }
-                } else {
-                    nearestList.push(setup);
-                }
-            }
-
-            callback(nearestList);
-        }
-
-        function formatSetupData(data){
-            var displayData = '<h2>Scheduled Nearby:</h2>'+
-                '<style>'+
-                'div.scorp-modal table { width: 100% }'+
-                '</style>'+
-                '<table border="1">'+
-                '<tbody>'+
-                '<tr>'+
-                '<th>Zip Code</th>'+
-                '<th>Technician</th>'+
-                '<th>Division</th>'+
-                '<th>Schedule</th>'+
-                '<th>Distance</th>'+
-                '</tr>';
-
-            for(var i = 0; i < data.length; i++){
-                if(data[i].hyp > 1){
-                    displayData = displayData.concat(
-                        '<tr><td>'+data[i].zipCode.substring(0,5)+'</td><td>'+data[i].tech+'</td><td>'+data[i].division+'</td><td>'+data[i].schedule+'</td><td>'+data[i].hyp+' KM</td></tr>'
-                    );
-                } else {
-                    displayData = displayData.concat(
-                        '<tr><td>'+data[i].zipCode.substring(0,5)+'</td><td>'+data[i].tech+'</td><td>'+data[i].division+'</td><td>'+data[i].schedule+'</td><td>'+data[i].hyp*1000+' M</td></tr>'
-                    );
-                }
-            }
-            displayData = displayData.concat('</tbody></table>');
-            return displayData;
-        }
+        });
 
     }
 
+    function getNearestActiveSetup(data, callback){
+        var al = activeSetups.length;
+        var lowest = 10000;
+        var nearest = {};
+        var nearestList = [];
+        var _long = parseFloat(data.longitude);
+        var _lat = parseFloat(data.latitude);
+
+        var techList = [];
+
+        for(var i = 1; i < al; i++){
+            var setup = activeSetups[i];
+
+            var addTech = true;
+            for(var ii = 0; ii < techList.length; ii++){
+                var _tech = techList[ii];
+                if(activeSetups[i].tech && activeSetups[i].tech === _tech.name){
+                    addTech = false;
+                    var multiplier;
+                    if(activeSetups[i].schedule[4] === "M"){
+                        multiplier = 1;
+                    } else if(activeSetups[i].schedule[4] === "B"){
+                        multiplier = 0.5;
+                    } else if(activeSetups[i].schedule[4] === "q"){
+                        multiplier = 0.33;
+                    }
+
+                    _tech.schedule[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
+                }
+            }
+
+            if(addTech) techList.push(new technician(activeSetups[i].tech));
+
+            if(nearestList.length > 0){
+                for(var ij = 0; ij < nearestList.length; ij++){
+                    var nearSetup = nearestList[ij];
+                    if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+                        setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                        nearestList.splice(ij, 0, setup);
+                        nearestList = nearestList.slice(0, 20);
+                        break;
+                    }
+                }
+            } else {
+                nearestList.push(setup);
+            }
+        }
+
+        for(var j = 0; j < nearestList.length; j++){
+            for(var ji = 0; ji < techList.length; ji++){
+                if(techList[ji].name === nearestList[j].tech){
+                    nearestList[j].heat = techList[ji].schedule[nearestList[j].schedule.substring(0,4)];
+                }
+            }
+        }
+
+        callback(nearestList);
+    }
+
+    function formatScorpContent(data){
+
+        var _table = document.createElement("table");
+        _table.border = 1;
+
+        var _header = _table.insertRow();
+        _header.insertCell().innerHTML = "Zip Code";
+        _header.insertCell().innerHTML = "Schedule";
+        _header.insertCell().innerHTML = "Tech/Division";
+        _header.insertCell().innerHTML = "Distance";
+
+        _header.style.fontWeight = "bold";
+
+        for(var i = 0; i < data.length; i++){
+            var _tr = _table.insertRow();
+            _tr.insertCell().innerHTML = data[i].zipCode.substring(0,5);
+            _tr.insertCell().innerHTML = data[i].schedule;
+            _tr.insertCell().innerHTML = data[i].tech+"/"+data[i].division;
+            _tr.insertCell().innerHTML = data[i].hyp+" km";
+
+
+            if(data[i].heat < 450){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,0,255)";
+            } else if(data[i].heat < 500){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,63,255)";
+            } else if(data[i].heat < 550){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,127,255)";
+            } else if(data[i].heat < 600){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,191,255)";
+            } else if(data[i].heat < 650){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,255,255)";
+            } else if(data[i].heat < 700){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,255,191)";
+            } else if(data[i].heat < 750){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,255,127)";
+            } else if(data[i].heat < 800){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,255,63)";
+            } else if(data[i].heat < 850){
+                _tr.style.textShadow = "1px 1px 0 rgb(0,255,0)";
+            } else if(data[i].heat < 850){
+                _tr.style.textShadow = "1px 1px 0 rgb(63,255,0)";
+            } else if(data[i].heat < 900){
+                _tr.style.textShadow = "1px 1px 0 rgb(127,255,0)";
+            } else if(data[i].heat < 950){
+                _tr.style.textShadow = "1px 1px 0 rgb(191,255,0)";
+            } else if(data[i].heat < 1000){
+                _tr.style.textShadow = "1px 1px 0 rgb(255,255,0)";
+            } else if(data[i].heat < 1050){
+                _tr.style.textShadow = "1px 1px 0 rgb(255,191,0)";
+            } else if(data[i].heat < 1100){
+                _tr.style.textShadow = "1px 1px 0 rgb(255,127,0)";
+            } else if(data[i].heat < 1150){
+                _tr.style.textShadow = "1px 1px 0 rgb(255,63,0)";
+            } else if(data[i].heat < 1200) {
+                _tr.style.textShadow = "1px 1px 0 rgb(255,0,0)";
+            } else if(data[i].heat < 1250){
+                _tr.style.textShadow = "1px 1px 0 rgb(255,0,63)";
+            } else if(data[i].heat < 1300){
+                _tr.style.textShadow = "1px 1px 0 rgb(255,0,127)";
+            } else if(data[i].heat < 1350){
+                _tr.style.textShadow = "1px 1px 0 rgb(255,0,191)";
+            } else {
+                _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
+            }
+        }
+
+        scorpContent.appendChild(_table);
+    }
+	
 })();
