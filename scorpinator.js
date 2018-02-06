@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.013
+// @version      1.014
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
 // @match        https://app.pestpac.com/*
-// @grant        none
+// @grant        window.open
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -38,7 +38,13 @@
     class technician {
         constructor(name){
             this.name = name;
-            this.schedule = {
+            this.dailyTotals = {
+                "1MON": 0, "1TUE": 0, "1WED": 0, "1THU": 0, "1FRI": 0,
+                "2MON": 0, "2TUE": 0, "2WED": 0, "2THU": 0, "2FRI": 0,
+                "3MON": 0, "3TUE": 0, "3WED": 0, "3THU": 0, "3FRI": 0,
+                "4MON": 0, "4TUE": 0, "4WED": 0, "4THU": 0, "4FRI": 0
+            };
+            this.dailyStops = {
                 "1MON": 0, "1TUE": 0, "1WED": 0, "1THU": 0, "1FRI": 0,
                 "2MON": 0, "2TUE": 0, "2WED": 0, "2THU": 0, "2FRI": 0,
                 "3MON": 0, "3TUE": 0, "3WED": 0, "3THU": 0, "3FRI": 0,
@@ -71,22 +77,35 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        console.log("howdy");
-
-        httpGetAsync("https://rjhuffaker.github.io/residential.csv",
-        function(response){
-            activeSetups = tsvToObjectArray(response);
-            scorpinatorPopup();
-        });
-
+        // Load custom CSS
         var link = window.document.createElement('link');
         link.rel = 'stylesheet';
         link.type = 'text/css';
         link.href = 'https://RjHuffaker.github.io/scorpinator.css';
         document.getElementsByTagName("HEAD")[0].appendChild(link);
 
+        // Retrieve Active Service Setups
+        httpGetAsync("https://rjhuffaker.github.io/residential.csv",
+        function(response){
+            activeSetups = tsvToObjectArray(response);
+
+            autoProximinator();
+        });
+
+        if(urlContains([])) ;
+
         contactinator();
 
+    }
+
+    function urlContains(list){
+        var yesItDoes = false;
+        for(var i = 0; i < list.length; i++){
+            if(window.location.href.contains(list[i]) > -1) {
+                yesItDoes = true;
+            }
+        }
+        return yesItDoes;
     }
 
     function contactinator(){
@@ -162,7 +181,7 @@
         return result;
     }
 
-    function scorpinatorPopup(){
+    function autoProximinator(){
         scorpIcon = document.createElement("img");
         scorpIcon.src = "https://rjhuffaker.github.io/scorpIcon.png";
         scorpIcon.id = "scorp-icon";
@@ -172,7 +191,24 @@
 
         scorpHeader = document.createElement("div");
         scorpHeader.id = "scorp-header";
-        scorpHeader.innerHTML = "<span><br>Scorpinator</span>";
+
+        var scorpExit = document.createElement("span");
+        scorpExit.id = "scorp-exit";
+        scorpExit.innerHTML = "&#10006;";
+
+        var scorpHeaderImage = document.createElement("img");
+        scorpHeaderImage.id = "scorp-header-image";
+        scorpHeaderImage.src = "https://rjhuffaker.github.io/ScorpImage.png";
+
+        scorpHeaderImage.style.display = "inline-block";
+
+        var scorpTitle = document.createElement("span");
+        scorpTitle.id = "scorp-title";
+        scorpTitle.innerHTML = "Scorpinator";
+
+        scorpHeader.appendChild(scorpHeaderImage);
+        scorpHeader.appendChild(scorpTitle);
+        scorpHeader.appendChild(scorpExit);
 
         scorpModal = document.createElement("div");
         scorpModal.id = "scorp-modal";
@@ -208,6 +244,7 @@
         scorpModal.style.visibility = "hidden";
 
         scorpIcon.addEventListener("click", function(e) {
+
             if(scorpModal.style.visibility === "hidden"){
                 scorpModal.style.visibility = "visible";
             } else {
@@ -220,6 +257,10 @@
                     formatScorpContent(data);
                 });
             });
+        });
+
+        scorpExit.addEventListener("click", function(e) {
+            scorpModal.style.visibility = "hidden";
         });
 
     }
@@ -251,7 +292,8 @@
                         multiplier = 0.25;
                     }
 
-                    _tech.schedule[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
+                    _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
+                    _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += 1;
                 }
             }
 
@@ -275,7 +317,8 @@
         for(var j = 0; j < nearestList.length; j++){
             for(var ji = 0; ji < techList.length; ji++){
                 if(techList[ji].name === nearestList[j].tech){
-                    nearestList[j].heat = techList[ji].schedule[nearestList[j].schedule.substring(0,4)];
+                    nearestList[j].dailyTotal = techList[ji].dailyTotals[nearestList[j].schedule.substring(0,4)];
+                    nearestList[j].dailyStops = techList[ji].dailyStops[nearestList[j].schedule.substring(0,4)];
                 }
             }
         }
@@ -287,6 +330,30 @@
 
     function formatScorpContent(data){
 
+        var colorScale = [
+            {amount: 450, color: "rgb(0,0,255)"},
+            {amount: 500, color: "rgb(0,63,255)"},
+            {amount: 550, color: "rgb(0,127,255)"},
+            {amount: 600, color: "rgb(0,191,255)"},
+            {amount: 650, color: "rgb(0,255,255)"},
+            {amount: 700, color: "rgb(0,255,191)"},
+            {amount: 750, color: "rgb(0,255,127)"},
+            {amount: 800, color: "rgb(0,255,63)"},
+            {amount: 850, color: "rgb(0,255,0)"},
+            {amount: 900, color: "rgb(63,255,0)"},
+            {amount: 950, color: "rgb(127,255,0)"},
+            {amount: 1000, color: "rgb(191,255,0)"},
+            {amount: 1050, color: "rgb(255,255,0)"},
+            {amount: 1100, color: "rgb(255,191,0)"},
+            {amount: 1150, color: "rgb(255,127,0)"},
+            {amount: 1200, color: "rgb(255,63,0)"},
+            {amount: 1250, color: "rgb(255,0,0)"},
+            {amount: 1300, color: "rgb(255,0,63)"},
+            {amount: 1350, color: "rgb(255,0,127)"},
+            {amount: 1400, color: "rgb(255,0,191)"},
+            {amount: 1450, color: "rgb(255,0,255)"}
+        ];
+
         var _table = document.createElement("table");
         _table.border = 1;
 
@@ -295,6 +362,7 @@
         _header.insertCell().innerHTML = "Schedule";
         _header.insertCell().innerHTML = "Tech/Division";
         _header.insertCell().innerHTML = "Distance";
+        _header.insertCell().innerHTML = "Stops";
 
         _header.style.fontWeight = "bold";
 
@@ -304,54 +372,38 @@
             _tr.insertCell().innerHTML = data[i].schedule;
             _tr.insertCell().innerHTML = data[i].tech+"/"+data[i].division;
             _tr.insertCell().innerHTML = data[i].hyp+" km";
-            _tr.insertCell().innerHTML = data[i].heat;
+            _tr.insertCell().innerHTML = data[i].dailyStops;
 
-            if(data[i].heat < 450){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,0,255)";
-            } else if(data[i].heat < 500){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,63,255)";
-            } else if(data[i].heat < 550){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,127,255)";
-            } else if(data[i].heat < 600){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,191,255)";
-            } else if(data[i].heat < 650){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,255,255)";
-            } else if(data[i].heat < 700){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,255,191)";
-            } else if(data[i].heat < 750){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,255,127)";
-            } else if(data[i].heat < 800){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,255,63)";
-            } else if(data[i].heat < 850){
-                _tr.style.textShadow = "1px 1px 0 rgb(0,255,0)";
-            } else if(data[i].heat < 850){
-                _tr.style.textShadow = "1px 1px 0 rgb(63,255,0)";
-            } else if(data[i].heat < 900){
-                _tr.style.textShadow = "1px 1px 0 rgb(127,255,0)";
-            } else if(data[i].heat < 950){
-                _tr.style.textShadow = "1px 1px 0 rgb(191,255,0)";
-            } else if(data[i].heat < 1000){
-                _tr.style.textShadow = "1px 1px 0 rgb(255,255,0)";
-            } else if(data[i].heat < 1050){
-                _tr.style.textShadow = "1px 1px 0 rgb(255,191,0)";
-            } else if(data[i].heat < 1100){
-                _tr.style.textShadow = "1px 1px 0 rgb(255,127,0)";
-            } else if(data[i].heat < 1150){
-                _tr.style.textShadow = "1px 1px 0 rgb(255,63,0)";
-            } else if(data[i].heat < 1200) {
-                _tr.style.textShadow = "1px 1px 0 rgb(255,0,0)";
-            } else if(data[i].heat < 1250){
-                _tr.style.textShadow = "1px 1px 0 rgb(255,0,63)";
-            } else if(data[i].heat < 1300){
-                _tr.style.textShadow = "1px 1px 0 rgb(255,0,127)";
-            } else if(data[i].heat < 1350){
-                _tr.style.textShadow = "1px 1px 0 rgb(255,0,191)";
-            } else {
+            for(var ii = 0; ii < colorScale.length; ii++){
+                if(data[i].dailyTotal < colorScale[ii].amount){
+                    _tr.style.textShadow = "1px 1px 0 "+colorScale[ii].color;
+                    break;
+                }
                 _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
             }
+
+
         }
 
         scorpContent.appendChild(_table);
+
+        var scorpLegend = document.createElement("div");
+        scorpLegend.innerHTML = "<h3>Average Daily Total:</h3>";
+
+        for(var j = 0; j < colorScale.length; j++){
+            var _div = document.createElement("div");
+            _div.innerHTML = "$"+colorScale[j].amount;
+            _div.style.textShadow = "1px 1px 0 "+colorScale[j].color;
+            _div.style.transform = "rotate(300deg)";
+            _div.style.display = "inline-block";
+            _div.style.marginTop = "4px";
+            _div.style.marginLeft = "-4px";
+            _div.style.marginRight = "-4px";
+            scorpLegend.appendChild(_div);
+        }
+
+        scorpContent.appendChild(scorpLegend);
+
     }
 
 })();
