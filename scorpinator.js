@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.014
+// @version      1.015
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -361,7 +361,7 @@
         _header.insertCell().innerHTML = "Zip Code";
         _header.insertCell().innerHTML = "Schedule";
         _header.insertCell().innerHTML = "Tech/Division";
-        _header.insertCell().innerHTML = "Distance";
+        _header.insertCell().innerHTML = "Distance *";
         _header.insertCell().innerHTML = "Stops";
 
         _header.style.fontWeight = "bold";
@@ -388,7 +388,12 @@
         scorpContent.appendChild(_table);
 
         var scorpLegend = document.createElement("div");
-        scorpLegend.innerHTML = "<h3>Average Daily Total:</h3>";
+
+        var legendHeader = document.createElement("h3");
+
+        legendHeader.innerHTML = "Average Daily Total:";
+
+        scorpLegend.appendChild(legendHeader);
 
         for(var j = 0; j < colorScale.length; j++){
             var _div = document.createElement("div");
@@ -397,13 +402,17 @@
             _div.style.transform = "rotate(300deg)";
             _div.style.display = "inline-block";
             _div.style.marginTop = "4px";
-            _div.style.marginLeft = "-4px";
-            _div.style.marginRight = "-4px";
+            _div.style.width = "21px";
             scorpLegend.appendChild(_div);
         }
 
-        scorpContent.appendChild(scorpLegend);
+        var fineText = document.createElement("h4");
 
+        fineText.innerHTML = "*As the crow flies, not as the technician drives.";
+
+        scorpLegend.appendChild(fineText);
+
+        scorpContent.appendChild(scorpLegend);
     }
 
 })();
