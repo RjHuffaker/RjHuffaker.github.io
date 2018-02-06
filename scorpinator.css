@@ -33,6 +33,9 @@
 	height: 115px;
 	background-color: rgb(153, 10, 32);
 	text-align: center;
+}
+
+#scorp-title {
 	font-family: Verdana;
 	font-size: 300%;
 	color: white;
