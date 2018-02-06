@@ -35,10 +35,28 @@
 	text-align: center;
 }
 
+#scorp-header-image {
+	margin-top: 24px;
+	margin-bottom: -16px;
+	margin-left: -32px;
+	margin-right: 16px;
+	height: 64px;
+	width: 64px;
+}
+
 #scorp-title {
 	font-family: Verdana;
 	font-size: 300%;
 	color: white;
+}
+
+#scorp-exit {
+	color: #ccc;
+	cursor: pointer;
+	position: absolute;
+	top: 4px;
+	right: 12px;
+	font-size: 200%;
 }
 
 #scorp-content {
