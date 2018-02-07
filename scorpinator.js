@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.015
+// @version      1.016
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -15,6 +15,8 @@
     /*jshint esnext: true */
 
     var activeSetups, scorpModal, scorpHeader, scorpContent, scorpIcon;
+
+    var showTaskArrows = false;
 
     class ActiveSetup {
         constructor(setupArray) {
@@ -95,7 +97,7 @@
         if(urlContains([])) ;
 
         contactinator();
-
+        autoTaskinator();
     }
 
     function urlContains(list){
@@ -170,11 +172,11 @@
     }
 
     function tsvToObjectArray(tsv){
-        var lines=tsv.split("\n");
+        var lines = tsv.split("\n");
         var result = [];
 
-        for(var i=1;i<lines.length;i++){
-            var currentline=lines[i].split("\t");
+        for(var i = 1; i < lines.length;i++){
+            var currentline = lines[i].split("\t");
 
             result.push(new ActiveSetup(currentline));
         }
@@ -247,16 +249,16 @@
 
             if(scorpModal.style.visibility === "hidden"){
                 scorpModal.style.visibility = "visible";
+                fetchGeocodes(getLocationAddress(), function(data){
+                    getNearestActiveSetup(data, function(data){
+                        scorpContent.innerHTML = "";
+                        formatScorpContent(data);
+                    });
+                });
             } else {
+                showTaskArrows = false;
                 scorpModal.style.visibility = "hidden";
             }
-
-            fetchGeocodes(getLocationAddress(), function(data){
-                getNearestActiveSetup(data, function(data){
-                    scorpContent.innerHTML = "";
-                    formatScorpContent(data);
-                });
-            });
         });
 
         scorpExit.addEventListener("click", function(e) {
@@ -358,6 +360,7 @@
         _table.border = 1;
 
         var _header = _table.insertRow();
+        if(showTaskArrows) _header.insertCell().innerHTML = "";
         _header.insertCell().innerHTML = "Zip Code";
         _header.insertCell().innerHTML = "Schedule";
         _header.insertCell().innerHTML = "Tech/Division";
@@ -368,6 +371,24 @@
 
         for(var i = 0; i < data.length; i++){
             var _tr = _table.insertRow();
+
+            if(showTaskArrows){
+                var taskCell = _tr.insertCell();
+                var taskArrow = document.createElement("span");
+                taskCell.style.padding = "0";
+                taskCell.appendChild(taskArrow);
+
+                taskArrow.innerHTML = "<<<";
+                taskArrow.style.cursor = "pointer";
+
+                taskCell.dataSetup = data[i];
+                taskCell.addEventListener("click", function(e) {
+                    addSetupTaskDetails(this.dataSetup);
+                    showTaskArrows = false;
+                    scorpModal.style.visibility = "hidden";
+                });
+            }
+
             _tr.insertCell().innerHTML = data[i].zipCode.substring(0,5);
             _tr.insertCell().innerHTML = data[i].schedule;
             _tr.insertCell().innerHTML = data[i].tech+"/"+data[i].division;
@@ -381,8 +402,6 @@
                 }
                 _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
             }
-
-
         }
 
         scorpContent.appendChild(_table);
@@ -401,18 +420,264 @@
             _div.style.textShadow = "1px 1px 0 "+colorScale[j].color;
             _div.style.transform = "rotate(300deg)";
             _div.style.display = "inline-block";
-            _div.style.marginTop = "4px";
+            _div.style.marginTop = "12px";
+            _div.style.marginBottom = "16px";
             _div.style.width = "21px";
             scorpLegend.appendChild(_div);
         }
 
-        var fineText = document.createElement("h4");
+        var fineText = document.createElement("div");
 
         fineText.innerHTML = "*As the crow flies, not as the technician drives.";
+
+        fineText.style.textAlign = "right";
 
         scorpLegend.appendChild(fineText);
 
         scorpContent.appendChild(scorpLegend);
     }
+
+    // AUTOTASKINATOR
+
+    function autoTaskinator(){
+        console.log("autoTaskinating");
+
+        var ordersTable = document.getElementById("OrdersTable");
+        var ordersTableRows = null;
+        if(ordersTable){
+            ordersTableRows = ordersTable.children[0].children;
+
+            for(var i = 0; i < ordersTableRows.length; i++){
+                var container = document.createElement("td");
+                container.style.width = "48px";
+
+                ordersTableRows[i].insertBefore(container, ordersTableRows[i].firstChild);
+
+                if(!ordersTableRows[i].classList.contains("noncollapsible")){
+                    var taskButton = document.createElement("button");
+                    taskButton.innerHTML = "Task";
+                    taskButton.id = "taskButton"+i;
+
+                    container.appendChild(taskButton);
+
+                    taskButton.addEventListener("click", function(e) {
+                        e.stopPropagation();
+                        var addTask = document.getElementById("addTask");
+                        var collapsedAddTask = document.getElementById("collapsedAddTask");
+                        var row = e.target.id.replace("taskButton","");
+
+                        if(addTask){
+                            addTask.click();
+                        } else {
+                            collapsedAddTask.click();
+                        }
+
+                        createSetupTask(row);
+
+                    });
+                }
+            }
+        }
+    }
+
+
+
+
+
+    function retrieveServiceOrder(row){
+        var serviceOrder = {};
+
+        var ordersTable = document.getElementById("OrdersTable");
+        var ordersTableRows = null;
+        if(ordersTable){
+            ordersTableRows = ordersTable.children[0].children;
+
+            if(!ordersTableRows[row].classList.contains("noncollapsible")){
+                var orderColumns = ordersTableRows[row].children;
+
+                serviceOrder.id = orderColumns[3].children[0].innerHTML.trim();
+                serviceOrder.date = orderColumns[4].innerHTML.slice(14,22);
+                serviceOrder.tech = orderColumns[9].children[0].innerHTML.trim().replace("&nbsp;","");
+                serviceOrder.service = orderColumns[10].children[0].innerHTML.trim();
+                if(ordersTableRows[row].getAttribute("popuptext")){
+                    serviceOrder.instructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
+                }
+
+            }
+
+            return serviceOrder;
+        }
+    }
+
+    function createSetupTask(row){
+        var serviceOrder = retrieveServiceOrder(row);
+
+        var taskNameInput = document.getElementById("subject");
+        var prioritySelect = document.getElementById("priority");
+        var taskTypeSelect = document.getElementById("taskType");
+        var dueDateInput = document.getElementById("dueDate");
+        var taskForButton = document.getElementById("selectTaskFor");
+
+        var taskName = "";
+
+        switch (serviceOrder.service){
+            case "BED BUGS":
+                prioritySelect.value = "3";
+                taskTypeSelect.value = "12";
+                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
+                break;
+            case "FREE ESTIMATE":
+                prioritySelect.value = "3";
+                taskTypeSelect.value = "16";
+                taskName = "New $?? ";
+                break;
+            case "FREE ESTIMATE C":
+                console.log("TODO: Do commercial estimate stuff.");
+                break;
+            case "IN":
+                prioritySelect.value = "3";
+                taskTypeSelect.value = "16";
+                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                showTaskArrows = true;
+                scorpIcon.click();
+                break;
+            case "RE-START":
+                prioritySelect.value = "3";
+                taskTypeSelect.value = "16";
+                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                break;
+            case "ROACH":
+                prioritySelect.value = "3";
+                taskTypeSelect.value = "12";
+                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                taskName = "Generate 2 more GR treatments @ $100 ea";
+                break;
+            case "TICK":
+                prioritySelect.value = "3";
+                taskTypeSelect.value = "12";
+                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
+                break;
+            default:
+                console.log("TODO: Don't know what to do with this.");
+        }
+
+        var setupNotes = [
+            { input: "40mo", output: "$40M" },
+            { input: "40 monthly", output: "$40M" },
+            { input: "45mo", output: "$45M" },
+            { input: "45 monthly", output: "$45M" },
+            { input: "49mo", output: "$49M" },
+            { input: "49 monthly", output: "$49M" },
+            { input: "55mo", output: "$55M" },
+            { input: "55 monthly", output: "$55M" },
+            { input: "60mo", output: "$60M" },
+            { input: "60 monthly", output: "$60M" },
+            { input: "65mo", output: "$65M" },
+            { input: "65 monthly", output: "$65M" },
+            { input: "55eom", output: "$55B" },
+            { input: "55 bimonthly", output: "$55B" },
+            { input: "60eom", output: "$60B" },
+            { input: "60 bimonthly", output: "$60B" },
+            { input: "65eom", output: "$65B" },
+            { input: "65 bimonthly", output: "$65B" },
+            { input: "69eom", output: "$69B" },
+            { input: "69 bimonthly", output: "$69B" },
+            { input: "75eom", output: "$75B" },
+            { input: "75 bimonthly", output: "$75B" },
+            { input: "79eom", output: "$79B" },
+            { input: "79 bimonthly", output: "$79B" },
+            { input: "90qtr", output: "$90Q" },
+            { input: "90 quarterly", output: "$90Q" },
+            { input: "95qtr", output: "$95Q" },
+            { input: "95 quarterly", output: "$95Q" },
+            { input: "99qtr", output: "$99Q" },
+            { input: "99 quarterly", output: "$99Q" }
+        ];
+
+        for(var i = 1; i < setupNotes.length; i++){
+            if(serviceOrder.instructions.indexOf(setupNotes[i].input) > -1){
+                taskName = "New "+setupNotes[i].output+" ";
+                break;
+            }
+        }
+
+        taskNameInput.value = taskName;
+
+        createFollowUpButton(row);
+
+    }
+
+    function capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+    }
+
+    function addSetupTaskDetails(activeSetup){
+        var taskNameInput = document.getElementById("subject");
+        var _schedule = activeSetup.schedule.substring(0,1) + capitalizeFirstLetter(activeSetup.schedule.substring(1,4));
+        var _tech = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
+        taskNameInput.value = taskNameInput.value.concat(_schedule+" "+_tech);
+    }
+
+    function createFollowUpButton(row){
+        var butSaveContainer = document.getElementById("butSaveContainer");
+        var butSave = document.getElementById("butSave");
+        var followUpButton = document.createElement("button");
+        followUpButton.dataRow = row;
+        followUpButton.innerHTML = "Follow Up";
+        followUpButton.style.width = "75px !important";
+        followUpButton.style.backgroundColor = "#deab50";
+
+
+        if(butSaveContainer) butSaveContainer.children[0].appendChild(followUpButton);
+
+        followUpButton.addEventListener("click", function(e) {
+            e.preventDefault();
+            butSave.click();
+
+            createFollowUpTask(this.dataRow);
+
+        });
+    }
+
+    function createFollowUpTask(row){
+
+        setTimeout(function(){
+            var serviceOrder = retrieveServiceOrder(row);
+
+            var addTask = document.getElementById("addTask");
+            var collapsedAddTask = document.getElementById("collapsedAddTask");
+
+            if(addTask){
+                addTask.click();
+            } else {
+                collapsedAddTask.click();
+            }
+
+            var taskNameInput = document.getElementById("subject");
+            var prioritySelect = document.getElementById("priority");
+            var taskTypeSelect = document.getElementById("taskType");
+            var dueDateInput = document.getElementById("dueDate");
+            var taskForButton = document.getElementById("selectTaskFor");
+
+            prioritySelect.value = "2";
+            taskNameInput.value = "Follow up for initial";
+            taskTypeSelect.value = "16";
+            dueDateInput.value = getFutureDate(serviceOrder.date, 14);
+
+        }, 1000);
+    }
+
+    function getFutureDate(startDate, daysOut){
+        var newDate = new Date(startDate);
+        newDate.setDate(newDate.getDate() + daysOut);
+        var dd = newDate.getDate();
+        var mm = newDate.getMonth()+1;
+        var yy = newDate.getFullYear();
+        return mm+"/"+dd+"/"+yy;
+    }
+
+
 
 })();
