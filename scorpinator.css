@@ -69,6 +69,14 @@
 	border: 1px solid #999;
 }
 
+#scorp-modal table .add-setup-task {
+	cursor: pointer;
+}
+
+#scorp-modal table .add-setup-task:hover {
+	text-decoration: underline;
+}
+
 #caret-div {
 	height: 0;
 	width: 0;

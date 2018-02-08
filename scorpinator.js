@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.016
+// @version      1.017
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -16,7 +16,7 @@
 
     var activeSetups, scorpModal, scorpHeader, scorpContent, scorpIcon;
 
-    var showTaskArrows = false;
+    var addSetupTask = false;
 
     class ActiveSetup {
         constructor(setupArray) {
@@ -65,63 +65,60 @@
         return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
     };
 
-    function distance(lat1, lon1, lat2, lon2) {
-        var p = 0.017453292519943295;    // Math.PI / 180
-        var c = Math.cos;
-        var a = 0.5 - c((lat2 - lat1) * p)/2 +
-              c(lat1 * p) * c(lat2 * p) *
-              (1 - c((lon2 - lon1) * p))/2;
-
-        return 12742 * Math.asin(Math.sqrt(a)); // 2 * R; R = 6371 km
-    }
-
-
     initializeScorpinator();
 
     function initializeScorpinator(){
-        // Load custom CSS
-        var link = window.document.createElement('link');
-        link.rel = 'stylesheet';
-        link.type = 'text/css';
-        link.href = 'https://RjHuffaker.github.io/scorpinator.css';
-        document.getElementsByTagName("HEAD")[0].appendChild(link);
-
-        // Retrieve Active Service Setups
-        httpGetAsync("https://rjhuffaker.github.io/residential.csv",
-        function(response){
-            activeSetups = tsvToObjectArray(response);
-
-            autoProximinator();
-        });
-
-        if(urlContains([])) ;
-
-        contactinator();
+        retrieveCSS();
+        retrieveActiveSetups();
+        autoContactinator();
         autoTaskinator();
+        autoFollowUpinator();
+        autoGeocodinator();
+        autoDepunctuationator();
+
+        function retrieveCSS(){
+            var link = window.document.createElement('link');
+            link.rel = 'stylesheet';
+            link.type = 'text/css';
+            link.href = 'https://RjHuffaker.github.io/scorpinator.css';
+            document.getElementsByTagName("HEAD")[0].appendChild(link);
+        }
+
+        function retrieveActiveSetups(){
+            httpGetAsync("https://rjhuffaker.github.io/residential.csv",
+                         function(response){
+                activeSetups = tsvToObjectArray(response);
+
+                autoProximinator();
+            });
+
+            function tsvToObjectArray(tsv){
+                var lines = tsv.split("\n");
+                var result = [];
+
+                for(var i = 1; i < lines.length;i++){
+                    var currentline = lines[i].split("\t");
+
+                    result.push(new ActiveSetup(currentline));
+                }
+                return result;
+            }
+        }
+
     }
 
     function urlContains(list){
         var yesItDoes = false;
         for(var i = 0; i < list.length; i++){
-            if(window.location.href.contains(list[i]) > -1) {
+            if(window.location.href.indexOf(list[i]) > -1) {
                 yesItDoes = true;
             }
         }
         return yesItDoes;
     }
 
-    function contactinator(){
-        if(!document.getElementById("location-phone-link")) return;
-        var contactLinks = document.getElementsByClassName("contact-link-span");
-        var urlString = window.location.search.replace("?", "");
-        for(var i = 0; i < contactLinks.length; i++){
-            if(contactLinks[i].hasAttribute("onclick")){
-                contactLinks[i].onclick = null;
-                contactLinks[i].style.cursor = "inherit";
-            } else if(contactLinks[i].children[1]){
-                contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
-            }
-        }
+    function capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
     }
 
     function httpGetAsync(theUrl, callback) {
@@ -150,40 +147,81 @@
         });
     }
 
-    function getLocationAddress(){
-        var address = "";
-        var addressTable = document.getElementById("location-address-block");
-        if(addressTable){
-            var addressTableRows = addressTable.children[0].children;
-            for(var i = 0; i < addressTableRows.length; i++){
-                if(!addressTableRows[i].getAttribute("name")){
-                    if(!addressTableRows[i].children[0].children[0]){
-                        if(address) address = address.concat(", ");
-                        address = address.concat(addressTableRows[i].children[0].innerHTML);
-                    }
-                }
-            }
-        } else {
-            address = document.getElementById("Address").value+" "+
-                document.getElementById("City").value+" "+
-                document.getElementById("Zip").value;
-        }
-        return address;
+    function getFutureDate(startDate, daysOut){
+        var newDate = new Date(startDate);
+        newDate.setDate(newDate.getDate() + daysOut);
+        var dd = newDate.getDate();
+        var mm = newDate.getMonth()+1;
+        var yy = newDate.getFullYear().toString().substring(2,4);
+        return mm+"/"+dd+"/"+yy;
     }
 
-    function tsvToObjectArray(tsv){
-        var lines = tsv.split("\n");
-        var result = [];
+    function getNextServiceDate(startDate, schedule, frequency){
+        var daysOut,
+        day = schedule.substring(1,4),
+        week = parseInt(schedule.substring(0,1));
+        var newDate = new Date(startDate);
+        if(day=="Sun") day = 0;
+        if(day=="Mon") day = 1;
+        if(day=="Tue") day = 2;
+        if(day=="Wed") day = 3;
+        if(day=="Thu") day = 4;
+        if(day=="Fri") day = 5;
+        if(day=="Sat") day = 6;
 
-        for(var i = 1; i < lines.length;i++){
-            var currentline = lines[i].split("\t");
+        if(frequency=="M") daysOut = 20;
+        if(frequency=="B") daysOut = 31;
+        if(frequency=="Q") daysOut = 56;
 
-            result.push(new ActiveSetup(currentline));
+        newDate.setDate(newDate.getDate() + daysOut);
+
+        console.log(startDate, schedule, frequency);
+
+        for(var i = 0; i < 31; i++){
+            newDate.setDate(newDate.getDate() + 1);
+
+            if(newDate.getDay() == day && newDate.getDate() > (week-1)*7  && newDate.getDate() < (week)*7 ){
+                var dd = newDate.getDate();
+                var mm = newDate.getMonth()+1;
+                var yy = newDate.getFullYear().toString().substring(2,4);
+                return mm+"/"+dd+"/"+yy;
+            }
         }
-        return result;
+
+        return "???";
+    }
+
+    function getServiceOrder(row){
+        var serviceOrder = {};
+
+        var ordersTable = document.getElementById("OrdersTable");
+        var ordersTableRows = null;
+        if(ordersTable){
+            ordersTableRows = ordersTable.children[0].children;
+
+            if(!ordersTableRows[row].classList.contains("noncollapsible")){
+                var orderColumns = ordersTableRows[row].children;
+
+                serviceOrder.id = orderColumns[3].children[0].innerHTML.trim();
+                serviceOrder.date = orderColumns[4].innerHTML.slice(14,22);
+                serviceOrder.tech = orderColumns[9].children[0].innerHTML.trim().replace("&nbsp;","");
+                serviceOrder.service = orderColumns[10].children[0].innerHTML.trim();
+                if(ordersTableRows[row].getAttribute("popuptext")){
+                    serviceOrder.instructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
+                }
+
+            }
+
+            return serviceOrder;
+        }
     }
 
     function autoProximinator(){
+        if(!urlContains(["LocationID","location/add.asp"])) return;
+        if(urlContains(["iframe"])) return;
+
+        console.log("autoProximinating");
+
         scorpIcon = document.createElement("img");
         scorpIcon.src = "https://rjhuffaker.github.io/scorpIcon.png";
         scorpIcon.id = "scorp-icon";
@@ -251,12 +289,11 @@
                 scorpModal.style.visibility = "visible";
                 fetchGeocodes(getLocationAddress(), function(data){
                     getNearestActiveSetup(data, function(data){
-                        scorpContent.innerHTML = "";
                         formatScorpContent(data);
                     });
                 });
             } else {
-                showTaskArrows = false;
+                addSetupTask = false;
                 scorpModal.style.visibility = "hidden";
             }
         });
@@ -265,181 +302,249 @@
             scorpModal.style.visibility = "hidden";
         });
 
-    }
-
-    function getNearestActiveSetup(data, callback){
-        var al = activeSetups.length;
-        var lowest = 10000;
-        var nearest = {};
-        var nearestList = [];
-        var _long = parseFloat(data.longitude);
-        var _lat = parseFloat(data.latitude);
-
-        var techList = [];
-
-        for(var i = 1; i < al; i++){
-            var setup = activeSetups[i];
-
-            var addTech = true;
-            for(var ii = 0; ii < techList.length; ii++){
-                var _tech = techList[ii];
-                if(activeSetups[i].tech && activeSetups[i].tech === _tech.name){
-                    addTech = false;
-                    var multiplier;
-                    if(activeSetups[i].schedule[4] === "M"){
-                        multiplier = 1;
-                    } else if(activeSetups[i].schedule[4] === "B"){
-                        multiplier = 0.5;
-                    } else if(activeSetups[i].schedule[4] === "q"){
-                        multiplier = 0.25;
-                    }
-
-                    _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
-                    _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += 1;
-                }
-            }
-
-            if(addTech) techList.push(new technician(activeSetups[i].tech));
-
-            if(nearestList.length > 0){
-                for(var ij = 0; ij < nearestList.length; ij++){
-                    var nearSetup = nearestList[ij];
-                    if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
-                        setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                        nearestList.splice(ij, 0, setup);
-                        nearestList = nearestList.slice(0, 20);
-                        break;
+        function getLocationAddress(){
+            var address = "";
+            var addressTable = document.getElementById("location-address-block");
+            if(addressTable){
+                var addressTableRows = addressTable.children[0].children;
+                for(var i = 0; i < addressTableRows.length; i++){
+                    if(!addressTableRows[i].getAttribute("name")){
+                        if(!addressTableRows[i].children[0].children[0]){
+                            if(address) address = address.concat(", ");
+                            address = address.concat(addressTableRows[i].children[0].innerHTML);
+                        }
                     }
                 }
             } else {
-                nearestList.push(setup);
+                address = document.getElementById("Address").value+" "+
+                    document.getElementById("City").value+" "+
+                    document.getElementById("Zip").value;
             }
+            return address;
         }
 
-        for(var j = 0; j < nearestList.length; j++){
-            for(var ji = 0; ji < techList.length; ji++){
-                if(techList[ji].name === nearestList[j].tech){
-                    nearestList[j].dailyTotal = techList[ji].dailyTotals[nearestList[j].schedule.substring(0,4)];
-                    nearestList[j].dailyStops = techList[ji].dailyStops[nearestList[j].schedule.substring(0,4)];
+        function getNearestActiveSetup(data, callback){
+            var al = activeSetups.length;
+            var lowest = 10000;
+            var nearest = {};
+            var nearestList = [];
+            var _long = parseFloat(data.longitude);
+            var _lat = parseFloat(data.latitude);
+
+            var techList = [];
+
+            for(var i = 1; i < al; i++){
+                var setup = activeSetups[i];
+
+                var addTech = true;
+                for(var ii = 0; ii < techList.length; ii++){
+                    var _tech = techList[ii];
+                    if(activeSetups[i].tech && activeSetups[i].tech === _tech.name){
+                        addTech = false;
+                        var multiplier;
+                        if(activeSetups[i].schedule[4] === "M"){
+                            multiplier = 1;
+                        } else if(activeSetups[i].schedule[4] === "B"){
+                            multiplier = 0.5;
+                        } else if(activeSetups[i].schedule[4] === "q"){
+                            multiplier = 0.25;
+                        }
+
+                        _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
+                        _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += 1;
+                    }
+                }
+
+                if(addTech) techList.push(new technician(activeSetups[i].tech));
+
+                if(nearestList.length < 20){
+                    setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                    nearestList.push(setup);
+                } else {
+                    for(var ij = 0; ij < nearestList.length; ij++){
+                        var nearSetup = nearestList[ij];
+                        if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+                            setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                            nearestList.splice(ij, 0, setup);
+                            nearestList = nearestList.slice(0, 20);
+                            break;
+                        }
+                    }
                 }
             }
-        }
 
-        console.log(techList);
-
-        callback(nearestList);
-    }
-
-    function formatScorpContent(data){
-
-        var colorScale = [
-            {amount: 450, color: "rgb(0,0,255)"},
-            {amount: 500, color: "rgb(0,63,255)"},
-            {amount: 550, color: "rgb(0,127,255)"},
-            {amount: 600, color: "rgb(0,191,255)"},
-            {amount: 650, color: "rgb(0,255,255)"},
-            {amount: 700, color: "rgb(0,255,191)"},
-            {amount: 750, color: "rgb(0,255,127)"},
-            {amount: 800, color: "rgb(0,255,63)"},
-            {amount: 850, color: "rgb(0,255,0)"},
-            {amount: 900, color: "rgb(63,255,0)"},
-            {amount: 950, color: "rgb(127,255,0)"},
-            {amount: 1000, color: "rgb(191,255,0)"},
-            {amount: 1050, color: "rgb(255,255,0)"},
-            {amount: 1100, color: "rgb(255,191,0)"},
-            {amount: 1150, color: "rgb(255,127,0)"},
-            {amount: 1200, color: "rgb(255,63,0)"},
-            {amount: 1250, color: "rgb(255,0,0)"},
-            {amount: 1300, color: "rgb(255,0,63)"},
-            {amount: 1350, color: "rgb(255,0,127)"},
-            {amount: 1400, color: "rgb(255,0,191)"},
-            {amount: 1450, color: "rgb(255,0,255)"}
-        ];
-
-        var _table = document.createElement("table");
-        _table.border = 1;
-
-        var _header = _table.insertRow();
-        if(showTaskArrows) _header.insertCell().innerHTML = "";
-        _header.insertCell().innerHTML = "Zip Code";
-        _header.insertCell().innerHTML = "Schedule";
-        _header.insertCell().innerHTML = "Tech/Division";
-        _header.insertCell().innerHTML = "Distance *";
-        _header.insertCell().innerHTML = "Stops";
-
-        _header.style.fontWeight = "bold";
-
-        for(var i = 0; i < data.length; i++){
-            var _tr = _table.insertRow();
-
-            if(showTaskArrows){
-                var taskCell = _tr.insertCell();
-                var taskArrow = document.createElement("span");
-                taskCell.style.padding = "0";
-                taskCell.appendChild(taskArrow);
-
-                taskArrow.innerHTML = "<<<";
-                taskArrow.style.cursor = "pointer";
-
-                taskCell.dataSetup = data[i];
-                taskCell.addEventListener("click", function(e) {
-                    addSetupTaskDetails(this.dataSetup);
-                    showTaskArrows = false;
-                    scorpModal.style.visibility = "hidden";
-                });
-            }
-
-            _tr.insertCell().innerHTML = data[i].zipCode.substring(0,5);
-            _tr.insertCell().innerHTML = data[i].schedule;
-            _tr.insertCell().innerHTML = data[i].tech+"/"+data[i].division;
-            _tr.insertCell().innerHTML = data[i].hyp+" km";
-            _tr.insertCell().innerHTML = data[i].dailyStops;
-
-            for(var ii = 0; ii < colorScale.length; ii++){
-                if(data[i].dailyTotal < colorScale[ii].amount){
-                    _tr.style.textShadow = "1px 1px 0 "+colorScale[ii].color;
-                    break;
+            for(var j = 0; j < nearestList.length; j++){
+                for(var ji = 0; ji < techList.length; ji++){
+                    if(techList[ji].name === nearestList[j].tech){
+                        nearestList[j].dailyTotal = techList[ji].dailyTotals[nearestList[j].schedule.substring(0,4)];
+                        nearestList[j].dailyStops = techList[ji].dailyStops[nearestList[j].schedule.substring(0,4)];
+                    }
                 }
-                _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
             }
+
+            console.log(nearestList);
+
+            callback(nearestList);
         }
 
-        scorpContent.appendChild(_table);
+        function formatScorpContent(data){
+            scorpContent.innerHTML = "";
 
-        var scorpLegend = document.createElement("div");
+            var colorScale = [
+                {amount: 450, color: "rgb(0,0,255)"},
+                {amount: 500, color: "rgb(0,63,255)"},
+                {amount: 550, color: "rgb(0,127,255)"},
+                {amount: 600, color: "rgb(0,191,255)"},
+                {amount: 650, color: "rgb(0,255,255)"},
+                {amount: 700, color: "rgb(0,255,191)"},
+                {amount: 750, color: "rgb(0,255,127)"},
+                {amount: 800, color: "rgb(0,255,63)"},
+                {amount: 850, color: "rgb(0,255,0)"},
+                {amount: 900, color: "rgb(63,255,0)"},
+                {amount: 950, color: "rgb(127,255,0)"},
+                {amount: 1000, color: "rgb(191,255,0)"},
+                {amount: 1050, color: "rgb(255,255,0)"},
+                {amount: 1100, color: "rgb(255,191,0)"},
+                {amount: 1150, color: "rgb(255,127,0)"},
+                {amount: 1200, color: "rgb(255,63,0)"},
+                {amount: 1250, color: "rgb(255,0,0)"},
+                {amount: 1300, color: "rgb(255,0,63)"},
+                {amount: 1350, color: "rgb(255,0,127)"},
+                {amount: 1400, color: "rgb(255,0,191)"},
+                {amount: 1450, color: "rgb(255,0,255)"}
+            ];
 
-        var legendHeader = document.createElement("h3");
+            var _table = document.createElement("table");
+            _table.border = 1;
 
-        legendHeader.innerHTML = "Average Daily Total:";
+            var _header = _table.insertRow();
+         //   if(addSetupTask) _header.insertCell().innerHTML = "";
+            _header.insertCell().innerHTML = "Zip Code";
+            _header.insertCell().innerHTML = "Schedule";
+            _header.insertCell().innerHTML = "Tech/Division";
+            _header.insertCell().innerHTML = "Distance *";
+            _header.insertCell().innerHTML = "Stops";
 
-        scorpLegend.appendChild(legendHeader);
+            _header.style.fontWeight = "bold";
 
-        for(var j = 0; j < colorScale.length; j++){
-            var _div = document.createElement("div");
-            _div.innerHTML = "$"+colorScale[j].amount;
-            _div.style.textShadow = "1px 1px 0 "+colorScale[j].color;
-            _div.style.transform = "rotate(300deg)";
-            _div.style.display = "inline-block";
-            _div.style.marginTop = "12px";
-            _div.style.marginBottom = "16px";
-            _div.style.width = "21px";
-            scorpLegend.appendChild(_div);
+            for(var i = 0; i < data.length; i++){
+                var _tr = _table.insertRow();
+
+                if(addSetupTask){/*
+                    var taskCell = _tr.insertCell();
+                    var taskArrow = document.createElement("span");
+                    taskCell.style.padding = "0";
+                    taskCell.appendChild(taskArrow);
+
+                    taskArrow.innerHTML = "<<<";
+                    taskArrow.style.cursor = "pointer";
+
+                    taskCell.dataSetup = data[i];
+                    taskCell.addEventListener("click", function(e) {
+                        addSetupTaskDetails(this.dataSetup);
+                        addSetupTask = false;
+                        scorpModal.style.visibility = "hidden";
+                    });
+                    */
+                    _tr.style.cursor = "pointer";
+                    
+                    _tr.className += "add-setup-task";
+                    _tr.dataSetup = data[i];
+                    _tr.addEventListener("click", function(e) {
+                        addSetupTaskDetails(this.dataSetup);
+                        addSetupTask = false;
+                        scorpModal.style.visibility = "hidden";
+                    });
+
+                }
+
+                _tr.insertCell().innerHTML = data[i].zipCode.substring(0,5);
+                _tr.insertCell().innerHTML = data[i].schedule;
+                _tr.insertCell().innerHTML = data[i].tech+"/"+data[i].division;
+                _tr.insertCell().innerHTML = data[i].hyp+" km";
+                _tr.insertCell().innerHTML = data[i].dailyStops;
+
+                for(var ii = 0; ii < colorScale.length; ii++){
+                    if(data[i].dailyTotal < colorScale[ii].amount){
+                        _tr.style.textShadow = "1px 1px 0 "+colorScale[ii].color;
+                        break;
+                    }
+                    _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
+                }
+            }
+
+            scorpContent.appendChild(_table);
+
+            var scorpLegend = document.createElement("div");
+
+            var legendHeader = document.createElement("h3");
+
+            legendHeader.innerHTML = "Average Daily Total:";
+
+            scorpLegend.appendChild(legendHeader);
+
+            for(var j = 0; j < colorScale.length; j++){
+                var _div = document.createElement("div");
+                _div.innerHTML = "$"+colorScale[j].amount;
+                _div.style.textShadow = "1px 1px 0 "+colorScale[j].color;
+                _div.style.transform = "rotate(300deg)";
+                _div.style.display = "inline-block";
+                _div.style.marginTop = "12px";
+                _div.style.marginBottom = "16px";
+                _div.style.width = "21px";
+                scorpLegend.appendChild(_div);
+            }
+
+            var fineText = document.createElement("div");
+
+            fineText.innerHTML = "*As the crow flies, not as the technician drives.";
+
+            fineText.style.textAlign = "right";
+
+            scorpLegend.appendChild(fineText);
+
+            scorpContent.appendChild(scorpLegend);
+
+            function addSetupTaskDetails(activeSetup){
+                var taskNameInput = document.getElementById("subject");
+                var dueDateInput = document.getElementById("dueDate");
+                var selectTaskFor = document.getElementById("selectTaskFor");
+
+                var _frequency = taskNameInput.value.slice(-1);
+                var _startDate = dueDateInput.value;
+                var _schedule = activeSetup.schedule.substring(0,1) + capitalizeFirstLetter(activeSetup.schedule.substring(1,4));
+                var _tech = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
+                var _nextDate = getNextServiceDate(_startDate, _schedule, _frequency);
+                taskNameInput.value = taskNameInput.value.concat(" "+_schedule+" "+_tech+" "+_nextDate);
+
+                selectTaskFor.click();
+
+            }
+
         }
 
-        var fineText = document.createElement("div");
-
-        fineText.innerHTML = "*As the crow flies, not as the technician drives.";
-
-        fineText.style.textAlign = "right";
-
-        scorpLegend.appendChild(fineText);
-
-        scorpContent.appendChild(scorpLegend);
     }
 
-    // AUTOTASKINATOR
+    function autoContactinator(){
+        if(!urlContains(["location/detail.asp"])) return;
+        console.log("autoContactinating");
+
+        var contactLinks = document.getElementsByClassName("contact-link-span");
+        var urlString = window.location.search.replace("?", "");
+        for(var i = 0; i < contactLinks.length; i++){
+            if(contactLinks[i].hasAttribute("onclick")){
+                contactLinks[i].onclick = null;
+                contactLinks[i].style.cursor = "inherit";
+            } else if(contactLinks[i].children[1]){
+                contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
+            }
+        }
+    }
 
     function autoTaskinator(){
+        if(!urlContains(["location/detail.asp"])) return;
+        if(urlContains(["iframe"])) return;
+
         console.log("autoTaskinating");
 
         var ordersTable = document.getElementById("OrdersTable");
@@ -449,14 +554,16 @@
 
             for(var i = 0; i < ordersTableRows.length; i++){
                 var container = document.createElement("td");
-                container.style.width = "48px";
+                container.style.width = "32px";
+                container.style.textAlign = "center";
 
                 ordersTableRows[i].insertBefore(container, ordersTableRows[i].firstChild);
 
                 if(!ordersTableRows[i].classList.contains("noncollapsible")){
-                    var taskButton = document.createElement("button");
-                    taskButton.innerHTML = "Task";
+                    var taskButton = document.createElement("a");
+                    taskButton.innerHTML = "Create Task";
                     taskButton.id = "taskButton"+i;
+                    taskButton.className += "primary-link";
 
                     container.appendChild(taskButton);
 
@@ -478,182 +585,9 @@
                 }
             }
         }
-    }
 
-
-
-
-
-    function retrieveServiceOrder(row){
-        var serviceOrder = {};
-
-        var ordersTable = document.getElementById("OrdersTable");
-        var ordersTableRows = null;
-        if(ordersTable){
-            ordersTableRows = ordersTable.children[0].children;
-
-            if(!ordersTableRows[row].classList.contains("noncollapsible")){
-                var orderColumns = ordersTableRows[row].children;
-
-                serviceOrder.id = orderColumns[3].children[0].innerHTML.trim();
-                serviceOrder.date = orderColumns[4].innerHTML.slice(14,22);
-                serviceOrder.tech = orderColumns[9].children[0].innerHTML.trim().replace("&nbsp;","");
-                serviceOrder.service = orderColumns[10].children[0].innerHTML.trim();
-                if(ordersTableRows[row].getAttribute("popuptext")){
-                    serviceOrder.instructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
-                }
-
-            }
-
-            return serviceOrder;
-        }
-    }
-
-    function createSetupTask(row){
-        var serviceOrder = retrieveServiceOrder(row);
-
-        var taskNameInput = document.getElementById("subject");
-        var prioritySelect = document.getElementById("priority");
-        var taskTypeSelect = document.getElementById("taskType");
-        var dueDateInput = document.getElementById("dueDate");
-        var taskForButton = document.getElementById("selectTaskFor");
-
-        var taskName = "";
-
-        switch (serviceOrder.service){
-            case "BED BUGS":
-                prioritySelect.value = "3";
-                taskTypeSelect.value = "12";
-                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
-                break;
-            case "FREE ESTIMATE":
-                prioritySelect.value = "3";
-                taskTypeSelect.value = "16";
-                taskName = "New $?? ";
-                break;
-            case "FREE ESTIMATE C":
-                console.log("TODO: Do commercial estimate stuff.");
-                break;
-            case "IN":
-                prioritySelect.value = "3";
-                taskTypeSelect.value = "16";
-                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                showTaskArrows = true;
-                scorpIcon.click();
-                break;
-            case "RE-START":
-                prioritySelect.value = "3";
-                taskTypeSelect.value = "16";
-                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                break;
-            case "ROACH":
-                prioritySelect.value = "3";
-                taskTypeSelect.value = "12";
-                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                taskName = "Generate 2 more GR treatments @ $100 ea";
-                break;
-            case "TICK":
-                prioritySelect.value = "3";
-                taskTypeSelect.value = "12";
-                dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
-                break;
-            default:
-                console.log("TODO: Don't know what to do with this.");
-        }
-
-        var setupNotes = [
-            { input: "40mo", output: "$40M" },
-            { input: "40 monthly", output: "$40M" },
-            { input: "45mo", output: "$45M" },
-            { input: "45 monthly", output: "$45M" },
-            { input: "49mo", output: "$49M" },
-            { input: "49 monthly", output: "$49M" },
-            { input: "55mo", output: "$55M" },
-            { input: "55 monthly", output: "$55M" },
-            { input: "60mo", output: "$60M" },
-            { input: "60 monthly", output: "$60M" },
-            { input: "65mo", output: "$65M" },
-            { input: "65 monthly", output: "$65M" },
-            { input: "55eom", output: "$55B" },
-            { input: "55 bimonthly", output: "$55B" },
-            { input: "60eom", output: "$60B" },
-            { input: "60 bimonthly", output: "$60B" },
-            { input: "65eom", output: "$65B" },
-            { input: "65 bimonthly", output: "$65B" },
-            { input: "69eom", output: "$69B" },
-            { input: "69 bimonthly", output: "$69B" },
-            { input: "75eom", output: "$75B" },
-            { input: "75 bimonthly", output: "$75B" },
-            { input: "79eom", output: "$79B" },
-            { input: "79 bimonthly", output: "$79B" },
-            { input: "90qtr", output: "$90Q" },
-            { input: "90 quarterly", output: "$90Q" },
-            { input: "95qtr", output: "$95Q" },
-            { input: "95 quarterly", output: "$95Q" },
-            { input: "99qtr", output: "$99Q" },
-            { input: "99 quarterly", output: "$99Q" }
-        ];
-
-        for(var i = 1; i < setupNotes.length; i++){
-            if(serviceOrder.instructions.indexOf(setupNotes[i].input) > -1){
-                taskName = "New "+setupNotes[i].output+" ";
-                break;
-            }
-        }
-
-        taskNameInput.value = taskName;
-
-        createFollowUpButton(row);
-
-    }
-
-    function capitalizeFirstLetter(string) {
-        return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
-    }
-
-    function addSetupTaskDetails(activeSetup){
-        var taskNameInput = document.getElementById("subject");
-        var _schedule = activeSetup.schedule.substring(0,1) + capitalizeFirstLetter(activeSetup.schedule.substring(1,4));
-        var _tech = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
-        taskNameInput.value = taskNameInput.value.concat(_schedule+" "+_tech);
-    }
-
-    function createFollowUpButton(row){
-        var butSaveContainer = document.getElementById("butSaveContainer");
-        var butSave = document.getElementById("butSave");
-        var followUpButton = document.createElement("button");
-        followUpButton.dataRow = row;
-        followUpButton.innerHTML = "Follow Up";
-        followUpButton.style.width = "75px !important";
-        followUpButton.style.backgroundColor = "#deab50";
-
-
-        if(butSaveContainer) butSaveContainer.children[0].appendChild(followUpButton);
-
-        followUpButton.addEventListener("click", function(e) {
-            e.preventDefault();
-            butSave.click();
-
-            createFollowUpTask(this.dataRow);
-
-        });
-    }
-
-    function createFollowUpTask(row){
-
-        setTimeout(function(){
-            var serviceOrder = retrieveServiceOrder(row);
-
-            var addTask = document.getElementById("addTask");
-            var collapsedAddTask = document.getElementById("collapsedAddTask");
-
-            if(addTask){
-                addTask.click();
-            } else {
-                collapsedAddTask.click();
-            }
+        function createSetupTask(row){
+            var serviceOrder = getServiceOrder(row);
 
             var taskNameInput = document.getElementById("subject");
             var prioritySelect = document.getElementById("priority");
@@ -661,23 +595,274 @@
             var dueDateInput = document.getElementById("dueDate");
             var taskForButton = document.getElementById("selectTaskFor");
 
-            prioritySelect.value = "2";
-            taskNameInput.value = "Follow up for initial";
-            taskTypeSelect.value = "16";
-            dueDateInput.value = getFutureDate(serviceOrder.date, 14);
+            var taskName = "";
 
-        }, 1000);
+            switch (serviceOrder.service){
+                case "BED BUGS":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "12";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
+                    break;
+                case "FREE ESTIMATE":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "16";
+                    taskName = "New $?? ";
+                    break;
+                case "FREE ESTIMATE C":
+                    console.log("TODO: Do commercial estimate stuff.");
+                    break;
+                case "IN":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "16";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    addSetupTask = true;
+                    newServiceSetup(serviceOrder.instructions);
+                    scorpIcon.click();
+                    break;
+                case "RE-START":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "16";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    addSetupTask = true;
+                    newServiceSetup(serviceOrder.instructions);
+                    scorpIcon.click();
+                    break;
+                case "ROACH":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "12";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    taskName = "Generate 2 more GR treatments @ $100 ea";
+                    break;
+                case "TICK":
+                    prioritySelect.value = "3";
+                    taskTypeSelect.value = "12";
+                    dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                    taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
+                    break;
+                default:
+                    console.log("TODO: Don't know what to do with this.");
+            }
+
+            taskNameInput.value = taskName;
+
+            function newServiceSetup(data){
+                var setupNotes = [
+                    { input: "40mo", output: "$40M" },
+                    { input: "mo @ $40", output: "$40M" },
+                    { input: "40 monthly", output: "$40M" },
+                    { input: "45mo", output: "$45M" },
+                    { input: "mo @ $45", output: "$45M" },
+                    { input: "45 monthly", output: "$45M" },
+                    { input: "49mo", output: "$49M" },
+                    { input: "mo @ $49", output: "$49M" },
+                    { input: "49 monthly", output: "$49M" },
+                    { input: "55mo", output: "$55M" },
+                    { input: "mo @ $55", output: "$55M" },
+                    { input: "55 monthly", output: "$55M" },
+                    { input: "60mo", output: "$60M" },
+                    { input: "mo @ $60", output: "$60M" },
+                    { input: "60 monthly", output: "$60M" },
+                    { input: "65mo", output: "$65M" },
+                    { input: "mo @ $65", output: "$65M" },
+                    { input: "65 monthly", output: "$65M" },
+                    { input: "55eom", output: "$55B" },
+                    { input: "55 bimonthly", output: "$55B" },
+                    { input: "60eom", output: "$60B" },
+                    { input: "60 bimonthly", output: "$60B" },
+                    { input: "65eom", output: "$65B" },
+                    { input: "65 bimonthly", output: "$65B" },
+                    { input: "69eom", output: "$69B" },
+                    { input: "69 bimonthly", output: "$69B" },
+                    { input: "75eom", output: "$75B" },
+                    { input: "75 bimonthly", output: "$75B" },
+                    { input: "79eom", output: "$79B" },
+                    { input: "79 bimonthly", output: "$79B" },
+                    { input: "90qtr", output: "$90Q" },
+                    { input: "90 quarterly", output: "$90Q" },
+                    { input: "95qtr", output: "$95Q" },
+                    { input: "95 quarterly", output: "$95Q" },
+                    { input: "99qtr", output: "$99Q" },
+                    { input: "99 quarterly", output: "$99Q" }
+                ];
+
+                for(var i = 1; i < setupNotes.length; i++){
+                    if(data.indexOf(setupNotes[i].input) > -1){
+                        taskName = "New "+setupNotes[i].output;
+                        break;
+                    }
+                    taskName = "New ???";
+                }
+            }
+        }
     }
 
-    function getFutureDate(startDate, daysOut){
-        var newDate = new Date(startDate);
-        newDate.setDate(newDate.getDate() + daysOut);
-        var dd = newDate.getDate();
-        var mm = newDate.getMonth()+1;
-        var yy = newDate.getFullYear();
-        return mm+"/"+dd+"/"+yy;
+    function autoFollowUpinator(){
+        if(!urlContains(["location/detail.asp"])) return;
+        if(urlContains(["iframe"])) return;
+
+        console.log("autoFollowUpinating");
+
+        var addTask = document.getElementById("addTask");
+        var collapsedAddTask = document.getElementById("collapsedAddTask");
+        var collapsedTasksRow = document.getElementById("locationTasksRow");
+
+        if(collapsedTasksRow){
+            collapsedTasksRow.addEventListener("click", function(){
+                var locationTasksRows = document.getElementsByClassName("location-tasks-row");
+                console.log(locationTasksRows.length);
+                for(var i = 0; i < locationTasksRows.length; i++){
+                    locationTasksRows[i].addEventListener("click", function(){
+                        setTimeout(function(){
+                            addFollowUpButton();
+                        }, 0);
+                    }, true);
+                }
+            }, true);
+        }
+
+        if(collapsedAddTask){
+            collapsedAddTask.addEventListener("click", addFollowUpButton, true);
+        }
+
+        function addFollowUpButton(e){
+            var taskContainer = document.getElementById("taskContainer");
+            taskContainer.style.width = "213px";
+
+            var dueDateInput = document.getElementById("dueDate");
+            var buttonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
+            var butSave = document.getElementById("butSave");
+            var butFollowUp = document.createElement("a");
+            var followUpContainer = document.createElement("div");
+
+            followUpContainer.appendChild(butFollowUp);
+            followUpContainer.style.marginRight = "303px";
+
+            butFollowUp.innerHTML = "Create Follow Up Task";
+            butFollowUp.className += "primary-link";
+
+            if(buttonsContainer) buttonsContainer.insertBefore(followUpContainer, buttonsContainer.children[0]);
+
+            butFollowUp.addEventListener("click", function(e) {
+                e.preventDefault();
+                var dueDate = dueDateInput.value;
+                butSave.click();
+                createFollowUpTask(dueDate);
+
+            });
+
+            function createFollowUpTask(taskDate){
+                setTimeout(function(){
+                    var addTask = document.getElementById("addTask");
+                    var collapsedAddTask = document.getElementById("collapsedAddTask");
+
+                    if(addTask){
+                        addTask.click();
+                    } else {
+                        collapsedAddTask.click();
+                    }
+
+                    var taskNameInput = document.getElementById("subject");
+                    var prioritySelect = document.getElementById("priority");
+                    var taskTypeSelect = document.getElementById("taskType");
+                    var dueDateInput = document.getElementById("dueDate");
+                    var selectTaskFor = document.getElementById("selectTaskFor");
+
+                    prioritySelect.value = "2";
+                    taskNameInput.value = "Follow up for initial";
+                    taskTypeSelect.value = "16";
+                    dueDateInput.value = getFutureDate(taskDate, 14);
+
+                    selectTaskFor.click();
+
+                }, 1000);
+            }
+        }
     }
 
+    function autoGeocodinator(){
+		if(!urlContains(["location/edit.asp"])) return;
+        console.log("autoGeocodinating");
 
+		var saveButton = document.getElementById("butSave");
+		var addressInput = document.getElementById("Address");
+		var mapMessage = document.getElementById("map_message");
+
+		if(mapMessage.innerHTML === "Address not found; position is approximate"){
+
+			var address = addressInput.value.replaceAll(" ", "+");
+			var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+",+AZ&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
+
+			var longitudeInput = document.getElementById("Longitude");
+			var latitudeInput = document.getElementById("Latitude");
+
+			fetchGeocodes(address, function(data){
+				document.getElementById("Longitude").value = parseFloat(data.longitude).toFixed(6);
+
+				document.getElementById("Latitude").value = parseFloat(data.latitude).toFixed(6);
+
+				document.getElementById("ExclBatchGeoCode").click();
+
+				mapMessage.style.color = "red";
+
+				mapMessage.innerHTML = "SCORPINATOR: GeoCode over-ridden.";
+
+				saveButton.style.border = "2px solid red";
+
+			});
+		}
+    }
+
+    function autoDepunctuationator(){
+        if(!urlContains(["location/edit.asp"])) return;
+        console.log("autoDepunctuationating");
+
+        var editButton = document.getElementById("butEdit");
+        var saveButton = document.getElementById("butSave");
+        var addressInput = document.getElementById("Address");
+        var streetLabel, streetSearchLabel, streetSearchInput;
+        var directionsInput;
+
+        if(window.location.href.indexOf("billto/edit.asp") > -1){
+            if(addressInput.value.indexOf(".") > -1){
+                streetLabel = addressInput.parentElement.previousElementSibling;
+                addressInput.value = addressInput.value.replaceAll(".", "");
+                streetLabel.style.color = "red";
+                streetLabel.style.fontWeight = "bold";
+
+                editButton.style.border = "2px solid red";
+                saveButton.style.border = "2px solid red";
+            }
+        } else if(window.location.href.indexOf("location/edit.asp") > -1){
+            streetSearchInput = document.getElementById("Street");
+            directionsInput = document.getElementById("Directions");
+
+            if(addressInput.value.indexOf(".") > -1){
+
+                streetLabel = addressInput.parentElement.previousElementSibling;
+                addressInput.value = addressInput.value.replaceAll(".", "");
+                streetLabel.style.color = "red";
+                streetLabel.style.fontWeight = "bold";
+
+                streetSearchLabel = streetSearchInput.parentElement.previousElementSibling;
+                streetSearchInput.value = streetSearchInput.value.replaceAll(".", "");
+                streetSearchLabel.style.color = "red";
+                streetSearchLabel.style.fontWeight = "bold";
+
+                saveButton.style.border = "2px solid red";
+
+            }
+
+            directionsInput.value = directionsInput.value.replace("scorpions txt reminders", "TEXT REMINDERS - Scorpions");
+
+            directionsInput.value = directionsInput.value.replace("scorpions text reminders", "TEXT REMINDERS - Scorpions");
+
+            if(!directionsInput.value.match(/\*/g)){
+
+                directionsInput.value = "** "+directionsInput.value;
+
+            }
+        }
+    }
 
 })();
