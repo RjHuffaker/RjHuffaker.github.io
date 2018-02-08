@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.017
+// @version      1.018
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -252,6 +252,7 @@
 
         scorpModal = document.createElement("div");
         scorpModal.id = "scorp-modal";
+        scorpModal.style.zIndex = 10000;
 
         var scorpContainer = document.createElement("div");
         scorpContainer.id = "scorp-container";
@@ -461,9 +462,13 @@
 
             var scorpLegend = document.createElement("div");
 
-            var legendHeader = document.createElement("h3");
+            var legendHeader = document.createElement("div");
 
-            legendHeader.innerHTML = "Average Daily Total:";
+            if(addSetupTask){
+                legendHeader.innerHTML = "Select an active setup to assign technician and schedule.<h3>Average Daily Total:</h3>";
+            } else {
+                legendHeader.innerHTML = "<br/><h3>Average Daily Total:</h3>";
+            }
 
             scorpLegend.appendChild(legendHeader);
 
@@ -509,22 +514,6 @@
 
     }
 
-    function autoContactinator(){
-        if(!urlContains(["location/detail.asp"])) return;
-        console.log("autoContactinating");
-
-        var contactLinks = document.getElementsByClassName("contact-link-span");
-        var urlString = window.location.search.replace("?", "");
-        for(var i = 0; i < contactLinks.length; i++){
-            if(contactLinks[i].hasAttribute("onclick")){
-                contactLinks[i].onclick = null;
-                contactLinks[i].style.cursor = "inherit";
-            } else if(contactLinks[i].children[1]){
-                contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
-            }
-        }
-    }
-
     function autoTaskinator(){
         if(!urlContains(["location/detail.asp"])) return;
         if(urlContains(["iframe"])) return;
@@ -538,34 +527,40 @@
 
             for(var i = 0; i < ordersTableRows.length; i++){
                 var container = document.createElement("td");
-                container.style.width = "32px";
+                container.style.width = "72px";
                 container.style.textAlign = "center";
 
                 ordersTableRows[i].insertBefore(container, ordersTableRows[i].firstChild);
 
                 if(!ordersTableRows[i].classList.contains("noncollapsible")){
-                    var taskButton = document.createElement("a");
-                    taskButton.innerHTML = "Create Task";
-                    taskButton.id = "taskButton"+i;
-                    taskButton.className += "primary-link";
+                    var serviceOrder = getServiceOrder(i);
+                    if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","RE-START","ROACH","TICK"]
+                        .indexOf(serviceOrder.service) > -1){
 
-                    container.appendChild(taskButton);
+                        var taskButton = document.createElement("a");
+                        taskButton.innerHTML = "Create Task";
+                        taskButton.id = "taskButton"+i;
+                        taskButton.className += "primary-link";
 
-                    taskButton.addEventListener("click", function(e) {
-                        e.stopPropagation();
-                        var addTask = document.getElementById("addTask");
-                        var collapsedAddTask = document.getElementById("collapsedAddTask");
-                        var row = e.target.id.replace("taskButton","");
 
-                        if(addTask){
-                            addTask.click();
-                        } else {
-                            collapsedAddTask.click();
-                        }
+                        container.appendChild(taskButton);
 
-                        createSetupTask(row);
+                        taskButton.addEventListener("click", function(e) {
+                            e.stopPropagation();
+                            var addTask = document.getElementById("addTask");
+                            var collapsedAddTask = document.getElementById("collapsedAddTask");
+                            var row = e.target.id.replace("taskButton","");
 
-                    });
+                            if(addTask){
+                                addTask.click();
+                            } else {
+                                collapsedAddTask.click();
+                            }
+
+                            createSetupTask(row);
+
+                        });
+                    }
                 }
             }
         }
@@ -681,86 +676,89 @@
         }
     }
 
+    function autoContactinator(){
+        if(!urlContains(["location/detail.asp"])) return;
+        console.log("autoContactinating");
+
+        var contactLinks = document.getElementsByClassName("contact-link-span");
+        var urlString = window.location.search.replace("?", "");
+        for(var i = 0; i < contactLinks.length; i++){
+            if(contactLinks[i].hasAttribute("onclick")){
+                contactLinks[i].onclick = null;
+                contactLinks[i].style.cursor = "inherit";
+            } else if(contactLinks[i].children[1]){
+                contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
+            }
+        }
+    }
+
     function autoFollowUpinator(){
         if(!urlContains(["location/detail.asp"])) return;
         if(urlContains(["iframe"])) return;
 
         console.log("autoFollowUpinating");
 
-        var addTask = document.getElementById("addTask");
-        var collapsedAddTask = document.getElementById("collapsedAddTask");
-        var collapsedTasksRow = document.getElementById("locationTasksRow");
+        var reviewHistory = document.getElementsByClassName("reviewHistory")[0];
 
-        if(collapsedTasksRow){
-            collapsedTasksRow.addEventListener("click", function(){
-                var locationTasksRows = document.getElementsByClassName("location-tasks-row");
-                console.log(locationTasksRows.length);
-                for(var i = 0; i < locationTasksRows.length; i++){
-                    locationTasksRows[i].addEventListener("click", function(){
-                        setTimeout(function(){
-                            addFollowUpButton();
-                        }, 0);
-                    }, true);
-                }
-            }, true);
-        }
+        if(!reviewHistory) return;
 
-        if(collapsedAddTask){
-            collapsedAddTask.addEventListener("click", addFollowUpButton, true);
-        }
+        var followUpButton = document.createElement("a");
 
-        function addFollowUpButton(e){
-            var taskContainer = document.getElementById("taskContainer");
-            taskContainer.style.width = "213px";
+        var spacerSpan = document.createElement("span");
+
+        spacerSpan.innerHTML = "<br/><br/><br/><br/><br/>";
+
+        reviewHistory.style.textAlign = "right";
+        reviewHistory.appendChild(spacerSpan);
+        reviewHistory.appendChild(followUpButton);
+
+        followUpButton.innerHTML = "Create Follow Up Task";
+        followUpButton.className += "primary-link";
+
+        followUpButton.addEventListener("click", function(e) {
+            var butSave = document.getElementById("butSave");
+            if(!butSave){
+                alert("Create follow up task for what? This button doesn't do anything unless you first create a task with data in all of the required fields.");
+                return;
+            }
 
             var dueDateInput = document.getElementById("dueDate");
-            var buttonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
-            var butSave = document.getElementById("butSave");
-            var butFollowUp = document.createElement("a");
-            var followUpContainer = document.createElement("div");
-
-            followUpContainer.appendChild(butFollowUp);
-            followUpContainer.style.marginRight = "303px";
-
-            butFollowUp.innerHTML = "Create Follow Up Task";
-            butFollowUp.className += "primary-link";
-
-            if(buttonsContainer) buttonsContainer.insertBefore(followUpContainer, buttonsContainer.children[0]);
-
-            butFollowUp.addEventListener("click", function(e) {
-                e.preventDefault();
-                var dueDate = dueDateInput.value;
+            var taskNameInput = document.getElementById("subject");
+            var taskType = document.getElementById("taskType");
+            if(dueDateInput.value && taskNameInput.value && taskType.value){
                 butSave.click();
-                createFollowUpTask(dueDate);
-
-            });
-
-            function createFollowUpTask(taskDate){
-                setTimeout(function(){
-                    var addTask = document.getElementById("addTask");
-                    var collapsedAddTask = document.getElementById("collapsedAddTask");
-
-                    if(addTask){
-                        addTask.click();
-                    } else {
-                        collapsedAddTask.click();
-                    }
-
-                    var taskNameInput = document.getElementById("subject");
-                    var prioritySelect = document.getElementById("priority");
-                    var taskTypeSelect = document.getElementById("taskType");
-                    var dueDateInput = document.getElementById("dueDate");
-                    var selectTaskFor = document.getElementById("selectTaskFor");
-
-                    prioritySelect.value = "2";
-                    taskNameInput.value = "Follow up for initial";
-                    taskTypeSelect.value = "16";
-                    dueDateInput.value = getFutureDate(taskDate, 14);
-
-                    selectTaskFor.click();
-
-                }, 1000);
+                createFollowUpTask(dueDateInput.value);
+            } else {
+                alert("Task fields incomplete");
+                return;
             }
+        });
+
+        function createFollowUpTask(taskDate){
+            setTimeout(function(){
+                var addTask = document.getElementById("addTask");
+                var collapsedAddTask = document.getElementById("collapsedAddTask");
+
+                if(addTask){
+                    addTask.click();
+                } else {
+                    collapsedAddTask.click();
+                }
+
+                var taskNameInput = document.getElementById("subject");
+                var prioritySelect = document.getElementById("priority");
+                var taskTypeSelect = document.getElementById("taskType");
+                var dueDateInput = document.getElementById("dueDate");
+                var selectTaskFor = document.getElementById("selectTaskFor");
+
+                prioritySelect.value = "2";
+                taskNameInput.value = "Follow up for initial";
+                taskTypeSelect.value = "16";
+                dueDateInput.value = getFutureDate(taskDate, 14);
+
+                selectTaskFor.click();
+
+            }, 1000);
         }
     }
 

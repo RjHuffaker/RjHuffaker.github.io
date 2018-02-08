@@ -75,6 +75,7 @@
 
 #scorp-modal table .add-setup-task:hover {
 	text-decoration: underline;
+	border: 1px solid black;
 }
 
 #caret-div {
