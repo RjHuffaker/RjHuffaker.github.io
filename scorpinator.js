@@ -218,7 +218,7 @@
 
     function autoProximinator(){
         if(!urlContains(["LocationID","location/add.asp"])) return;
-        if(urlContains(["iframe"])) return;
+        if(urlContains(["iframe","letters","dialog"])) return;
 
         console.log("autoProximinating");
 
@@ -430,24 +430,8 @@
             for(var i = 0; i < data.length; i++){
                 var _tr = _table.insertRow();
 
-                if(addSetupTask){/*
-                    var taskCell = _tr.insertCell();
-                    var taskArrow = document.createElement("span");
-                    taskCell.style.padding = "0";
-                    taskCell.appendChild(taskArrow);
+                if(addSetupTask){
 
-                    taskArrow.innerHTML = "<<<";
-                    taskArrow.style.cursor = "pointer";
-
-                    taskCell.dataSetup = data[i];
-                    taskCell.addEventListener("click", function(e) {
-                        addSetupTaskDetails(this.dataSetup);
-                        addSetupTask = false;
-                        scorpModal.style.visibility = "hidden";
-                    });
-                    */
-                    _tr.style.cursor = "pointer";
-                    
                     _tr.className += "add-setup-task";
                     _tr.dataSetup = data[i];
                     _tr.addEventListener("click", function(e) {
