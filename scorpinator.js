@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.018
+// @version      1.019
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -74,7 +74,7 @@
         autoTaskinator();
         autoFollowUpinator();
         autoGeocodinator();
-        autoDepunctuationator();
+        autoDataFixinator();
 
         function retrieveCSS(){
             var link = window.document.createElement('link');
@@ -218,7 +218,7 @@
 
     function autoProximinator(){
         if(!urlContains(["LocationID","location/add.asp"])) return;
-        if(urlContains(["iframe","letters","dialog"])) return;
+        if(urlContains(["iframe","letters","dialog", "notes"])) return;
 
         console.log("autoProximinating");
 
@@ -795,17 +795,18 @@
 		}
     }
 
-    function autoDepunctuationator(){
+    function autoDataFixinator(){
         if(!urlContains(["location/edit.asp"])) return;
-        console.log("autoDepunctuationating");
+        console.log("autoDataFixinating");
 
         var editButton = document.getElementById("butEdit");
         var saveButton = document.getElementById("butSave");
         var addressInput = document.getElementById("Address");
         var streetLabel, streetSearchLabel, streetSearchInput;
         var directionsInput;
+        var phoneInput, phoneExtInput, altPhoneInput, altPhoneExtInput, mobileInput, mobileLabel;
 
-        if(window.location.href.indexOf("billto/edit.asp") > -1){
+        if(urlContains(["billto/edit.asp"])){
             if(addressInput.value.indexOf(".") > -1){
                 streetLabel = addressInput.parentElement.previousElementSibling;
                 addressInput.value = addressInput.value.replaceAll(".", "");
@@ -815,9 +816,16 @@
                 editButton.style.border = "2px solid red";
                 saveButton.style.border = "2px solid red";
             }
-        } else if(window.location.href.indexOf("location/edit.asp") > -1){
+        } else if(urlContains(["location/edit.asp"])){
             streetSearchInput = document.getElementById("Street");
             directionsInput = document.getElementById("Directions");
+
+            phoneInput = document.getElementById("Phone");
+            phoneExtInput = document.getElementById("PhoneExt");
+            altPhoneInput = document.getElementById("AltPhone");
+            altPhoneExtInput = document.getElementById("AltPhoneExt");
+            mobileInput = document.getElementById("Mobile");
+            mobileLabel = mobileInput.parentElement.previousElementSibling;
 
             if(addressInput.value.indexOf(".") > -1){
 
@@ -833,6 +841,29 @@
 
                 saveButton.style.border = "2px solid red";
 
+            }
+
+            if(mobileInput.value === ""){
+                var phoneExt = phoneExtInput.value.toLowerCase();
+                var altPhoneExt = altPhoneExtInput.value.toLowerCase();
+
+                if(directionsInput.value.toLowerCase().includes("call reminders")) return;
+                
+                if(phoneExt.includes("cell") || phoneExt.includes("text")){
+                    mobileInput.value = phoneInput.value;
+                } else if(altPhoneExt.includes("cell") || altPhoneExt.includes("text")){
+                    mobileInput.value = altPhoneInput.value;
+                } else if(phoneInput.value !== "" && !phoneExt.includes("home") && !phoneExt.includes("call")){
+                    mobileInput.value = phoneInput.value;
+                } else if(altPhoneInput.value !== "" && !altPhoneExt.includes("home") && !altPhoneExt.includes("call")){
+                    mobileInput.value = altPhoneInput.value;
+                }
+
+                if(mobileInput.value !== ""){
+                    mobileLabel.style.color = "red";
+                    mobileLabel.style.fontWeight = "bold";
+                    saveButton.style.border = "2px solid red";
+                }
             }
 
             directionsInput.value = directionsInput.value.replace("scorpions txt reminders", "TEXT REMINDERS - Scorpions");
