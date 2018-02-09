@@ -74,8 +74,11 @@
 }
 
 #scorp-modal table .add-setup-task:hover {
-	background-color: 231, 191,191;
 	border: 1px solid black;
+}
+
+#scorp-modal table .add-setup-task:hover td {
+	background-color: rgb(231, 191, 191);
 }
 
 #caret-div {
