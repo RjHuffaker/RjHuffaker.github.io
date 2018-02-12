@@ -755,7 +755,7 @@
                 prioritySelect.value = "2";
                 taskNameInput.value = "Follow up for initial";
                 taskTypeSelect.value = "16";
-                dueDateInput.value = getFutureDate(taskDate, 14);
+                dueDateInput.value = getFutureDate(taskDate, 13);
 
                 selectTaskFor.click();
 
