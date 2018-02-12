@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.019
+// @version      1.020
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
+// @match        app.pestpac.com/*
 // @match        https://app.pestpac.com/*
 // @grant        window.open
 // @run-at       document-idle
