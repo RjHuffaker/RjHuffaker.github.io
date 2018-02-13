@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.021
+// @version      1.022
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -76,7 +76,7 @@
         autoFollowUpinator();
         autoGeocodinator();
         autoDataFixinator();
-        nextAccountinator();
+        traverseAccountinator();
 
         function retrieveCSS(){
             var link = window.document.createElement('link');
@@ -545,6 +545,8 @@
                         taskButton.id = "taskButton"+i;
                         taskButton.className += "primary-link";
 
+                        taskButton.style.fontFamily = "NewRocker";
+
 
                         container.appendChild(taskButton);
 
@@ -717,6 +719,7 @@
 
         followUpButton.innerHTML = "Create Follow Up Task";
         followUpButton.className += "primary-link";
+        followUpButton.style.fontFamily = "NewRocker";
 
         followUpButton.addEventListener("click", function(e) {
             var butSave = document.getElementById("butSave");
@@ -788,18 +791,23 @@
 
 				document.getElementById("ExclBatchGeoCode").click();
 
-				mapMessage.style.color = "red";
+                mapMessage.innerHTML = "Correct GeoCode Found.";
 
-				mapMessage.innerHTML = "SCORPINATOR: GeoCode over-ridden.";
+                mapMessage.className += " scorpinated";
 
-				saveButton.style.border = "2px solid red";
+                mapMessage.style.color = "black";
 
+                saveButton.style.fontSize = "14px";
+
+                saveButton.className += " scorpinated";
+
+                saveButton.innerHTML = "Save";
 			});
 		}
     }
 
     function autoDataFixinator(){
-        if(!urlContains(["location/edit.asp"])) return;
+        if(!urlContains(["location/edit.asp", "billto/edit.asp"])) return;
         console.log("autoDataFixinating");
 
         var editButton = document.getElementById("butEdit");
@@ -813,11 +821,16 @@
             if(addressInput.value.indexOf(".") > -1){
                 streetLabel = addressInput.parentElement.previousElementSibling;
                 addressInput.value = addressInput.value.replaceAll(".", "");
-                streetLabel.style.color = "red";
-                streetLabel.style.fontWeight = "bold";
 
-                editButton.style.border = "2px solid red";
-                saveButton.style.border = "2px solid red";
+                streetLabel.className += " scorpinated";
+
+                editButton.className += " scorpinated";
+
+                editButton.innerHTML = "Edit";
+
+                saveButton.className += " scorpinated";
+
+                saveButton.innerHTML = "Save";
             }
         } else if(urlContains(["location/edit.asp"])){
             streetSearchInput = document.getElementById("Street");
@@ -834,15 +847,15 @@
 
                 streetLabel = addressInput.parentElement.previousElementSibling;
                 addressInput.value = addressInput.value.replaceAll(".", "");
-                streetLabel.style.color = "red";
-                streetLabel.style.fontWeight = "bold";
+                streetLabel.className += " scorpinated";
 
                 streetSearchLabel = streetSearchInput.parentElement.previousElementSibling;
                 streetSearchInput.value = streetSearchInput.value.replaceAll(".", "");
-                streetSearchLabel.style.color = "red";
-                streetSearchLabel.style.fontWeight = "bold";
+                streetSearchLabel.className += " scorpinated";
 
-                saveButton.style.border = "2px solid red";
+                saveButton.className += " scorpinated";
+
+                saveButton.innerHTML = "Save";
 
             }
 
@@ -863,9 +876,11 @@
                 }
 
                 if(mobileInput.value !== ""){
-                    mobileLabel.style.color = "red";
-                    mobileLabel.style.fontWeight = "bold";
-                    saveButton.style.border = "2px solid red";
+                    mobileLabel.className += " scorpinated";
+
+                    saveButton.innerHTML = "Save";
+
+                    saveButton.className += " scorpinated";
                 }
             }
 
@@ -881,20 +896,53 @@
         }
     }
 
-    function nextAccountinator(){
+    function traverseAccountinator(){
         if(!urlContains(["location/detail.asp?LocationID"])) return;
 
         var advancedSearchWrapper = document.getElementsByClassName("advanced-search-wrapper")[0];
         var quickSearchField = document.getElementById("quicksearchfield");
         var locationHeaderDetailLink = document.getElementById("locationHeaderDetailLink");
 
+        if(!locationHeaderDetailLink) return;
+
+        var prevLink = document.createElement("a");
         var nextLink = document.createElement("a");
-        nextLink.className += "advanced-search";
+
+        var traverseDiv = document.createElement("div");
+        traverseDiv.id = "traverse-div";
+
+        prevLink.className += " advanced-search";
+        prevLink.innerHTML = "Prev";
+
+        prevLink.href = "#";
+        prevLink.style.position = "absolute";
+        prevLink.style.left = "10px";
+
+        nextLink.className += " advanced-search";
         nextLink.innerHTML = "Next";
-        nextLink.style.cursor = "pointer";
+
         nextLink.href = "#";
         nextLink.style.position = "absolute";
-        nextLink.style.right = "15px";
+        nextLink.style.right = "10px";
+
+        prevLink.addEventListener("click", function(e){
+            e.preventDefault();
+            var prevAccount = parseInt(locationHeaderDetailLink.children[0].innerHTML)-1;
+            quickSearchField.value = prevAccount;
+            var enterEvent = document.createEvent("Event");
+            enterEvent.initEvent('keyup');
+            quickSearchField.dispatchEvent(enterEvent);
+            var i = 0;
+            var clickInterval = setInterval(function(){
+                i++;
+                var searchResults = document.getElementsByClassName("quick-search-result");
+                if(searchResults.length > 0){
+                    clearInterval(clickInterval);
+                    searchResults[0].click();
+                }
+                if(i > 10) clearInterval(clickInterval);
+            }, 100);
+        });
 
         nextLink.addEventListener("click", function(e){
             e.preventDefault();
@@ -915,7 +963,10 @@
             }, 100);
         });
 
-        advancedSearchWrapper.appendChild(nextLink);
+        traverseDiv.appendChild(prevLink);
+        traverseDiv.appendChild(nextLink);
+
+        advancedSearchWrapper.appendChild(traverseDiv);
 
     }
 
