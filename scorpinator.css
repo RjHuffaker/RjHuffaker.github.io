@@ -1,3 +1,9 @@
+@font-face {
+	font-family: darkcrystal;
+	src: url('https://rjhuffaker.github.io/darkcrystal.ttf')
+}
+
+
 #scorp-icon {
 	height: 40px;
 	width: 40px;
@@ -45,7 +51,7 @@
 }
 
 #scorp-title {
-	font-family: Verdana;
+	font-family: darkcrystal;
 	font-size: 300%;
 	color: white;
 }
