@@ -19,6 +19,10 @@ button.scorpinated::first-letter {
 	text-decoration: underline;
 }
 
+#traverse-div {
+	padding: 10px;
+}
+
 #traverse-div a {
 	cursor: pointer;
 	color: #d1d5d8;
