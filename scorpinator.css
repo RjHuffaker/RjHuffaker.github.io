@@ -9,6 +9,14 @@
 	text-shadow: 1px 1px red;
 }
 
+button.scorpinated {
+	font-size: 14px;
+}
+
+button.scorpinated::first-letter {
+	text-decoration: underline;
+}
+
 #scorp-icon {
 	height: 40px;
 	width: 40px;
