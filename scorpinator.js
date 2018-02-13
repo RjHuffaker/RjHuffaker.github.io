@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.020
+// @version      1.021
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -76,6 +76,7 @@
         autoFollowUpinator();
         autoGeocodinator();
         autoDataFixinator();
+        nextAccountinator();
 
         function retrieveCSS(){
             var link = window.document.createElement('link');
@@ -322,7 +323,8 @@
                     document.getElementById("City").value+" "+
                     document.getElementById("Zip").value;
             }
-            return address;
+
+            return address.replace(/#[1-9]+,/g, "");
         }
 
         function getNearestActiveSetup(data, callback){
@@ -877,6 +879,44 @@
 
             }
         }
+    }
+
+    function nextAccountinator(){
+        if(!urlContains(["location/detail.asp?LocationID"])) return;
+
+        var advancedSearchWrapper = document.getElementsByClassName("advanced-search-wrapper")[0];
+        var quickSearchField = document.getElementById("quicksearchfield");
+        var locationHeaderDetailLink = document.getElementById("locationHeaderDetailLink");
+
+        var nextLink = document.createElement("a");
+        nextLink.className += "advanced-search";
+        nextLink.innerHTML = "Next";
+        nextLink.style.cursor = "pointer";
+        nextLink.href = "#";
+        nextLink.style.position = "absolute";
+        nextLink.style.right = "15px";
+
+        nextLink.addEventListener("click", function(e){
+            e.preventDefault();
+            var nextAccount = parseInt(locationHeaderDetailLink.children[0].innerHTML)+1;
+            quickSearchField.value = nextAccount;
+            var enterEvent = document.createEvent("Event");
+            enterEvent.initEvent('keyup');
+            quickSearchField.dispatchEvent(enterEvent);
+            var i = 0;
+            var clickInterval = setInterval(function(){
+                i++;
+                var searchResults = document.getElementsByClassName("quick-search-result");
+                if(searchResults.length > 0){
+                    clearInterval(clickInterval);
+                    searchResults[0].click();
+                }
+                if(i > 10) clearInterval(clickInterval);
+            }, 100);
+        });
+
+        advancedSearchWrapper.appendChild(nextLink);
+
     }
 
 })();
