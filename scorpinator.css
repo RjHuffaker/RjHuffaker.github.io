@@ -3,7 +3,7 @@
 	src: url('https://rjhuffaker.github.io/NewRocker.ttf');
 }
 
-.scorpinated {
+.scorpinated, .scorpinated * {
 	font-family: NewRocker;
 	color: black;
 	text-shadow: 1px 1px red;
