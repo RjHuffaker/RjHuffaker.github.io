@@ -19,6 +19,13 @@ button.scorpinated::first-letter {
 	text-decoration: underline;
 }
 
+#traverse-div a {
+	cursor: pointer;
+	color: #d1d5d8;
+	font-family: NewRocker;
+	font-size: 13px;
+}
+
 #scorp-icon {
 	height: 40px;
 	width: 40px;
