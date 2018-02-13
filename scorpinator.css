@@ -1,6 +1,6 @@
 @font-face {
-	font-family: darkcrystal;
-	src: url('https://rjhuffaker.github.io/darkcrystal.ttf')
+	font-family: NewRocker
+	src: url('https://rjhuffaker.github.io/NewRocker.ttf')
 }
 
 
@@ -51,7 +51,7 @@
 }
 
 #scorp-title {
-	font-family: darkcrystal;
+	font-family: NewRocker
 	font-size: 500%;
 }
 
