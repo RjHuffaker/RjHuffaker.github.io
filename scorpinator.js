@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.022
+// @version      1.023
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -927,40 +927,14 @@
 
         prevLink.addEventListener("click", function(e){
             e.preventDefault();
-            var prevAccount = parseInt(locationHeaderDetailLink.children[0].innerHTML)-1;
-            quickSearchField.value = prevAccount;
-            var enterEvent = document.createEvent("Event");
-            enterEvent.initEvent('keyup');
-            quickSearchField.dispatchEvent(enterEvent);
-            var i = 0;
-            var clickInterval = setInterval(function(){
-                i++;
-                var searchResults = document.getElementsByClassName("quick-search-result");
-                if(searchResults.length > 0){
-                    clearInterval(clickInterval);
-                    searchResults[0].click();
-                }
-                if(i > 10) clearInterval(clickInterval);
-            }, 100);
+            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
+            traverseAccounts(false, currentID);
         });
 
         nextLink.addEventListener("click", function(e){
             e.preventDefault();
-            var nextAccount = parseInt(locationHeaderDetailLink.children[0].innerHTML)+1;
-            quickSearchField.value = nextAccount;
-            var enterEvent = document.createEvent("Event");
-            enterEvent.initEvent('keyup');
-            quickSearchField.dispatchEvent(enterEvent);
-            var i = 0;
-            var clickInterval = setInterval(function(){
-                i++;
-                var searchResults = document.getElementsByClassName("quick-search-result");
-                if(searchResults.length > 0){
-                    clearInterval(clickInterval);
-                    searchResults[0].click();
-                }
-                if(i > 10) clearInterval(clickInterval);
-            }, 100);
+            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
+            traverseAccounts(true, currentID);
         });
 
         traverseDiv.appendChild(prevLink);
@@ -968,6 +942,25 @@
 
         advancedSearchWrapper.appendChild(traverseDiv);
 
+
+        function traverseAccounts(forward, startID){
+            var newID = forward ? startID+1 : startID-1;
+            quickSearchField.value = newID;
+            var enterEvent = document.createEvent("Event");
+            enterEvent.initEvent('keyup');
+            quickSearchField.dispatchEvent(enterEvent);
+            var i = 0;
+            var clickInterval = setInterval(function(){
+                i++;
+                var searchResults = document.getElementsByClassName("quick-search-result");
+                if(searchResults.length > 0){
+                    clearInterval(clickInterval);
+                    searchResults[0].click();
+                }
+                if(i > 10) clearInterval(clickInterval);
+            }, 100);
+        }
     }
+
 
 })();
