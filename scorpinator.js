@@ -77,6 +77,8 @@
         autoGeocodinator();
         autoDataFixinator();
         traverseAccountinator();
+        autoSetupinator();
+        autoWelcomator();
 
         function retrieveCSS(){
             var link = window.document.createElement('link');
