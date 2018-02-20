@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.023
+// @version      1.024
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -158,6 +158,42 @@
         return mm+"/"+dd+"/"+yy;
     }
 
+    function parseSchedule(input){
+        var week = input.substring(0,1)
+        .replace("1", "first ").replace("2", "second ").replace("3", "third ").replace("4", "fourth ");
+        var day = input.substring(1,4)
+        .replace("MON", "Monday ").replace("TUE", "Tuesday ").replace("WED", "Wednesday ").replace("THU", "Thursday ").replace("FRI", "Friday ");
+        var frequency = input.substring(4)
+        .replace("QJ", "of every January, April, July and October")
+        .replace("QF", "of every February, May, August and November")
+        .replace("QM", "of every March, June, September and December")
+        .replace("BJ", "of every other month")
+        .replace("BF", "of every other month");
+
+        if(input.substring(4) === "M") frequency = "of each month";
+
+        return week+day+frequency;
+    }
+
+    function parseDate(input){
+        var month = input.substring(0,3)
+        .replace("01/", "January ").replace("02/", "February ").replace("03/", "March ")
+        .replace("04/", "April ").replace("05/", "May ").replace("06/", "June ")
+        .replace("07/", "July ").replace("08/", "August ").replace("09/", "September ")
+        .replace("10/", "October ").replace("11/", "November ").replace("12/", "December ");
+
+        var day = input.substring(3,6)
+        .replace("01/", "1st").replace("02/", "2nd").replace("03/", "3rd").replace("04/", "4th").replace("05/", "5th")
+        .replace("06/", "6th").replace("07/", "7th").replace("08/", "8th").replace("09/", "9th").replace("10/", "10th")
+        .replace("11/", "11th").replace("12/", "12th").replace("13/", "13th").replace("14/", "14th").replace("15/", "15th")
+        .replace("16/", "16th").replace("17/", "17th").replace("18/", "18th").replace("19/", "19th").replace("20/", "20th")
+        .replace("21/", "21st").replace("22/", "22nd").replace("23/", "23rd").replace("24/", "24th").replace("25/", "25th")
+        .replace("26/", "26th").replace("27/", "27th").replace("28/", "28th").replace("29/", "29th").replace("30/", "30th")
+        .replace("31/", "31st");
+
+        return month+day;
+    }
+
     function getNextServiceDate(startDate, schedule, frequency){
         var daysOut,
         day = schedule.substring(1,4),
@@ -215,6 +251,28 @@
             }
 
             return serviceOrder;
+        }
+    }
+
+    function getServiceSetup(row){
+        var serviceSetup = {};
+
+        var setupTable = document.getElementById("ProgramsTable");
+        var setupTableRows = null;
+        if(setupTable){
+            setupTableRows = setupTable.children[0].children;
+            
+            if(!setupTableRows[row].classList.contains("noncollapsible")){
+                var setupColumns = setupTableRows[row].children;
+                serviceSetup.serviceCode = setupColumns[2].children[0].innerHTML.replace("&nbsp;", "");
+                serviceSetup.schedule = setupColumns[3].children[0].innerHTML.replace("&nbsp;", "");
+                serviceSetup.tech = setupColumns[4].children[0].innerHTML.replace("&nbsp;", "");
+                serviceSetup.lastService = setupColumns[5].innerHTML.replace("&nbsp;", "");
+                serviceSetup.nextService = setupColumns[6].innerHTML.replace("&nbsp;", "");
+                serviceSetup.price = setupColumns[8].innerHTML.replace("&nbsp;", "");
+            }
+
+            return serviceSetup;
         }
     }
 
@@ -711,7 +769,7 @@
 
         var spacerSpan = document.createElement("span");
 
-        spacerSpan.innerHTML = "<br/><br/><br/><br/><br/>";
+        spacerSpan.innerHTML = "<br/><br/><br/>";
 
         reviewHistory.style.textAlign = "right";
         reviewHistory.appendChild(spacerSpan);
@@ -724,7 +782,7 @@
         followUpButton.addEventListener("click", function(e) {
             var butSave = document.getElementById("butSave");
             if(!butSave){
-                alert("Create follow up task for what? This button doesn't do anything unless you first create a task with data in all of the required fields.");
+                alert("Create follow up task for what? This button doesn't do anything without an open task with data in all of the required fields.");
                 return;
             }
 
@@ -946,9 +1004,9 @@
         function traverseAccounts(forward, startID){
             var newID = forward ? startID+1 : startID-1;
             quickSearchField.value = newID;
-            var enterEvent = document.createEvent("Event");
-            enterEvent.initEvent('keyup');
-            quickSearchField.dispatchEvent(enterEvent);
+            var keyUpEvent = document.createEvent("Event");
+            keyUpEvent.initEvent('keyup');
+            quickSearchField.dispatchEvent(keyUpEvent);
             var i = 0;
             var clickInterval = setInterval(function(){
                 i++;
@@ -962,5 +1020,200 @@
         }
     }
 
+    function autoSetupinator(){
+        if(urlContains(["iframe"])) return;
+        if(urlContains(["serviceSetup/detail.asp"])){
+            var serviceSetup = JSON.parse(sessionStorage.getItem("serviceSetup"));
+            sessionStorage.removeItem("serviceSetup");
+            if(serviceSetup){
+                console.log(serviceSetup);
+                
+                var serviceCodeInput = document.getElementById("ServiceCode1");
+                var unitPriceInput = document.getElementById("UnitPrice1");
+                var scheduleInput = document.getElementById("Schedule");
+                var workTimeInput = document.getElementById("WorkTime");
+                var startDateInput = document.getElementById("StartDate");
+                var targetInput = document.getElementById("TargetPest");
+                var techInput = document.getElementById("Tech1");
+                
+                serviceCodeInput.focus();
+                serviceCodeInput.value = serviceSetup.frequency;
+                serviceCodeInput.blur();
+
+                unitPriceInput.focus();
+                unitPriceInput.value = serviceSetup.price;
+                unitPriceInput.blur();
+
+                workTimeInput.focus();
+                workTimeInput.value = "8:00";
+                workTimeInput.blur();
+
+                startDateInput.focus();
+                startDateInput.value = serviceSetup.startDate;
+                startDateInput.blur();
+
+                targetInput.focus();
+                targetInput.value = serviceSetup.target;
+                targetInput.blur();
+
+                techInput.focus();
+                techInput.value = serviceSetup.tech;
+                techInput.blur();
+
+                scheduleInput.focus();
+                scheduleInput.value = serviceSetup.schedule;
+                scheduleInput.blur();
+                
+            }
+        }
+
+        if(urlContains(["location/detail.asp"])){
+            var reviewHistory = document.getElementsByClassName("reviewHistory")[0];
+            var setupButton = document.createElement("a");
+            var spacerSpan = document.createElement("span");
+            spacerSpan.innerHTML = "<br/>";
+
+            reviewHistory.style.textAlign = "right";
+            reviewHistory.appendChild(spacerSpan);
+            reviewHistory.appendChild(setupButton);
+
+            setupButton.innerHTML = "Create Service Setup";
+            setupButton.className += "primary-link";
+            setupButton.style.fontFamily = "NewRocker";
+
+            setupButton.addEventListener("click", function(e) {
+                var taskNameInput = document.getElementById("subject");
+
+                if(!taskNameInput){
+                    alert("Create service setup from what? This button doesn't work unless you have an open task with data in all of the required fields.");
+                    return;
+                }
+
+                var dueDateInput = document.getElementById("dueDate");
+                var taskType = document.getElementById("taskType");
+                var directionsInput = document.getElementById("tblDirections");
+                
+                var taskArray = taskNameInput.value.split(" ");
+                
+                var serviceSetup = {};
+                
+                serviceSetup.price = taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
+                serviceSetup.frequency = taskArray[1].replaceAll(/[^a-zA-Z]+/, '').replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
+                serviceSetup.schedule = taskArray[2]+taskArray[1].replaceAll(/[^a-zA-Z]+/, '');
+                serviceSetup.tech = taskArray[3];
+                serviceSetup.startDate = dueDateInput.value;
+                serviceSetup.target = "";
+                
+                
+                if(directionsInput.value.toLowerCase().indexOf("scorpions") > -1){
+                    serviceSetup.target = "SCORPIONS";
+                } else if(directionsInput.value.toLowerCase().indexOf("spiders") > -1){
+                    serviceSetup.target = "SPIDERS";
+                } else if(directionsInput.value.toLowerCase().indexOf("roaches") > -1){
+                    serviceSetup.target = "ROACHES";
+                } else if(directionsInput.value.toLowerCase().indexOf("ticks") > -1){
+                    serviceSetup.target = "TICKS";
+                } else if(directionsInput.value.toLowerCase().indexOf("crickets") > -1){
+                    serviceSetup.target = "CRICKETS";
+                } else if(directionsInput.value.toLowerCase().indexOf("ants") > -1){
+                    serviceSetup.target = "ANTS";
+                }
+                
+                serviceSetup = JSON.stringify(serviceSetup);
+                
+                sessionStorage.setItem("serviceSetup", serviceSetup);
+                
+                var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
+                
+                window.location.href = newUrl;
+                
+            });
+        }
+    }
+
+    function autoWelcomator(){
+        if(urlContains(["iframe"])) return;
+        if(urlContains(["letters/default.asp"])){
+            if(sessionStorage.getItem("welcomeLetter")){
+                document.getElementById("butAddLetter").click();
+            }
+        }
+        
+        if(urlContains(["letters/add.asp"])){
+            if(sessionStorage.getItem("welcomeLetter")){
+                var welcomeLetter = JSON.parse(sessionStorage.getItem("welcomeLetter"));
+                
+                document.getElementById("SLT").click();
+                
+                var letterCodeInput = document.getElementById("StdLetterSourceCode");
+                
+                letterCodeInput.focus();
+                
+                letterCodeInput.value = "WELCOME MONTHLY "+welcomeLetter.division;
+                
+                letterCodeInput.blur();
+                
+                document.getElementById("butContinue").click();
+            }
+        }
+        
+        if(urlContains(["letters/detail.asp"])){
+            if(sessionStorage.getItem("welcomeLetter")){
+                setTimeout(function(){
+                    var welcomeLetter = JSON.parse(sessionStorage.getItem("welcomeLetter"));
+                    
+                    var iframe = document.getElementById('Letter_ifr').contentWindow.document;
+                    
+                    var letter = iframe.getElementById("letter");
+                    
+                    var nameInput = document.getElementById('Name');
+                    
+                    letter.innerHTML = letter.innerHTML
+                                        .replace("first Monday of each month", welcomeLetter.schedule)
+                                        .replace("DATE", welcomeLetter.nextService);
+                    
+                    nameInput.value = "Welcome";
+                    
+                    sessionStorage.removeItem("welcomeLetter");
+                    
+                }, 1000);
+            }
+        }
+        
+        if(urlContains(["location/detail.asp"])){
+            var butLetter = document.getElementById("butLetter");
+            var reviewHistory = document.getElementsByClassName("reviewHistory")[0];
+            var welcomeButton = document.createElement("a");
+            var spacerSpan = document.createElement("span");
+            spacerSpan.innerHTML = "<br/>";
+
+            reviewHistory.style.textAlign = "right";
+            reviewHistory.appendChild(spacerSpan);
+            reviewHistory.appendChild(welcomeButton);
+
+            welcomeButton.innerHTML = "Send Welcome Letter";
+            welcomeButton.className += "primary-link";
+            welcomeButton.style.fontFamily = "NewRocker";
+            
+            welcomeButton.addEventListener("click", function(e) {
+                var serviceSetup = getServiceSetup(1);
+                
+                var welcomeLetter = {};
+                
+                welcomeLetter.division = document.getElementById("Division").value;
+                
+                welcomeLetter.schedule = parseSchedule(serviceSetup.schedule);
+                
+                welcomeLetter.nextService = parseDate(serviceSetup.nextService);
+                
+                welcomeLetter = JSON.stringify(welcomeLetter);
+                
+                sessionStorage.setItem("welcomeLetter", welcomeLetter);
+                
+                butLetter.click();
+                
+            });
+        }
+    }
 
 })();
