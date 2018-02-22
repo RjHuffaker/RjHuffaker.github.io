@@ -159,9 +159,17 @@
     function getFutureDate(startDate, daysOut){
         var newDate = new Date(startDate);
         newDate.setDate(newDate.getDate() + daysOut);
+        
+        if(newDate.getDay() === 0){ //Sunday
+            newDate.setDate(newDate.getDate() + 1);
+        } else if(newDate.getDay() === 6){
+            newDate.setDate(newDate.getDate() + 2);
+        }
+        
         var dd = newDate.getDate();
         var mm = newDate.getMonth()+1;
         var yy = newDate.getFullYear().toString().substring(2,4);
+        
         return mm+"/"+dd+"/"+yy;
     }
 
@@ -652,7 +660,7 @@
                     prioritySelect.value = "3";
                     taskTypeSelect.value = "12";
                     dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                    taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
+                    taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 13);
                     break;
                 case "FREE ESTIMATE":
                     prioritySelect.value = "3";
@@ -688,7 +696,7 @@
                     prioritySelect.value = "3";
                     taskTypeSelect.value = "12";
                     dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                    taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
+                    taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 13);
                     break;
                 default:
                     console.log("TODO: Don't know what to do with this.");
