@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.025
+// @version      1.026
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -1232,6 +1232,11 @@
         if(urlContains(["iframe"])) return;
         if(urlContains(["location/detail.asp"])){
             if(sessionStorage.getItem("duplicateOrder")){
+                var aButton = document.getElementsByClassName("ui-button")[0];
+                if(aButton){
+                    setTimeout(function(){aButton.click();}, 0);
+                }
+                
                 document.getElementById("butOrder").click();
             }
         }
@@ -1256,8 +1261,9 @@
                 var duplicatorButton = document.createElement("button");
                 duplicatorButton.className += "scorpinated";
                 duplicatorButton.innerHTML = "Duplicate";
+                duplicatorButton.style.marginRight = "8px";
                 
-                choicesSpan.appendChild(duplicatorButton);
+                choicesSpan.insertBefore(duplicatorButton, choicesSpan.children[0]);
 
                 duplicatorButton.addEventListener("click", function(e){
                     e.preventDefault();
