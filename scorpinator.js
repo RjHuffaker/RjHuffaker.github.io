@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.024
+// @version      1.025
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -79,6 +79,7 @@
         traverseAccountinator();
         autoSetupinator();
         autoWelcomator();
+        serviceOrderDuplicator();
 
         function retrieveCSS(){
             var link = window.document.createElement('link');
@@ -144,9 +145,13 @@
         httpGetAsync(requestString, function(data){
             var dataObj = JSON.parse(data);
             var geoCodes = {};
-            geoCodes.longitude = dataObj.results[0].geometry.location.lng;
-            geoCodes.latitude = dataObj.results[0].geometry.location.lat;
-
+            
+            geoCodes.longitude = parseFloat(dataObj.results[0].geometry.location.lng).toFixed(6);
+            geoCodes.latitude = parseFloat(dataObj.results[0].geometry.location.lat).toFixed(6);
+            
+            sessionStorage.setItem("longitude", geoCodes.longitude);
+            sessionStorage.setItem("latitude", geoCodes.latitude);
+            
             callback(geoCodes);
         });
     }
@@ -214,8 +219,6 @@
         if(frequency=="Q") daysOut = 56;
 
         newDate.setDate(newDate.getDate() + daysOut);
-
-        console.log(startDate, schedule, frequency);
 
         for(var i = 0; i < 31; i++){
             newDate.setDate(newDate.getDate() + 1);
@@ -307,7 +310,7 @@
         var scorpTitle = document.createElement("span");
         scorpTitle.id = "scorp-title";
         scorpTitle.innerHTML = "Scorpinator";
-
+        
         scorpHeader.appendChild(scorpHeaderImage);
         scorpHeader.appendChild(scorpTitle);
         scorpHeader.appendChild(scorpExit);
@@ -353,6 +356,7 @@
                 fetchGeocodes(getLocationAddress(), function(data){
                     getNearestActiveSetup(data, function(data){
                         formatScorpContent(data);
+                        if(urlContains(["location/add.asp"])) autoGeocodinator();
                     });
                 });
             } else {
@@ -446,8 +450,6 @@
                 }
             }
 
-            console.log(nearestList);
-
             callback(nearestList);
         }
 
@@ -520,9 +522,15 @@
                     _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
                 }
             }
-
+            
+            var geocodesLabel = document.createElement("span");
+            geocodesLabel.id = "geocodesLabel";
+            geocodesLabel.innerHTML = "Latitude: "+sessionStorage.getItem("latitude")+" Longitude: "+sessionStorage.getItem("longitude");
+            
             scorpContent.appendChild(_table);
 
+            scorpContent.appendChild(geocodesLabel);
+            
             var scorpLegend = document.createElement("div");
 
             var legendHeader = document.createElement("div");
@@ -530,7 +538,7 @@
             if(addSetupTask){
                 legendHeader.innerHTML = "Select an active setup to assign technician and schedule.<h3>Average Daily Total:</h3>";
             } else {
-                legendHeader.innerHTML = "<br/><h3>Average Daily Total:</h3>";
+                legendHeader.innerHTML = "<h3>Average Daily Total:</h3>";
             }
 
             scorpLegend.appendChild(legendHeader);
@@ -829,7 +837,7 @@
     }
 
     function autoGeocodinator(){
-		if(!urlContains(["location/edit.asp"])) return;
+		if(!urlContains(["location/edit.asp", "location/add.asp"])) return;
         console.log("autoGeocodinating");
 
 		var saveButton = document.getElementById("butSave");
@@ -845,9 +853,9 @@
 			var latitudeInput = document.getElementById("Latitude");
 
 			fetchGeocodes(address, function(data){
-				document.getElementById("Longitude").value = parseFloat(data.longitude).toFixed(6);
+				document.getElementById("Longitude").value = data.longitude;
 
-				document.getElementById("Latitude").value = parseFloat(data.latitude).toFixed(6);
+				document.getElementById("Latitude").value = data.latitude;
 
 				document.getElementById("ExclBatchGeoCode").click();
 
@@ -1028,7 +1036,6 @@
             var serviceSetup = JSON.parse(sessionStorage.getItem("serviceSetup"));
             sessionStorage.removeItem("serviceSetup");
             if(serviceSetup){
-                console.log(serviceSetup);
                 
                 var serviceCodeInput = document.getElementById("ServiceCode1");
                 var unitPriceInput = document.getElementById("UnitPrice1");
@@ -1135,6 +1142,9 @@
 
     function autoWelcomator(){
         if(urlContains(["iframe"])) return;
+        
+        console.log("AutoWelcomating");
+        
         if(urlContains(["letters/default.asp"])){
             if(sessionStorage.getItem("welcomeLetter")){
                 document.getElementById("butAddLetter").click();
@@ -1215,6 +1225,122 @@
                 butLetter.click();
                 
             });
+        }
+    }
+
+    function serviceOrderDuplicator(){
+        if(urlContains(["iframe"])) return;
+        if(urlContains(["location/detail.asp"])){
+            if(sessionStorage.getItem("duplicateOrder")){
+                document.getElementById("butOrder").click();
+            }
+        }
+        if(urlContains(["serviceOrder/detail.asp"])){
+            
+            var serviceCodeInput = document.getElementById("ServiceCode1");
+            var unitPriceInput = document.getElementById("UnitPrice1");
+            var workDateInput = document.getElementById("WorkDate");
+            var workTimeInput = document.getElementById("WorkTime");
+            var timeRangeInput = document.getElementById("TimeRange");
+            var timeBeginInput = document.getElementById("RouteOptTime1Beg");
+            var timeEndInput = document.getElementById("RouteOptTime1End");
+            var targetInput = document.getElementById("TargetPest");
+            var techInput = document.getElementById("Tech1");
+            var directionsInput = document.getElementById("Directions");
+            
+            var choicesSpan = document.getElementById("Choices");
+            var butExit = document.getElementById("butExit");
+            
+            if(choicesSpan){
+            
+                var duplicatorButton = document.createElement("button");
+                duplicatorButton.className += "scorpinated";
+                duplicatorButton.innerHTML = "Duplicate";
+                
+                choicesSpan.appendChild(duplicatorButton);
+
+                duplicatorButton.addEventListener("click", function(e){
+                    e.preventDefault();
+                    console.log("duplicate");
+
+                    var duplicateOrder = {};
+
+                    duplicateOrder.serviceCode = serviceCodeInput.value;
+                    duplicateOrder.unitPrice = unitPriceInput.value;
+                    duplicateOrder.workDate = workDateInput.value;
+                    duplicateOrder.workTime = workTimeInput.value;
+                    duplicateOrder.timeRange = timeRangeInput.value;
+                    duplicateOrder.timeBegin = timeBeginInput.value;
+                    duplicateOrder.timeEnd = timeEndInput.value;
+                    duplicateOrder.target = targetInput.value;
+                    duplicateOrder.tech = techInput.value;
+                    duplicateOrder.directions = directionsInput.value;
+
+                    duplicateOrder = JSON.stringify(duplicateOrder);
+
+                    sessionStorage.setItem("duplicateOrder", duplicateOrder);
+
+                    butExit.click();
+
+                });
+                
+            } else {
+                
+                var duplicateOrder = JSON.parse(sessionStorage.getItem("duplicateOrder"));
+                if(!duplicateOrder) return;
+                
+                sessionStorage.removeItem("duplicateOrder");
+                
+                serviceCodeInput.focus();
+                serviceCodeInput.value = duplicateOrder.serviceCode;
+                serviceCodeInput.blur();
+
+                unitPriceInput.focus();
+                unitPriceInput.value = duplicateOrder.unitPrice;
+                unitPriceInput.blur();
+
+                workDateInput.focus();
+                workDateInput.value = duplicateOrder.workDate;
+                workDateInput.blur();
+                
+                workTimeInput.focus();
+                workTimeInput.value = duplicateOrder.workTime;
+                workTimeInput.blur();
+                
+                setTimeout(function(){
+                    document.getElementById("ToggleOptimizationFields").click();
+                    
+                    timeRangeInput.focus();
+                    timeRangeInput.value = duplicateOrder.timeRange;
+                    timeRangeInput.blur();
+
+                    timeBeginInput.focus();
+                    timeBeginInput.value = duplicateOrder.timeBegin;
+                    timeBeginInput.blur();
+
+                    timeEndInput.focus();
+                    timeEndInput.value = duplicateOrder.timeEnd;
+                    timeEndInput.blur();
+                    
+                },1000);
+                
+                targetInput.focus();
+                targetInput.value = duplicateOrder.target;
+                targetInput.blur();
+
+                techInput.focus();
+                techInput.value = duplicateOrder.tech;
+                techInput.blur();
+                
+                setTimeout(function(){
+                    document.getElementById("spanDirections").click();
+                    
+                    directionsInput.focus();
+                    directionsInput.value = duplicateOrder.directions;
+                    directionsInput.blur();
+                },1000);
+                
+            }
         }
     }
 
