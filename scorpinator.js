@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.026
+// @version      1.027
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -165,11 +165,9 @@
         return mm+"/"+dd+"/"+yy;
     }
 
-    function parseSchedule(input){
+    function getServiceSchedule(input){
         var week = input.substring(0,1)
-        .replace("1", "first ").replace("2", "second ").replace("3", "third ").replace("4", "fourth ");
-        var day = input.substring(1,4)
-        .replace("MON", "Monday ").replace("TUE", "Tuesday ").replace("WED", "Wednesday ").replace("THU", "Thursday ").replace("FRI", "Friday ");
+        .replace("1", "first week ").replace("2", "second week ").replace("3", "third week ").replace("4", "fourth week ");
         var frequency = input.substring(4)
         .replace("QJ", "of every January, April, July and October")
         .replace("QF", "of every February, May, August and November")
@@ -179,10 +177,10 @@
 
         if(input.substring(4) === "M") frequency = "of each month";
 
-        return week+day+frequency;
+        return week+frequency;
     }
 
-    function parseDate(input){
+    function getServiceDate(input){
         var month = input.substring(0,3)
         .replace("01/", "January ").replace("02/", "February ").replace("03/", "March ")
         .replace("04/", "April ").replace("05/", "May ").replace("06/", "June ")
@@ -1161,7 +1159,7 @@
                 
                 letterCodeInput.focus();
                 
-                letterCodeInput.value = "WELCOME MONTHLY "+welcomeLetter.division;
+                letterCodeInput.value = "WELCOME "+welcomeLetter.division;
                 
                 letterCodeInput.blur();
                 
@@ -1181,7 +1179,7 @@
                     var nameInput = document.getElementById('Name');
                     
                     letter.innerHTML = letter.innerHTML
-                                        .replace("first Monday of each month", welcomeLetter.schedule)
+                                        .replace("first week of each month", welcomeLetter.schedule)
                                         .replace("DATE", welcomeLetter.nextService);
                     
                     nameInput.value = "Welcome";
@@ -1214,9 +1212,9 @@
                 
                 welcomeLetter.division = document.getElementById("Division").value;
                 
-                welcomeLetter.schedule = parseSchedule(serviceSetup.schedule);
+                welcomeLetter.schedule = getServiceSchedule(serviceSetup.schedule);
                 
-                welcomeLetter.nextService = parseDate(serviceSetup.nextService);
+                welcomeLetter.nextService = getServiceDate(serviceSetup.nextService);
                 
                 welcomeLetter = JSON.stringify(welcomeLetter);
                 
