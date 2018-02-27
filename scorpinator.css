@@ -144,7 +144,9 @@ button.scorpinated::first-letter {
 	background-color: rgb(153, 10, 32);
 	color: white;
 	padding: 8px;
-	font-size: 8px;
+	min-width: 160px;
+	font-size: 12px;
+	font-family: NewRocker;
 	border: none;
 	cursor: pointer;
 }
