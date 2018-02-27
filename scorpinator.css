@@ -135,12 +135,12 @@ button.scorpinated::first-letter {
 	border-left: 15px solid transparent;
 }
 
-.scorpMenu {
+#scorpMenu {
 	position: relative;
 	display: inline-block;
 }
 
-.scorpMenuButton {
+#scorpMenuButton {
 	background-color: #3498DB;
 	color: white;
 	padding: 16px;
@@ -150,11 +150,11 @@ button.scorpinated::first-letter {
 }
 
 
-.scorpMenuButton:hover, .scorpDropDownButton:focus {
+#scorpMenuButton:hover, #scorpDropDownButton:focus {
 	background-color: #2980B9;
 }
 
-.scorpMenuContent {
+#scorpMenuContent {
 	display: none;
 	position: absolute;
 	background-color: #f1f1f1;
@@ -163,18 +163,18 @@ button.scorpinated::first-letter {
 	z-index: 1;
 }
 
-.scorpMenuContent a {
+#scorpMenuContent a {
 	color: black;
 	padding: 12px 16px;
 	text-decoration: none;
 	display: block;
 }
 
-.scorpMenuContent a:hover {
+#scorpMenuContent a:hover {
 	background-color: #ddd;
 }
 
-.scorpMenuShow {
+#scorpMenuContent.show {
 	display: block;
 }
 
