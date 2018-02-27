@@ -141,22 +141,23 @@ button.scorpinated::first-letter {
 }
 
 #scorpMenuButton {
+	background-color: rgb(153, 10, 32);
 	background-color: #3498DB;
 	color: white;
-	padding: 16px;
-	font-size: 16px;
+	padding: 8px;
+	font-size: 8px;
 	border: none;
 	cursor: pointer;
 }
 
-
 #scorpMenuButton:hover, #scorpDropDownButton:focus {
-	background-color: #2980B9;
+	background-color: rgb(183, 10, 32);
 }
 
 #scorpMenuContent {
 	display: none;
 	position: absolute;
+	right: 0;
 	background-color: #f1f1f1;
 	min-width: 160px;
 	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
@@ -165,7 +166,7 @@ button.scorpinated::first-letter {
 
 #scorpMenuContent a {
 	color: black;
-	padding: 12px 16px;
+	padding: 4px 8px;
 	text-decoration: none;
 	display: block;
 }
