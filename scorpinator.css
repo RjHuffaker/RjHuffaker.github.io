@@ -147,6 +147,7 @@ button.scorpinated::first-letter {
 	min-width: 160px;
 	font-size: 12px;
 	font-family: NewRocker;
+	text-align: left;
 	border: none;
 	cursor: pointer;
 }
@@ -169,7 +170,9 @@ button.scorpinated::first-letter {
 	color: black;
 	padding: 4px 8px;
 	text-decoration: none;
+	font-family: NewRocker;
 	display: block;
+	text-align: left;
 }
 
 #scorpMenuContent a:hover {
