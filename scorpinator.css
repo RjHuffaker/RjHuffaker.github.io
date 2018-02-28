@@ -142,15 +142,26 @@ button.scorpinated::first-letter {
 
 #scorpMenuButton {
 	background-color: rgb(153, 10, 32);
-	color: white;
 	padding: 8px;
 	min-height: 32px;
 	min-width: 160px;
-	font-size: 14px;
-	font-family: NewRocker;
 	text-align: left;
 	border: none;
 	cursor: pointer;
+}
+
+#scorpMenuButton span {
+	color: white;
+	font-size: 14px;
+	font-family: NewRocker;
+}
+
+#scorpMenuButtonImage img {
+	height: 24px;
+	width: 24px;
+	margin-top: -4px;
+	margin-bottom: -4px;
+	margin-right: 4px;
 }
 
 #scorpMenuButton:hover, #scorpDropDownButton:focus {
