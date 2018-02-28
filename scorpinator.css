@@ -145,6 +145,7 @@ button.scorpinated::first-letter {
 	padding: 8px;
 	min-height: 32px;
 	min-width: 160px;
+	border-radius: 3px;
 	text-align: left;
 	border: none;
 	cursor: pointer;
