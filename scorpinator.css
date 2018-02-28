@@ -190,6 +190,11 @@ button.scorpinated::first-letter {
 	cursor: pointer;
 }
 
+#scorpMenuContent textarea {
+	padding: 6px 10px;
+	
+}
+
 #scorpMenuContent a:hover {
 	background-color: #ddd;
 }
