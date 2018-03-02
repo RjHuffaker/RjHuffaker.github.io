@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.027
+// @version      1.028
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -71,6 +71,7 @@
     function initializeScorpinator(){
         retrieveCSS();
         retrieveActiveSetups();
+        scorpMenu();
         autoContactinator();
         autoTaskinator();
         autoFollowUpinator();
@@ -176,6 +177,7 @@
     function getServiceSchedule(input){
         var week = input.substring(0,1)
         .replace("1", "first week ").replace("2", "second week ").replace("3", "third week ").replace("4", "fourth week ");
+        
         var frequency = input.substring(4)
         .replace("QJ", "of every January, April, July and October")
         .replace("QF", "of every February, May, August and November")
@@ -286,10 +288,10 @@
             return serviceSetup;
         }
     }
-
+    
     function autoProximinator(){
-        if(!urlContains(["LocationID","location/add.asp"])) return;
-        if(urlContains(["iframe","letters","dialog", "notes"])) return;
+        if(!urlContains(["LocationID","location/add.asp","serviceSetup/detail.asp"])) return;
+        if(urlContains(["iframe","letters","dialog","notes"])) return;
 
         console.log("autoProximinating");
 
@@ -586,9 +588,52 @@
                 selectTaskFor.click();
 
             }
-
         }
+    }
 
+    function scorpMenu(){
+        if(urlContains(["iframe"])) return;
+        if(!urlContains(["location/detail.asp"])) return;
+        
+        var locationRowSection = document.getElementsByClassName("location-row-section")[0];
+        locationRowSection.style.textAlign = "right";
+        
+        var scorpMenu = document.createElement("div");
+        scorpMenu.id = "scorpMenu";
+        scorpMenu.style.top = "-48px";
+        scorpMenu.style.right = "1%";
+        scorpMenu.style.marginBottom = "-48px";
+        
+        var scorpMenuButtonImage = document.createElement("img");
+        scorpMenuButtonImage.src = "https://rjhuffaker.github.io/ScorpImage.png";
+        
+        var scorpMenuButtonSpan = document.createElement("span");
+        scorpMenuButtonSpan.innerHTML = "Special Actions";
+        
+        var scorpMenuButton = document.createElement("button");
+        scorpMenuButton.id = "scorpMenuButton";
+        
+        var scorpMenuContent = document.createElement("div");
+        scorpMenuContent.id = "scorpMenuContent";
+        scorpMenuContent.style.right = "0";
+        
+        var spacerSpan = document.createElement("span");
+        spacerSpan.innerHTML = "<br/><br/><br/><br/>";
+        
+        scorpMenuButton.appendChild(scorpMenuButtonImage);
+        scorpMenuButton.appendChild(scorpMenuButtonSpan);
+        scorpMenu.appendChild(scorpMenuButton);
+        scorpMenu.appendChild(scorpMenuContent);
+        //reviewHistory.appendChild(spacerSpan);
+        locationRowSection.insertBefore(scorpMenu, locationRowSection.children[0]);
+        
+        scorpMenuButton.addEventListener("click", function(e) {
+            if(scorpMenuContent.classList.contains("show")){
+                scorpMenuContent.classList.remove("show");
+            } else {
+                scorpMenuContent.classList.add("show");
+            }
+        });
     }
 
     function autoTaskinator(){
@@ -620,7 +665,6 @@
                         taskButton.className += "primary-link";
 
                         taskButton.style.fontFamily = "NewRocker";
-
 
                         container.appendChild(taskButton);
 
@@ -777,25 +821,19 @@
 
         console.log("autoFollowUpinating");
 
-        var reviewHistory = document.getElementsByClassName("reviewHistory")[0];
+        var scorpMenuContent = document.getElementById("scorpMenuContent");
 
-        if(!reviewHistory) return;
+        if(!scorpMenuContent) return;
 
         var followUpButton = document.createElement("a");
 
-        var spacerSpan = document.createElement("span");
-
-        spacerSpan.innerHTML = "<br/><br/><br/>";
-
-        reviewHistory.style.textAlign = "right";
-        reviewHistory.appendChild(spacerSpan);
-        reviewHistory.appendChild(followUpButton);
+        scorpMenuContent.appendChild(followUpButton);
 
         followUpButton.innerHTML = "Create Follow Up Task";
-        followUpButton.className += "primary-link";
-        followUpButton.style.fontFamily = "NewRocker";
 
         followUpButton.addEventListener("click", function(e) {
+            scorpMenuContent.classList.remove("show");
+            
             var butSave = document.getElementById("butSave");
             if(!butSave){
                 alert("Create follow up task for what? This button doesn't do anything without an open task with data in all of the required fields.");
@@ -1083,20 +1121,16 @@
         }
 
         if(urlContains(["location/detail.asp"])){
-            var reviewHistory = document.getElementsByClassName("reviewHistory")[0];
+            var scorpMenuContent = document.getElementById("scorpMenuContent");
             var setupButton = document.createElement("a");
-            var spacerSpan = document.createElement("span");
-            spacerSpan.innerHTML = "<br/>";
-
-            reviewHistory.style.textAlign = "right";
-            reviewHistory.appendChild(spacerSpan);
-            reviewHistory.appendChild(setupButton);
-
+            
             setupButton.innerHTML = "Create Service Setup";
-            setupButton.className += "primary-link";
-            setupButton.style.fontFamily = "NewRocker";
-
+            
+            scorpMenuContent.appendChild(setupButton);
+            
             setupButton.addEventListener("click", function(e) {
+                scorpMenuContent.classList.remove("show");
+                
                 var taskNameInput = document.getElementById("subject");
 
                 if(!taskNameInput){
@@ -1149,8 +1183,6 @@
     function autoWelcomator(){
         if(urlContains(["iframe"])) return;
         
-        console.log("AutoWelcomating");
-        
         if(urlContains(["letters/default.asp"])){
             if(sessionStorage.getItem("welcomeLetter")){
                 document.getElementById("butAddLetter").click();
@@ -1200,20 +1232,16 @@
         
         if(urlContains(["location/detail.asp"])){
             var butLetter = document.getElementById("butLetter");
-            var reviewHistory = document.getElementsByClassName("reviewHistory")[0];
+            var scorpMenuContent = document.getElementById("scorpMenuContent");
             var welcomeButton = document.createElement("a");
-            var spacerSpan = document.createElement("span");
-            spacerSpan.innerHTML = "<br/>";
-
-            reviewHistory.style.textAlign = "right";
-            reviewHistory.appendChild(spacerSpan);
-            reviewHistory.appendChild(welcomeButton);
 
             welcomeButton.innerHTML = "Send Welcome Letter";
-            welcomeButton.className += "primary-link";
-            welcomeButton.style.fontFamily = "NewRocker";
             
+            scorpMenuContent.appendChild(welcomeButton);
+
             welcomeButton.addEventListener("click", function(e) {
+                scorpMenuContent.classList.remove("show");
+                
                 var serviceSetup = getServiceSetup(1);
                 
                 var welcomeLetter = {};
