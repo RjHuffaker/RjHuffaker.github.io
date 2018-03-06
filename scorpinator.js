@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.030
+// @version      1.031
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -95,7 +95,7 @@
                          function(response){
                 activeSetups = tsvToObjectArray(response);
 
-                autoProximinator();
+                scorpModal();
             });
 
             function tsvToObjectArray(tsv){
@@ -146,26 +146,6 @@
                 currentElement = currentElement.parentNode;
             }
         }
-    }
-
-    function fetchGeocodes(address, callback){
-        address = address.replaceAll(", ", "+");
-        address = address.replaceAll(" ", "+");
-
-        var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+"+AZ,+AZ&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
-
-        httpGetAsync(requestString, function(data){
-            var dataObj = JSON.parse(data);
-            var geoCodes = {};
-            
-            geoCodes.longitude = parseFloat(dataObj.results[0].geometry.location.lng).toFixed(6);
-            geoCodes.latitude = parseFloat(dataObj.results[0].geometry.location.lat).toFixed(6);
-            
-            sessionStorage.setItem("longitude", geoCodes.longitude);
-            sessionStorage.setItem("latitude", geoCodes.latitude);
-            
-            callback(geoCodes);
-        });
     }
 
     function getFutureDate(startDate, daysOut){
@@ -299,8 +279,28 @@
             return serviceSetup;
         }
     }
-    
-    function autoProximinator(){
+
+    function fetchGeocodes(address, callback){
+        address = address.replaceAll(", ", "+");
+        address = address.replaceAll(" ", "+");
+
+        var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+"+AZ,+AZ&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
+
+        httpGetAsync(requestString, function(data){
+            var dataObj = JSON.parse(data);
+            var geoCodes = {};
+
+            geoCodes.longitude = parseFloat(dataObj.results[0].geometry.location.lng).toFixed(6);
+            geoCodes.latitude = parseFloat(dataObj.results[0].geometry.location.lat).toFixed(6);
+
+            sessionStorage.setItem("longitude", geoCodes.longitude);
+            sessionStorage.setItem("latitude", geoCodes.latitude);
+
+            callback(geoCodes);
+        });
+    }
+
+    function scorpModal(){
         if(!urlContains(["LocationID","location/add.asp","serviceSetup/detail.asp"])) return;
         if(urlContains(["iframe","letters","dialog","notes"])) return;
 
@@ -367,11 +367,9 @@
         });
 
         scorpIcon.addEventListener("click", function(e) {
-            console.log(scorpModal.classList);
             if(scorpModal.classList.contains("show")){
                 addSetupTask = false;
                 scorpModal.classList.remove("show");
-                console.log('remove');
             } else {
                 scorpModal.classList.add("show");
                 fetchGeocodes(getLocationAddress(), function(data){
@@ -394,7 +392,7 @@
                 });
 
                 setTimeout(function(){
-                    window.addEventListener('click', clickToDismiss, true);
+                    window.addEventListener('click', clickToDismiss);
                 }, 100);
             }
 
@@ -664,7 +662,9 @@
         locationRowSection.insertBefore(scorpMenu, locationRowSection.children[0]);
 
         scorpMenuButton.addEventListener("click", function(e) {
-            if(!scorpMenuContent.classList.contains("show")){
+            if(scorpMenuContent.classList.contains("show")){
+                scorpMenuContent.classList.remove("show");
+            } else {
                 scorpMenuContent.classList.add("show");
 
                 setTimeout(function(){
