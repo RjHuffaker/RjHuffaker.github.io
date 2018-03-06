@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.029
+// @version      1.030
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -135,6 +135,17 @@
         };
         xmlHttp.open("GET", theUrl, true); // true for asynchronous
         xmlHttp.send(null);
+    }
+
+    function checkElementAncestry(element, ancestor, generations){
+        var currentElement = element;
+        while(currentElement.parentElement){
+            if(currentElement===ancestor){
+                return true;
+            } else {
+                currentElement = currentElement.parentNode;
+            }
+        }
     }
 
     function fetchGeocodes(address, callback){
@@ -356,29 +367,44 @@
         });
 
         scorpIcon.addEventListener("click", function(e) {
-
+            console.log(scorpModal.classList);
             if(scorpModal.classList.contains("show")){
                 addSetupTask = false;
                 scorpModal.classList.remove("show");
-
+                console.log('remove');
             } else {
                 scorpModal.classList.add("show");
                 fetchGeocodes(getLocationAddress(), function(data){
                     getNearestActiveSetup(data, function(data){
                         formatScorpContent(data);
-                        if(urlContains(["location/add.asp"])) autoGeocodinator();
+                        if(urlContains(["location/add.asp", "location/edit.asp"])){
+                            autoGeocodinator();
+                            var divisionSelect = document.getElementById("Division");
+                            if(!divisionSelect.value){
+                                var _divisions = [];
+                                for(var i = 0; i < data.length; i++){
+                                    if(data[i].zipCode===document.getElementById("Zip").value){
+                                        _divisions.push(data[i].division);
+                                    }
+                                }
+                                divisionSelect.value = _divisions.sort((a,b) => _divisions.filter(v => v===a).length - _divisions.filter(v => v===b).length).pop()
+                            }
+                        }
                     });
                 });
 
                 setTimeout(function(){
-                    window.addEventListener('click', clickToDismiss);
+                    window.addEventListener('click', clickToDismiss, true);
                 }, 100);
             }
 
             function clickToDismiss(e){
+                var element = e.target;
+
+                if(checkElementAncestry(element, scorpModal)) return;
+
                 scorpModal.classList.remove("show");
                 window.removeEventListener('click', clickToDismiss);
-                console.log('clicky');
             }
         });
 
@@ -501,7 +527,7 @@
             _table.border = 1;
 
             var _header = _table.insertRow();
-         //   if(addSetupTask) _header.insertCell().innerHTML = "";
+
             _header.insertCell().innerHTML = "Zip Code";
             _header.insertCell().innerHTML = "Schedule";
             _header.insertCell().innerHTML = "Tech/Division";
@@ -520,7 +546,7 @@
                     _tr.addEventListener("click", function(e) {
                         addSetupTaskDetails(this.dataSetup);
                         addSetupTask = false;
-                        scorpModal.style.visibility = "hidden";
+                        scorpModal.classList.remove("show");
                     });
 
                 }
@@ -647,9 +673,11 @@
             }
 
             function clickToDismiss(e){
+                var element = e.target;
+                if(checkElementAncestry(element, scorpMenu)) return;
+
                 scorpMenuContent.classList.remove("show");
                 window.removeEventListener('click', clickToDismiss);
-                console.log('clicky');
             }
 
         });
@@ -849,7 +877,8 @@
         followUpButton.innerHTML = "Create Follow Up Task";
 
         followUpButton.addEventListener("click", function(e) {
-            
+            scorpMenuContent.classList.remove("show");
+
             var butSave = document.getElementById("butSave");
             if(!butSave){
                 alert("Create follow up task for what? This button doesn't do anything without an open task with data in all of the required fields.");
@@ -947,7 +976,7 @@
     }
 
     function autoDataFixinator(){
-        if(!urlContains(["location/edit.asp", "billto/edit.asp"])) return;
+        if(!urlContains(["location/edit.asp", "billto/edit.asp", "location/add.asp"])) return;
         console.log("autoDataFixinating");
 
         var editButton = document.getElementById("butEdit");
@@ -957,7 +986,12 @@
         var directionsInput;
         var phoneInput, phoneExtInput, altPhoneInput, altPhoneExtInput, mobileInput, mobileLabel;
 
-        if(urlContains(["billto/edit.asp"])){
+        if(urlContains(["location/add.asp"])){
+            directionsInput = document.getElementById("Directions");
+            if(directionsInput.value===""){
+                directionsInput.value = "** ";
+            }
+        } else if(urlContains(["billto/edit.asp"])){
             if(addressInput.value.indexOf(".") > -1){
                 streetLabel = addressInput.parentElement.previousElementSibling;
                 addressInput.value = addressInput.value.replaceAll(".", "");
@@ -1174,7 +1208,9 @@
             scorpMenuContent.appendChild(setupButton);
             
             setupButton.addEventListener("click", function(e) {
-                
+
+                scorpMenuContent.classList.remove("show");
+
                 var taskNameInput = document.getElementById("subject");
 
                 if(!taskNameInput){
@@ -1312,7 +1348,9 @@
             scorpMenuContent.appendChild(welcomeButton);
 
             welcomeButton.addEventListener("click", function(e) {
-                
+
+                scorpMenuContent.classList.remove("show");
+
                 var serviceSetup = getServiceSetup(1);
                 
                 var welcomeLetter = {};
