@@ -14,10 +14,6 @@ button.scorpinated {
 	font-size: 14px;
 }
 
-button.scorpinated::first-letter {
-	text-decoration: underline;
-}
-
 button.scorpinated:hover {
 	background-color: #9B6E1D;
 	color: white;
