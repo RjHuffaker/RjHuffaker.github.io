@@ -1143,11 +1143,12 @@
 
                     if(taskName.includes("Follow up")){
                         otherButtonsContainer.appendChild(taskSendFollowUpButton);
-                    } else {
+                    } else if(taskName===""){
                         otherButtonsContainer.appendChild(taskFollowUpButton);
                     }
 
                     if(taskName.includes("New $")){
+                        otherButtonsContainer.appendChild(taskFollowUpButton);
                         otherButtonsContainer.appendChild(taskSetupButton);
                         otherButtonsContainer.appendChild(taskWelcomeButton);
                     }
