@@ -1,13 +1,18 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.031
+// @version      1.1
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
 // @match        app.pestpac.com/*
 // @match        https://app.pestpac.com/*
+// @match        *app.heymarket.com/*
 // @grant        window.open
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_addValueChangeListener
+// @grant        GM_removeValueChangeListener
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -18,6 +23,8 @@
     var activeSetups, scorpModal, scorpHeader, scorpContent, scorpIcon;
 
     var addSetupTask = false;
+
+    var taskSetupButton, taskWelcomeButton, taskFollowUpButton, taskSendFollowUpButton;
 
     class ActiveSetup {
         constructor(setupArray) {
@@ -71,16 +78,21 @@
     function initializeScorpinator(){
         retrieveCSS();
         retrieveActiveSetups();
-        scorpMenu();
+        //scorpMenu();
         autoContactinator();
         autoTaskinator();
         autoFollowUpinator();
         autoGeocodinator();
         autoDataFixinator();
+        autoMiscellinator();
         traverseAccountinator();
         autoSetupinator();
         autoWelcomator();
+        autoTextinator();
         serviceOrderDuplicator();
+        autoTaskButtonator();
+
+        autoNumberFindinator();
 
         function retrieveCSS(){
             var link = window.document.createElement('link');
@@ -95,7 +107,7 @@
                          function(response){
                 activeSetups = tsvToObjectArray(response);
 
-                scorpModal();
+                createScorpModal();
             });
 
             function tsvToObjectArray(tsv){
@@ -137,10 +149,21 @@
         xmlHttp.send(null);
     }
 
-    function checkElementAncestry(element, ancestor, generations){
+    function checkElementAncestry(element, testElement, generations){
         var currentElement = element;
         while(currentElement.parentElement){
-            if(currentElement===ancestor){
+            if(currentElement===testElement){
+                return true;
+            } else {
+                currentElement = currentElement.parentNode;
+            }
+        }
+    }
+
+    function checkClassAncestry(element, testClass, generations){
+        var currentElement = element;
+        while(currentElement.parentElement){
+            if(currentElement.classList.contains(testClass)){
                 return true;
             } else {
                 currentElement = currentElement.parentNode;
@@ -300,7 +323,7 @@
         });
     }
 
-    function scorpModal(){
+    function createScorpModal(){
         if(!urlContains(["LocationID","location/add.asp","serviceSetup/detail.asp"])) return;
         if(urlContains(["iframe","letters","dialog","notes"])) return;
 
@@ -385,7 +408,9 @@
                                         _divisions.push(data[i].division);
                                     }
                                 }
-                                divisionSelect.value = _divisions.sort((a,b) => _divisions.filter(v => v===a).length - _divisions.filter(v => v===b).length).pop()
+                                divisionSelect.focus();
+                                divisionSelect.value = _divisions.sort((a,b) => _divisions.filter(v => v===a).length - _divisions.filter(v => v===b).length).pop();
+                                divisionSelect.blur();
                             }
                         }
                     });
@@ -539,7 +564,7 @@
 
                 if(addSetupTask){
 
-                    _tr.className += "add-setup-task";
+                    _tr.classList.add("add-setup-task");
                     _tr.dataSetup = data[i];
                     _tr.addEventListener("click", function(e) {
                         addSetupTaskDetails(this.dataSetup);
@@ -684,6 +709,22 @@
         
     }
 
+    function autoContactinator(){
+        if(!urlContains(["location/detail.asp"])) return;
+        console.log("autoContactinating");
+
+        var contactLinks = document.getElementsByClassName("contact-link-span");
+        var urlString = window.location.search.replace("?", "");
+        for(var i = 0; i < contactLinks.length; i++){
+            if(contactLinks[i].hasAttribute("onclick")){
+                contactLinks[i].onclick = null;
+                contactLinks[i].style.cursor = "inherit";
+            } else if(contactLinks[i].children[1]){
+                contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
+            }
+        }
+    }
+
     function autoTaskinator(){
         if(!urlContains(["location/detail.asp"])) return;
         if(urlContains(["iframe"])) return;
@@ -710,7 +751,7 @@
                         var taskButton = document.createElement("a");
                         taskButton.innerHTML = "Create Task";
                         taskButton.id = "taskButton"+i;
-                        taskButton.className += "primary-link";
+                        taskButton.classList.add("primary-link");
 
                         taskButton.style.fontFamily = "NewRocker";
 
@@ -866,18 +907,13 @@
 
         console.log("autoFollowUpinating");
 
-        var scorpMenuContent = document.getElementById("scorpMenuContent");
+        taskFollowUpButton = document.createElement("button");
+        taskFollowUpButton.classList.add("scorpinated");
 
-        if(!scorpMenuContent) return;
+        taskFollowUpButton.innerHTML = "Follow Up";
 
-        var followUpButton = document.createElement("a");
-
-        scorpMenuContent.appendChild(followUpButton);
-
-        followUpButton.innerHTML = "Create Follow Up Task";
-
-        followUpButton.addEventListener("click", function(e) {
-            scorpMenuContent.classList.remove("show");
+        taskFollowUpButton.addEventListener("click", function(e) {
+            e.preventDefault();
 
             var butSave = document.getElementById("butSave");
             if(!butSave){
@@ -962,13 +998,13 @@
 
                 mapMessage.innerHTML = "Correct GeoCode Found.";
 
-                mapMessage.className += " scorpinated";
+                mapMessage.classList.add("scorpinated");
 
                 mapMessage.style.color = "black";
 
                 saveButton.style.fontSize = "14px";
 
-                saveButton.className += " scorpinated";
+                saveButton.classList.add("scorpinated");
 
                 saveButton.innerHTML = "Save";
 			});
@@ -996,13 +1032,13 @@
                 streetLabel = addressInput.parentElement.previousElementSibling;
                 addressInput.value = addressInput.value.replaceAll(".", "");
 
-                streetLabel.className += " scorpinated";
+                streetLabel.classList.add("scorpinated");
 
-                editButton.className += " scorpinated";
+                editButton.classList.add("scorpinated");
 
                 editButton.innerHTML = "Edit";
 
-                saveButton.className += " scorpinated";
+                saveButton.classList.add("scorpinated");
 
                 saveButton.innerHTML = "Save";
             }
@@ -1021,13 +1057,13 @@
 
                 streetLabel = addressInput.parentElement.previousElementSibling;
                 addressInput.value = addressInput.value.replaceAll(".", "");
-                streetLabel.className += " scorpinated";
+                streetLabel.classList.add("scorpinated");
 
                 streetSearchLabel = streetSearchInput.parentElement.previousElementSibling;
                 streetSearchInput.value = streetSearchInput.value.replaceAll(".", "");
-                streetSearchLabel.className += " scorpinated";
+                streetSearchLabel.classList.add("scorpinated");
 
-                saveButton.className += " scorpinated";
+                saveButton.classList.add("scorpinated");
 
                 saveButton.innerHTML = "Save";
 
@@ -1050,11 +1086,11 @@
                 }
 
                 if(mobileInput.value !== ""){
-                    mobileLabel.className += " scorpinated";
+                    mobileLabel.classList.add("scorpinated");
 
                     saveButton.innerHTML = "Save";
 
-                    saveButton.className += " scorpinated";
+                    saveButton.classList.add("scorpinated");
                 }
             }
 
@@ -1070,85 +1106,86 @@
         }
     }
 
-    function traverseAccountinator(){
-        if(!urlContains(["location/detail.asp?LocationID"])) return;
+    function autoTaskButtonator(buttonsToAdd){
+        if(urlContains(["iframe"])) return;
+        if(urlContains(["location/detail.asp"])){
+            console.log("autoTaskButtonating");
 
-        var advancedSearchWrapper = document.getElementsByClassName("advanced-search-wrapper")[0];
-        var quickSearchField = document.getElementById("quicksearchfield");
-        var locationHeaderDetailLink = document.getElementById("locationHeaderDetailLink");
+            var locationTasksSection = document.getElementById('locationTasksSection');
 
-        if(!locationHeaderDetailLink) return;
+            locationTasksSection.addEventListener('click', clickWatcher);
 
-        var prevLink = document.createElement("a");
-        var nextLink = document.createElement("a");
+            function clickWatcher(event){
+                var _target = event.target;
 
-        var traverseDiv = document.createElement("div");
-        traverseDiv.id = "traverse-div";
+                if(!checkClassAncestry(_target, "location-tasks-row")) return;
 
-        prevLink.className += " advanced-search";
-        prevLink.innerHTML = "Prev";
+                var tasksForm = document.getElementById("tasksForm");
 
-        prevLink.href = "#";
-        prevLink.style.position = "absolute";
-        prevLink.style.left = "10px";
+                if(tasksForm){
 
-        nextLink.className += " advanced-search";
-        nextLink.innerHTML = "Next";
+                    var taskName = document.getElementById("subject").value;
 
-        nextLink.href = "#";
-        nextLink.style.position = "absolute";
-        nextLink.style.right = "10px";
+                    var expandedRowButtonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
+                    expandedRowButtonsContainer.style.justifyContent = "space-between";
+                    expandedRowButtonsContainer.style.position = "static";
+                    expandedRowButtonsContainer.style.padding = "0px 32px";
 
-        prevLink.addEventListener("click", function(e){
-            e.preventDefault();
-            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
-            traverseAccounts(false, currentID);
-        });
+                    var cancelEditContainer = document.getElementById("cancelEditContainer");
 
-        nextLink.addEventListener("click", function(e){
-            e.preventDefault();
-            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
-            traverseAccounts(true, currentID);
-        });
+                    var spacerDiv = document.createElement("div");
+                    spacerDiv.style.display = "flex";
+                    spacerDiv.style.flex = "1";
 
-        traverseDiv.appendChild(prevLink);
-        traverseDiv.appendChild(nextLink);
+                    var otherButtonsContainer = document.createElement("div");
+                    otherButtonsContainer.id = "otherTaskButtons";
+                    otherButtonsContainer.style.display = "flex";
 
-        advancedSearchWrapper.appendChild(traverseDiv);
+                    if(taskName.includes("Follow up")){
+                        otherButtonsContainer.appendChild(taskSendFollowUpButton);
+                    } else {
+                        otherButtonsContainer.appendChild(taskFollowUpButton);
+                    }
+
+                    if(taskName.includes("New $")){
+                        otherButtonsContainer.appendChild(taskSetupButton);
+                        otherButtonsContainer.appendChild(taskWelcomeButton);
+                    }
+
+                    if(taskName){
+                        var butSaveContainer = document.getElementById("butSaveContainer");
+                        var completeButton = document.createElement("button");
+                        completeButton.classList.add("scorpinated");
+                        completeButton.innerHTML = "Complete";
+
+                        completeButton.addEventListener("click", function(e){
+                            e.preventDefault();
+
+                            document.getElementById("status").value = "C";
+
+                            document.getElementById("butSave").click();
+
+                        });
 
 
-        function traverseAccounts(forward, startID){
-            var newID = forward ? startID+1 : startID-1;
-            quickSearchField.value = newID;
-            var keyUpEvent = document.createEvent("Event");
-            keyUpEvent.initEvent('keyup');
-            quickSearchField.dispatchEvent(keyUpEvent);
-            var i = 0;
-            var clickInterval = setInterval(function(){
-                i++;
-                var searchResults = document.getElementsByClassName("quick-search-result");
-                if(searchResults.length > 0){
-                    clearInterval(clickInterval);
-                    searchResults[0].click();
+
+                        otherButtonsContainer.appendChild(completeButton);
+                    }
+
+                    expandedRowButtonsContainer.insertBefore(otherButtonsContainer, cancelEditContainer);
+
+                    expandedRowButtonsContainer.insertBefore(spacerDiv, cancelEditContainer);
+
                 }
-                if(i > 10) clearInterval(clickInterval);
-            }, 100);
+                
+
+            };
         }
     }
 
-    function autoContactinator(){
-        if(!urlContains(["location/detail.asp"])) return;
-        console.log("autoContactinating");
-
-        var contactLinks = document.getElementsByClassName("contact-link-span");
-        var urlString = window.location.search.replace("?", "");
-        for(var i = 0; i < contactLinks.length; i++){
-            if(contactLinks[i].hasAttribute("onclick")){
-                contactLinks[i].onclick = null;
-                contactLinks[i].style.cursor = "inherit";
-            } else if(contactLinks[i].children[1]){
-                contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
-            }
+    function autoMiscellinator(){
+        if(urlContains(["/task"])){
+            document.getElementById("taskFilter").click();
         }
     }
 
@@ -1159,7 +1196,7 @@
             console.log(serviceSetup);
             sessionStorage.removeItem("serviceSetup");
             if(serviceSetup){
-                
+
                 var serviceCodeInput = document.getElementById("ServiceCode1");
                 var unitPriceInput = document.getElementById("UnitPrice1");
                 var scheduleInput = document.getElementById("Schedule");
@@ -1167,7 +1204,7 @@
                 var startDateInput = document.getElementById("StartDate");
                 var targetInput = document.getElementById("TargetPest");
                 var techInput = document.getElementById("Tech1");
-                
+
                 serviceCodeInput.focus();
                 serviceCodeInput.value = serviceSetup.frequency;
                 serviceCodeInput.blur();
@@ -1195,34 +1232,26 @@
                 scheduleInput.focus();
                 scheduleInput.value = serviceSetup.schedule;
                 scheduleInput.blur();
-                
+
             }
         }
 
         if(urlContains(["location/detail.asp"])){
-            var scorpMenuContent = document.getElementById("scorpMenuContent");
-            var setupButton = document.createElement("a");
-            
-            setupButton.innerHTML = "Create Service Setup";
-            
-            scorpMenuContent.appendChild(setupButton);
-            
-            setupButton.addEventListener("click", function(e) {
+            taskSetupButton = document.createElement("button");
 
-                scorpMenuContent.classList.remove("show");
+            taskSetupButton.innerHTML = "Create Setup";
+            taskSetupButton.classList.add("scorpinated");
+
+
+            taskSetupButton.addEventListener("click", function(e) {
+                e.preventDefault();
 
                 var taskNameInput = document.getElementById("subject");
-
-                if(!taskNameInput){
-                    alert("Create service setup from what? This button doesn't work unless you have an open task with data in all of the required fields.");
-                    return;
-                }
-
                 var dueDate = document.getElementById("dueDate").value;
                 var taskType = document.getElementById("taskType").value;
                 var description = document.getElementById("description").value;
                 var directions = document.getElementById("tblDirections").value;
-                
+
                 var taskArray = taskNameInput.value.split(" ");
 
                 var startDate;
@@ -1234,7 +1263,7 @@
                 }
 
                 var serviceSetup = {};
-                
+
                 serviceSetup.price = taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
                 serviceSetup.frequency = taskArray[1].replaceAll(/[^a-zA-Z]+/, '').replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
                 serviceSetup.schedule = taskArray[2]+taskArray[1].replaceAll(/[^a-zA-Z]+/, '');
@@ -1279,95 +1308,414 @@
                 serviceSetup = JSON.stringify(serviceSetup);
 
                 sessionStorage.setItem("serviceSetup", serviceSetup);
-                
+
                 var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
-                
+
                 window.location.href = newUrl;
-                
+
             });
         }
     }
 
     function autoWelcomator(){
         if(urlContains(["iframe"])) return;
-        
+
         if(urlContains(["letters/default.asp"])){
             if(sessionStorage.getItem("welcomeLetter")){
                 document.getElementById("butAddLetter").click();
             }
         }
-        
+
         if(urlContains(["letters/add.asp"])){
             if(sessionStorage.getItem("welcomeLetter")){
                 var welcomeLetter = JSON.parse(sessionStorage.getItem("welcomeLetter"));
-                
+
                 document.getElementById("SLT").click();
-                
+
                 var letterCodeInput = document.getElementById("StdLetterSourceCode");
-                
+
                 letterCodeInput.focus();
-                
+
                 letterCodeInput.value = "WELCOME "+welcomeLetter.division;
-                
+
                 letterCodeInput.blur();
-                
+
                 document.getElementById("butContinue").click();
             }
         }
-        
+
         if(urlContains(["letters/detail.asp"])){
             if(sessionStorage.getItem("welcomeLetter")){
                 setTimeout(function(){
                     var welcomeLetter = JSON.parse(sessionStorage.getItem("welcomeLetter"));
-                    
+
                     var iframe = document.getElementById('Letter_ifr').contentWindow.document;
-                    
+
                     var letter = iframe.getElementById("letter");
-                    
+
                     var nameInput = document.getElementById('Name');
-                    
+
                     letter.innerHTML = letter.innerHTML
                                         .replace("first week of each month", welcomeLetter.schedule)
                                         .replace("DATE", welcomeLetter.nextService);
-                    
+
                     nameInput.value = "Welcome";
-                    
+
                     sessionStorage.removeItem("welcomeLetter");
-                    
+
                 }, 1000);
             }
         }
-        
+
         if(urlContains(["location/detail.asp"])){
             var butLetter = document.getElementById("butLetter");
-            var scorpMenuContent = document.getElementById("scorpMenuContent");
-            var welcomeButton = document.createElement("a");
 
-            welcomeButton.innerHTML = "Send Welcome Letter";
-            
-            scorpMenuContent.appendChild(welcomeButton);
+            taskWelcomeButton = document.createElement("button");
+            taskWelcomeButton.classList.add("scorpinated");
 
-            welcomeButton.addEventListener("click", function(e) {
+            taskWelcomeButton.innerHTML = "Welcome Letter";
 
-                scorpMenuContent.classList.remove("show");
+            taskWelcomeButton.addEventListener("click", function(e) {
+
+                e.preventDefault();
 
                 var serviceSetup = getServiceSetup(1);
-                
+
                 var welcomeLetter = {};
-                
+
                 welcomeLetter.division = document.getElementById("Division").value;
-                
+
                 welcomeLetter.schedule = getServiceSchedule(serviceSetup.schedule);
-                
+
                 welcomeLetter.nextService = getServiceDate(serviceSetup.nextService);
-                
+
                 welcomeLetter = JSON.stringify(welcomeLetter);
-                
+
                 sessionStorage.setItem("welcomeLetter", welcomeLetter);
-                
+
                 butLetter.click();
-                
+
             });
+        }
+    }
+
+    function autoTextinator(){
+        console.log('Textinator');
+
+        if(urlContains(['/dialog/changeOrder.asp'])){
+            console.log('dialog');
+            var sendTextButton = document.createElement('button');
+            sendTextButton.innerHTML = 'Send Text';
+            sendTextButton.classList.add('scorpinated');
+
+            sendTextButton.addEventListener('click', function(e){
+                e.preventDefault();
+                var popupData = parsePopupData(GM_getValue('popupData'));
+                GM_setValue('autoText', popupData.phone+"||"+Date.now());
+            });
+
+            var focushere = document.getElementsByTagName("table")[3];
+
+            var newRow = focushere.insertRow(10);
+
+            newRow.insertCell(0);
+
+            var newCell = newRow.insertCell(1);
+
+            newRow.insertCell(2);
+
+            newCell.style.textAlign = "-webkit-center";
+
+            newCell.appendChild(sendTextButton);
+
+        } else if(urlContains(['/appointment/'])){
+            window.addEventListener('dblclick', function(e){
+
+                var target = e.target;
+                var popupText;
+
+                if(target.parentElement.getAttribute("popuptext")){
+                    popupText = target.parentElement.getAttribute("popuptext");
+                } else if(target.parentElement.parentElement.getAttribute("popuptext")){
+                    popupText = target.parentElement.parentElement.getAttribute("popuptext");
+                } else if(target.parentElement.parentElement.parentElement.getAttribute("popuptext")){
+                    popupText = target.parentElement.parentElement.parentElement.getAttribute("popuptext");
+                }
+
+                popupText = popupText
+                                .replace(/<\/?[^>]+(>|$)/g, " ")         // Replace all markup with spaces
+                                .replace(/&nbsp;/g, "")                  // Replace fake spaces with real spaces
+                                .trim()                                  // Trim leading/trailing spaces
+                                .replace(/(?<=[0-9]):(?=[0-9])/g, "")    // Remove colons with numbers on either side
+                                .replace(/\s*:\s*/g, ":")                // Remove extra spaces after colons
+                                .replace(/   +/g, '|')                   // Replace 3 or more spaces with |
+                                .replace(/  +/g, ' ');                   // Reduce 2 or more spaces down to 1 space
+
+                console.log(popupText);
+
+                GM_setValue('popupData', popupText);
+
+
+            }, true);
+
+        } else if(urlContains(['/app.heymarket.com/'])){
+
+            GM_addValueChangeListener('autoText', function(name, old_value, new_value, remote){
+                var _textDataList = new_value.split("|");
+                var _textNumber = _textDataList[0];
+                var _textBody = _textDataList[1];
+                var _textTimeStamp = _textDataList[2];
+                sendMessage(_textNumber, _textBody);
+            });
+
+        } else if(urlContains('/location/detail.asp')){
+
+            taskSendFollowUpButton = document.createElement("button");
+
+            taskSendFollowUpButton.classList.add("scorpinated");
+
+            taskSendFollowUpButton.innerHTML = "Text Follow-up";
+
+            taskSendFollowUpButton.addEventListener("click", function(e) {
+
+                e.preventDefault();
+
+                var taskSubject = document.getElementById('subject').value;
+
+                var taskDescription = document.getElementById('description').value;
+
+                var startDate, nextDate;
+
+                if(taskDescription.includes("StartDate:")){
+                    startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+                } else {
+                    startDate = getFutureDate(document.getElementById("dueDate").value, -14);
+                }
+
+                var nextService = getServiceOrder(1);
+
+                if(nextService.date){
+                    nextDate = nextService.date;
+                } else if(taskDescription.includes("NextDate:")){
+                    nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
+                }
+
+                if(taskSubject.includes('Follow up')){
+                    var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+                    if(!locationPhoneNumberLink) return;
+                    document.getElementById("status").value = "C";
+                    var textNumber = locationPhoneNumberLink.value;
+                    var messageBody = "|Responsible Pest Control here, just following up with service provided on "+startDate+
+                        ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!|";
+
+                    GM_setValue('autoText', textNumber+messageBody+Date.now());
+
+                }
+
+            });
+
+        }
+
+        function parsePopupData(popupText){
+            var popupList = popupText.split('|');
+
+            var popupData = [];
+
+            for(var i = 0; i < popupList.length; i++){
+                var keyValuePair = popupList[i].split(':');
+
+                if(keyValuePair[1]){
+                    popupData[keyValuePair[0].toLowerCase()] = keyValuePair[1];
+                } else {
+                    popupData[i] = keyValuePair[0];
+                }
+            }
+
+            return popupData;
+        }
+
+        function sendMessage(textNumber, messageBody){
+            var chatList = document.getElementById('chat-list');
+            var contactList = document.getElementById('chat-contact-list');
+
+            var composeButton = document.getElementsByClassName('ico-compose')[0];
+
+            if(contactList.classList.contains('hidden')){
+                composeButton.click();
+            }
+
+            var inputSearchContact = document.getElementById('inputSearchContact');
+
+            if(inputSearchContact){
+                var keyUpEvent = document.createEvent("Event");
+                keyUpEvent.initEvent('keyup');
+
+                inputSearchContact.value = textNumber;
+
+                inputSearchContact.dispatchEvent(keyUpEvent);
+
+                var firstContactRow = document.getElementsByClassName('contact-row')[0];
+
+                firstContactRow.children[0].click();
+
+                var messageTextarea = document.getElementById('message-textarea');
+
+                messageTextarea.value = messageBody;
+
+                messageTextarea.dispatchEvent(new InputEvent('input'));
+
+            }
+        }
+
+    }
+
+    function autoNumberFindinator(){
+        if(urlContains(["iframe"])) return;
+        var phoneNumberRegEx = /(?:^|[\s\(])(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?!\.\S|[^\s\)x\.])/;
+        var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
+
+        var linking = false;
+
+        var linkClass = "autoText-link";
+
+        linkPhoneNumbers(document.getElementById("location-address-block"));
+
+        linkPhoneNumbers(document.getElementById("billto-address-block"));
+
+        function linkPhoneNumbers(node) {
+            if(!node) return;
+            for (var i = 0; i < node.childNodes.length; ++i) {
+                var child = node.childNodes[i];
+                if (child.nodeName == "SCRIPT" || child.nodeName == "NOSCRIPT"
+                    || child.nodeName == "OBJECT" || child.nodeName == "EMBED"
+                    || child.nodeName == "APPLET" || child.nodeName == "IFRAME") {
+                    continue;
+                }
+
+                if (child.childNodes.length > 0) {
+                    linkPhoneNumbers(child);
+                } else if (child.nodeType == 3) {
+                    var phoneNumbers = phoneNumberRegExMatcher.exec(child.nodeValue);
+                    if (phoneNumbers){
+                        console.log(phoneNumbers);
+                        var nextChild = child.nextSibling;
+                        if (nextChild && nextChild.class == linkClass) {
+                            continue;
+                        }
+
+                        var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
+                        var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
+
+
+                        var image = document.createElement("img");
+                        image.src = "https://rjhuffaker.github.io/heymarket_black.png";
+                        image.style.width = "1em";
+                        image.style.height = "1em";
+                        image.style.cursor = "pointer";
+
+
+                        var link = document.createElement("a");
+                        link.style.cursor = "pointer";
+                        link.addEventListener("click", function(){
+                            GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"||"+Date.now());
+
+                            spinButton(image);
+                        });
+
+                        link.class = linkClass;
+                        link.style.marginLeft = "0.25em";
+                        link.appendChild(image);
+
+                        child.splitText(phoneNumbers.index + phoneNumbers[0].length);
+                        node.insertBefore(link, node.childNodes[++i]);
+                    }
+                }
+            }
+        }
+
+        function spinButton(elem){
+            var _count = 0;
+            var spinterval = setInterval(spinner, 25);
+            function spinner(){
+                if(_count <= 20){
+                    var size = _count <= 10 ? Math.abs(1+_count*.1)+"em" : Math.abs(3-_count*.1)+"em";
+                    elem.style.width = size;
+                    elem.style.height = size;
+                    elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
+                    _count++;
+                } else {
+                    clearInterval(spinterval);
+                }
+            }
+
+        }
+
+    }
+
+    function traverseAccountinator(){
+        if(!urlContains(["location/detail.asp?LocationID"])) return;
+
+        var advancedSearchWrapper = document.getElementsByClassName("advanced-search-wrapper")[0];
+        var quickSearchField = document.getElementById("quicksearchfield");
+        var locationHeaderDetailLink = document.getElementById("locationHeaderDetailLink");
+
+        if(!locationHeaderDetailLink) return;
+
+        var prevLink = document.createElement("a");
+        var nextLink = document.createElement("a");
+
+        var traverseDiv = document.createElement("div");
+        traverseDiv.id = "traverse-div";
+
+        prevLink.classList.add("advanced-search");
+        prevLink.innerHTML = "Prev";
+
+        prevLink.href = "#";
+        prevLink.style.position = "absolute";
+        prevLink.style.left = "10px";
+
+        nextLink.classList.add("advanced-search");
+        nextLink.innerHTML = "Next";
+
+        nextLink.href = "#";
+        nextLink.style.position = "absolute";
+        nextLink.style.right = "10px";
+
+        prevLink.addEventListener("click", function(e){
+            e.preventDefault();
+            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
+            traverseAccounts(false, currentID);
+        });
+
+        nextLink.addEventListener("click", function(e){
+            e.preventDefault();
+            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
+            traverseAccounts(true, currentID);
+        });
+
+        traverseDiv.appendChild(prevLink);
+        traverseDiv.appendChild(nextLink);
+
+        advancedSearchWrapper.appendChild(traverseDiv);
+
+
+        function traverseAccounts(forward, startID){
+            var newID = forward ? startID+1 : startID-1;
+            quickSearchField.value = newID;
+            var keyUpEvent = document.createEvent("Event");
+            keyUpEvent.initEvent('keyup');
+            quickSearchField.dispatchEvent(keyUpEvent);
+            var i = 0;
+            var clickInterval = setInterval(function(){
+                i++;
+                var searchResults = document.getElementsByClassName("quick-search-result");
+                if(searchResults.length > 0){
+                    clearInterval(clickInterval);
+                    searchResults[0].click();
+                }
+                if(i > 10) clearInterval(clickInterval);
+            }, 100);
         }
     }
 
@@ -1402,7 +1750,7 @@
             if(choicesSpan){
             
                 var duplicatorButton = document.createElement("button");
-                duplicatorButton.className += "scorpinated";
+                duplicatorButton.classList.add("scorpinated");
                 duplicatorButton.innerHTML = "Duplicate";
                 duplicatorButton.style.marginRight = "8px";
                 
