@@ -99,6 +99,15 @@ button.scorpinated:hover {
 	font-size: 200%;
 }
 
+#scorp-expand {
+	color: #ccc;
+	cursor: pointer;
+	position: absolute;
+	top: 4px;
+	left: 12px;
+	font-size: 200%;
+}
+
 #scorp-content {
 	margin: 10px;
 }
