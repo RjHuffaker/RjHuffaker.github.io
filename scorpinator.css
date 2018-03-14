@@ -55,6 +55,10 @@ button.scorpinated:hover {
 	display: none;
 }
 
+#scorp-modal.expanded {
+	width: 600px;
+}
+
 #scorp-modal.show {
 	display: block;
 }
