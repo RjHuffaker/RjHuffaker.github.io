@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.100
+// @version      1.110
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -25,6 +25,12 @@
     var addSetupTask = false;
 
     var taskSetupButton, taskWelcomeButton, taskFollowUpButton, taskSendFollowUpButton;
+
+    var excludedWeekDays = [];
+
+    var excludedWeeks = [];
+
+    var excludedTechs = [];
 
     class ActiveSetup {
         constructor(setupArray) {
@@ -343,32 +349,64 @@
         scorpExit.id = "scorp-exit";
         scorpExit.innerHTML = "&#10006;";
 
+        var scorpTab = document.createElement("div");
+        scorpTab.id = "scorp-tab";
+
+        var scorpTabLabel = document.createElement("div");
+        scorpTabLabel.id = "scorp-tab-label";
+        scorpTabLabel.innerHTML = "Filter By:";
+        scorpTabLabel.classList.add("scorpinated");
+
+        var scorpTabContent = document.createElement("div");
+        scorpTabContent.id = "scorp-tab-content";
+        
+        var weekDayFilter = createFilter(["MON","TUE","WED","THU","FRI"], excludedWeekDays);
+
+        var weekFilter = createFilter(["1","2","3","4"], excludedWeeks);
+
+        var techFilter = createFilter(["DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE", "JOSEPH A", "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "RUSSELL", "SHAWN", "TREVORP"], excludedTechs);
+
+        scorpTabContent.appendChild(document.createTextNode("Exclude Week Day"));
+        scorpTabContent.appendChild(weekDayFilter);
+        scorpTabContent.appendChild(document.createTextNode("Exclude Week"));
+        scorpTabContent.appendChild(weekFilter);
+        scorpTabContent.appendChild(document.createTextNode("Exclude Tech"));
+        scorpTabContent.appendChild(techFilter);
+
         var scorpHeaderImage = document.createElement("img");
         scorpHeaderImage.id = "scorp-header-image";
         scorpHeaderImage.src = "https://rjhuffaker.github.io/ScorpImage.png";
 
-        scorpHeaderImage.style.display = "inline-block";
+        scorpHeaderImage.style.display = "inline";
 
         var scorpTitle = document.createElement("span");
         scorpTitle.id = "scorp-title";
+        scorpTitle.style.boxSizing = "border-box";
         scorpTitle.innerHTML = "Scorpinator";
-        
+
+        scorpTab.appendChild(scorpTabLabel);
+        scorpTab.appendChild(scorpTabContent);
+
         scorpHeader.appendChild(scorpHeaderImage);
         scorpHeader.appendChild(scorpTitle);
         scorpHeader.appendChild(scorpExit);
 
         scorpModal = document.createElement("div");
         scorpModal.id = "scorp-modal";
-        scorpModal.style.zIndex = 10000;
+        scorpModal.style.zIndex = 9000;
 
         var scorpContainer = document.createElement("div");
         scorpContainer.id = "scorp-container";
+        scorpContainer.style.position = "absolute";
+        scorpContainer.style.zIndex = 10000;
 
         var caretDiv = document.createElement("div");
         caretDiv.id = "caret-div";
+        caretDiv.style.zIndex = 10000;
 
         var caretDivBorder = document.createElement("div");
         caretDivBorder.id = "caret-div-border";
+        caretDivBorder.style.zIndex = 10000;
 
         var bodyElement = document.getElementsByTagName('body')[0];
 
@@ -376,6 +414,7 @@
         bodyElement.appendChild(scorpModal);
 
         scorpModal.appendChild(scorpContainer);
+        scorpModal.appendChild(scorpTab);
         scorpModal.appendChild(caretDivBorder);
         scorpModal.appendChild(caretDiv);
 
@@ -389,6 +428,16 @@
             scorpIcon.style.opacity = "0.6";
         });
 
+        scorpTabLabel.addEventListener("click", function(e){
+            if(scorpTab.classList.contains("expanded")){
+                scorpTab.classList.remove("expanded");
+                scorpTab.style.left = "-15px";
+            } else {
+                scorpTab.classList.add("expanded");
+                scorpTab.style.left = "-224px";
+            }
+        });
+
         scorpIcon.addEventListener("click", function(e) {
             if(scorpModal.classList.contains("show")){
                 addSetupTask = false;
@@ -396,7 +445,7 @@
             } else {
                 scorpModal.classList.add("show");
                 fetchGeocodes(getLocationAddress(), function(data){
-                    getNearestActiveSetup(data, function(data){
+                    getNearestActiveSetups(data, function(data){
                         formatScorpContent(data);
                         if(urlContains(["location/add.asp", "location/edit.asp"])){
                             autoGeocodinator();
@@ -457,7 +506,7 @@
             return address.replace(/#[1-9]+,/g, "");
         }
 
-        function getNearestActiveSetup(data, callback){
+        function getNearestActiveSetups(data, callback){
             var al = activeSetups.length;
             var lowest = 10000;
             var nearest = {};
@@ -491,6 +540,8 @@
 
                 if(addTech) techList.push(new technician(activeSetups[i].tech));
 
+                if(excludedWeekDays.indexOf(setup.weekDay) < 0 && excludedWeeks.indexOf(setup.week) < 0 && excludedTechs.indexOf(setup.tech) < 0)
+
                 if(nearestList.length < 20){
                     setup.hyp = setup.getDist(_long, _lat).toFixed(3);
                     nearestList.push(setup);
@@ -518,6 +569,47 @@
 
             callback(nearestList);
         }
+
+        function createFilter(inputList, outputList){
+            var _checkList = document.createElement("div");
+
+            inputList.forEach(function(filter){
+                var _checkBox = document.createElement("input");
+                _checkBox.type = "checkbox";
+                _checkBox.name = filter+"Box";
+                _checkBox.checked = false;
+                _checkBox.id = filter+"Box";
+
+                var _spacer = document.createElement("span");
+                _spacer.innerHTML = "<br/>";
+
+                var _label = document.createElement("label");
+                _label.innerHTML = filter+"&nbsp;&nbsp;";
+                _label.htmlFor = filter+"Box";
+
+                _checkList.appendChild(_checkBox);
+                _checkList.appendChild(_label);
+                _checkList.appendChild(_spacer);
+
+                _checkBox.addEventListener("click", function(){
+                    outputList.length = 0;
+                    for(var i = 0; i < inputList.length; i++){
+                        if(document.getElementById(inputList[i]+"Box").checked){
+                            outputList.push(inputList[i]);
+                        }
+                    }
+
+                    fetchGeocodes(getLocationAddress(), function(data){
+                        getNearestActiveSetups(data, function(data){
+                            formatScorpContent(data);
+                        });
+                    });
+                });
+            });
+
+            return _checkList;
+        }
+
 
         function formatScorpContent(data){
             scorpContent.innerHTML = "";
@@ -549,16 +641,6 @@
             var _table = document.createElement("table");
             _table.border = 1;
 
-            var _header = _table.insertRow();
-
-            _header.insertCell().innerHTML = "Zip Code";
-            _header.insertCell().innerHTML = "Schedule";
-            _header.insertCell().innerHTML = "Tech/Division";
-            _header.insertCell().innerHTML = "Distance *";
-            _header.insertCell().innerHTML = "Stops";
-
-            _header.style.fontWeight = "bold";
-
             for(var i = 0; i < data.length; i++){
                 var _tr = _table.insertRow();
 
@@ -588,11 +670,27 @@
                     _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
                 }
             }
-            
+
+            var _header = _table.createTHead();
+
+            var _headerRow = _header.insertRow(0);
+
+            _headerRow.insertCell().innerHTML = "Zip Code";
+            _headerRow.insertCell().innerHTML = "Schedule";
+            _headerRow.insertCell().innerHTML = "Tech/Division";
+            _headerRow.insertCell().innerHTML = "Distance *";
+            _headerRow.insertCell().innerHTML = "Stops";
+
+            _headerRow.style.fontWeight = "bold";
+
             var geocodesLabel = document.createElement("span");
             geocodesLabel.id = "geocodesLabel";
             geocodesLabel.innerHTML = "Latitude: "+sessionStorage.getItem("latitude")+" Longitude: "+sessionStorage.getItem("longitude");
-            
+
+            var scrollDiv = document.createElement("div");
+            scrollDiv.style.height = "";
+            scrollDiv.style.width = "";
+
             scorpContent.appendChild(_table);
 
             scorpContent.appendChild(geocodesLabel);
@@ -797,7 +895,7 @@
                     prioritySelect.value = "3";
                     taskTypeSelect.value = "12";
                     dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                    taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 13);
+                    taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
                     break;
                 case "FREE ESTIMATE":
                     prioritySelect.value = "3";
@@ -836,7 +934,7 @@
                     prioritySelect.value = "3";
                     taskTypeSelect.value = "12";
                     dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                    taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 13);
+                    taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
                     break;
                 default:
                     console.log("TODO: Don't know what to do with this.");
@@ -965,7 +1063,7 @@
                 taskNameInput.value = "Follow up for initial";
                 descriptionInput.value = taskDescription;
                 taskTypeSelect.value = "16";
-                dueDateInput.value = getFutureDate(taskDate, 13);
+                dueDateInput.value = getFutureDate(taskDate, 14);
 
                 selectTaskFor.click();
 
@@ -1111,75 +1209,88 @@
         if(urlContains(["location/detail.asp"])){
             console.log("autoTaskButtonating");
 
-            var locationTasksSection = document.getElementById('locationTasksSection');
+            var locationRowSection = document.getElementsByClassName('location-row-section')[0];
 
-            locationTasksSection.addEventListener('click', clickWatcher);
+            locationRowSection.addEventListener('click', clickWatcher, true);
 
             function clickWatcher(event){
-                var _target = event.target;
+                console.log("clickWatcher");
+                setTimeout(function(){
 
-                if(!checkClassAncestry(_target, "location-tasks-row")) return;
+                    var tasksForm = document.getElementById("tasksForm");
 
-                var tasksForm = document.getElementById("tasksForm");
+                    if(tasksForm){
+                        if(tasksForm.classList.contains("buttonated")) return;
 
-                if(tasksForm){
+                        tasksForm.classList.add("buttonated");
 
-                    var taskName = document.getElementById("subject").value;
+                        var taskName = document.getElementById("subject").value;
 
-                    var expandedRowButtonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
-                    expandedRowButtonsContainer.style.justifyContent = "space-between";
-                    expandedRowButtonsContainer.style.position = "static";
-                    expandedRowButtonsContainer.style.padding = "0px 32px";
+                        var expandedRowButtonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
+                        expandedRowButtonsContainer.style.justifyContent = "space-between";
+                        expandedRowButtonsContainer.style.position = "static";
+                        expandedRowButtonsContainer.style.padding = "0px 32px";
 
-                    var cancelEditContainer = document.getElementById("cancelEditContainer");
 
-                    var spacerDiv = document.createElement("div");
-                    spacerDiv.style.display = "flex";
-                    spacerDiv.style.flex = "1";
 
-                    var otherButtonsContainer = document.createElement("div");
-                    otherButtonsContainer.id = "otherTaskButtons";
-                    otherButtonsContainer.style.display = "flex";
+                        var allNotesContainer = document.getElementById("allNotesContainer");
+                        allNotesContainer.style.minHeight = "18px";
 
-                    if(taskName.includes("Follow up")){
-                        otherButtonsContainer.appendChild(taskSendFollowUpButton);
-                    } else if(taskName===""){
-                        otherButtonsContainer.appendChild(taskFollowUpButton);
+                        var lastNoteSection = document.getElementById("lastNoteSection");
+                        lastNoteSection.style.minHeight = "140px";
+
+                        var locationTaskNoteSection = document.getElementById("locationTaskNoteSection");
+                        locationTaskNoteSection.parentNode.style.minHeight = "166px";
+
+
+
+                        var cancelEditContainer = document.getElementById("cancelEditContainer");
+
+                        var spacerDiv = document.createElement("div");
+                        spacerDiv.style.display = "flex";
+                        spacerDiv.style.flex = "1";
+
+                        var otherButtonsContainer = document.createElement("div");
+                        otherButtonsContainer.id = "otherTaskButtons";
+                        otherButtonsContainer.style.display = "flex";
+
+                        if(taskName.includes("Follow up")){
+                            otherButtonsContainer.appendChild(taskSendFollowUpButton);
+                        } else if(taskName.includes("New")){
+                            otherButtonsContainer.appendChild(taskFollowUpButton);
+                            otherButtonsContainer.appendChild(taskSetupButton);
+                            otherButtonsContainer.appendChild(taskWelcomeButton);
+                        } else {
+                            otherButtonsContainer.appendChild(taskFollowUpButton);
+                        }
+
+                        if(taskName){
+                            var butSaveContainer = document.getElementById("butSaveContainer");
+                            var completeButton = document.createElement("button");
+                            completeButton.classList.add("scorpinated");
+                            completeButton.innerHTML = "Complete";
+
+                            completeButton.addEventListener("click", function(e){
+                                e.preventDefault();
+
+                                document.getElementById("status").value = "C";
+
+                                document.getElementById("butSave").click();
+
+                            });
+
+
+
+                            otherButtonsContainer.appendChild(completeButton);
+                        }
+
+                        expandedRowButtonsContainer.insertBefore(otherButtonsContainer, cancelEditContainer);
+
+                        expandedRowButtonsContainer.insertBefore(spacerDiv, cancelEditContainer);
+
                     }
-
-                    if(taskName.includes("New $")){
-                        otherButtonsContainer.appendChild(taskFollowUpButton);
-                        otherButtonsContainer.appendChild(taskSetupButton);
-                        otherButtonsContainer.appendChild(taskWelcomeButton);
-                    }
-
-                    if(taskName){
-                        var butSaveContainer = document.getElementById("butSaveContainer");
-                        var completeButton = document.createElement("button");
-                        completeButton.classList.add("scorpinated");
-                        completeButton.innerHTML = "Complete";
-
-                        completeButton.addEventListener("click", function(e){
-                            e.preventDefault();
-
-                            document.getElementById("status").value = "C";
-
-                            document.getElementById("butSave").click();
-
-                        });
-
-
-
-                        otherButtonsContainer.appendChild(completeButton);
-                    }
-
-                    expandedRowButtonsContainer.insertBefore(otherButtonsContainer, cancelEditContainer);
-
-                    expandedRowButtonsContainer.insertBefore(spacerDiv, cancelEditContainer);
-
-                }
                 
-
+                }, 500);
             };
         }
     }

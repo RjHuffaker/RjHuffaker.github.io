@@ -103,15 +103,6 @@ button.scorpinated:hover {
 	font-size: 200%;
 }
 
-#scorp-expand {
-	color: #ccc;
-	cursor: pointer;
-	position: absolute;
-	top: 4px;
-	left: 12px;
-	font-size: 200%;
-}
-
 #scorp-content {
 	margin: 10px;
 }
@@ -132,6 +123,42 @@ button.scorpinated:hover {
 
 #scorp-modal table .add-setup-task:hover td {
 	background-color: rgb(231, 191, 191);
+}
+
+#scorp-tab {
+	position: absolute;
+	z-index: 8000;
+	width: 240px;
+	height: 210px;
+	top: 132px;
+	left: -15px;
+	box-sizing: border-box;
+	box-shadow: 0px 0px 10px #888;
+	border-radius: 5px 0px 0px 5px;
+}
+
+#scorp-tab-label {
+	position: relative;
+	height: 30px;
+	width: 210px;
+	transform: rotate(270deg);
+	top: 90px;
+	left: -90px;
+	box-sizing: border-box;
+	background-color: rgb(153, 10, 32);
+	border-radius: 5px 5px 0px 0px;
+	text-align: center;
+}
+
+#scorp-tab-content {
+	display: relative;
+	height: 210px;
+	width: 210px;
+	margin-top: -30px;
+	margin-left: 30px;
+	box-sizing: border-box;
+	background-color: white;
+	overflow: auto;
 }
 
 #caret-div {
