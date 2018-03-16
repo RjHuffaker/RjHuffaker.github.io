@@ -183,12 +183,12 @@ button.scorpinated:hover {
 	border-left: 15px solid transparent;
 }
 
-#scorpMenu {
+#scorp-menu {
 	position: relative;
 	display: inline-block;
 }
 
-#scorpMenuButton {
+#scorp-menu-button {
 	background-color: rgb(153, 10, 32);
 	padding: 8px;
 	min-height: 32px;
@@ -199,13 +199,13 @@ button.scorpinated:hover {
 	cursor: pointer;
 }
 
-#scorpMenuButton span {
+#scorp-menu-button span {
 	color: white;
 	font-size: 14px;
 	font-family: NewRocker;
 }
 
-#scorpMenuButton img {
+#scorp-menu-button img {
 	height: 24px;
 	width: 24px;
 	margin-top: -4px;
@@ -213,11 +213,11 @@ button.scorpinated:hover {
 	margin-right: 8px;
 }
 
-#scorpMenuButton:hover, #scorpDropDownButton:focus {
+#scorp-menu-button:hover {
 	background-color: rgb(183, 10, 32);
 }
 
-#scorpMenuContent {
+#scorp-menu-content {
 	display: none;
 	position: absolute;
 	right: 0;
@@ -227,7 +227,7 @@ button.scorpinated:hover {
 	z-index: 1;
 }
 
-#scorpMenuContent a {
+#scorp-menu-content a {
 	color: black;
 	padding: 6px 10px;
 	text-decoration: none;
@@ -238,16 +238,16 @@ button.scorpinated:hover {
 	cursor: pointer;
 }
 
-#scorpMenuContent textarea {
+#scorp-menu-content textarea {
 	padding: 6px 10px;
 	
 }
 
-#scorpMenuContent a:hover {
+#scorp-menu-content a:hover {
 	background-color: #ddd;
 }
 
-#scorpMenuContent.show {
+#scorp-menu-content.show {
 	display: block;
 }
 
