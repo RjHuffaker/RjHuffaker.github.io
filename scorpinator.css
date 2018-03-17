@@ -35,7 +35,7 @@ button.scorpinated:hover {
 	font-size: 12px;
 }
 
-#scorp-icon {
+#prox-icon {
 	height: 40px;
 	width: 40px;
 	position: fixed;
@@ -46,7 +46,7 @@ button.scorpinated:hover {
 	opacity: 0.6;
 }
 
-#scorp-modal {
+#prox-modal {
 	height: 600px;
 	width: 500px;
 	position: fixed;
@@ -55,15 +55,15 @@ button.scorpinated:hover {
 	display: none;
 }
 
-#scorp-modal.expanded {
+#prox-modal.expanded {
 	width: 600px;
 }
 
-#scorp-modal.show {
+#prox-modal.show {
 	display: block;
 }
 
-#scorp-container {
+#prox-container {
 	height: 568px;
 	width: 468px;
 	position: relative;
@@ -74,13 +74,13 @@ button.scorpinated:hover {
 	box-shadow: 0px 0px 20px #888;
 }
 
-#scorp-header {
+#prox-header {
 	height: 115px;
 	background-color: rgb(153, 10, 32);
 	text-align: center;
 }
 
-#scorp-header-image {
+#prox-header-image {
 	margin-top: 24px;
 	margin-bottom: -16px;
 	margin-left: -32px;
@@ -89,12 +89,12 @@ button.scorpinated:hover {
 	width: 64px;
 }
 
-#scorp-title {
+#prox-title {
 	font-family: NewRocker;
 	font-size: 500%;
 }
 
-#scorp-exit {
+#prox-exit {
 	color: #ccc;
 	cursor: pointer;
 	position: absolute;
@@ -103,29 +103,29 @@ button.scorpinated:hover {
 	font-size: 200%;
 }
 
-#scorp-content {
+#prox-content {
 	margin: 10px;
 }
 
-#scorp-modal table {
+#prox-modal table {
 	width: 100%;
 	border-collapse: collapse;
 	border: 1px solid #999;
 }
 
-#scorp-modal table .add-setup-task {
+#prox-modal table .add-setup-task {
 	cursor: pointer;
 }
 
-#scorp-modal table .add-setup-task:hover {
+#prox-modal table .add-setup-task:hover {
 	border: 1px solid black;
 }
 
-#scorp-modal table .add-setup-task:hover td {
+#prox-modal table .add-setup-task:hover td {
 	background-color: rgb(231, 191, 191);
 }
 
-#scorp-tab {
+#prox-tab {
 	position: absolute;
 	z-index: 8000;
 	width: 240px;
@@ -137,7 +137,7 @@ button.scorpinated:hover {
 	border-radius: 5px 0px 0px 5px;
 }
 
-#scorp-tab-label {
+#prox-tab-label {
 	position: relative;
 	height: 30px;
 	width: 210px;
@@ -150,7 +150,7 @@ button.scorpinated:hover {
 	text-align: center;
 }
 
-#scorp-tab-content {
+#prox-tab-content {
 	display: relative;
 	height: 210px;
 	width: 210px;
