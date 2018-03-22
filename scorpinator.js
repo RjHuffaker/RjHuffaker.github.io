@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.121
+// @version      1.122
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -94,9 +94,9 @@
         autoWelcomator();
         autoTextinator();
         serviceOrderDuplicator();
-        addPageHeaderButtons();
-        scorpBotModal();
-        autoScorpBot();
+      //  addPageHeaderButtons();
+      //  scorpBotModal();
+      //  autoScorpBot();
     }
 
     function retrieveCSS(){
@@ -317,6 +317,7 @@
                 serviceSetup.lastService = setupColumns[5].innerHTML.replace("&nbsp;", "");
                 serviceSetup.nextService = setupColumns[6].innerHTML.replace("&nbsp;", "");
                 serviceSetup.price = setupColumns[8].innerHTML.replace("&nbsp;", "");
+                serviceSetup.active = setupTableRows[row].getAttribute("bgcolor")==="#ffffff";
             }
 
             return serviceSetup;
@@ -1107,11 +1108,6 @@
             event.preventDefault();
 
             var butSave = document.getElementById("butSave");
-            if(!butSave){
-                alert("Create follow up task for what? This button doesn't do anything without an open task with data in all of the required fields.");
-                return;
-            }
-
             var dueDate = document.getElementById("dueDate").value;
             var taskName = document.getElementById("subject").value;
             var taskDescription = document.getElementById("description").value;
@@ -1320,7 +1316,11 @@
                 unitPriceInput.blur();
 
                 workTimeInput.focus();
-                workTimeInput.value = new Date().getHours() + ":" + new Date().getMinutes();
+                var hours = new Date().getHours();
+                hours = hours<12?hours:hours-12;
+                var minutes = new Date().getMinutes();
+                minutes = minutes>10?minutes:"0"+minutes;
+                workTimeInput.value = hours+":"+minutes;
                 workTimeInput.blur();
 
                 startDateInput.focus();
@@ -1337,18 +1337,27 @@
 
                 scheduleInput.focus();
 
-                if(serviceSetup.frequency === "BIMONTHLY"){
-                    var testDate;
-                    if(serviceSetup.nextDate.includes("/")){
-                        testDate = serviceSetup.nextDate;
-                    } else {
-                        testDate = serviceSetup.startDate;
-                    }
+                var month;
 
-                    if(parseInt(testDate.split("/")[0]) % 2){
+                if(serviceSetup.nextDate.includes("/")){
+                    month = parseInt(serviceSetup.nextDate.split("/")[0]);
+                } else {
+                    month = parseInt(serviceSetup.startDate.split("/")[0]);
+                }
+
+                if(serviceSetup.frequency === "BIMONTHLY"){
+                    if(month % 2){
                         scheduleInput.value = serviceSetup.schedule+"J";
                     } else {
                         scheduleInput.value = serviceSetup.schedule+"F";
+                    }
+                } else if(serviceSetup.frequency === "QUARTERLY"){
+                    if(month===1 || month===4 || month===7 || month===10){
+                        scheduleInput.value = serviceSetup.schedule+"J";
+                    } else if(month===2 || month===5 || month===8 || month===11){
+                        scheduleInput.value = serviceSetup.schedule+"F";
+                    } else if(month===3 || month===6 || month===9 || month===12){
+                        scheduleInput.value = serviceSetup.schedule+"M";
                     }
                 } else {
                     scheduleInput.value = serviceSetup.schedule;
@@ -1358,6 +1367,7 @@
 
             }
         }
+
     }
 
     function autoWelcomator(){
@@ -1411,7 +1421,8 @@
 		if(!urlContains(["location/edit.asp", "location/add.asp"])) return;
         console.log("autoGeocodinating");
 
-		var saveButton = document.getElementById("butSave");
+		var butSave = document.getElementById("butSave");
+		var butAdd = document.getElementById("butAdd");
 		var addressInput = document.getElementById("Address");
 		var mapMessage = document.getElementById("map_message");
 
@@ -1425,22 +1436,22 @@
 
 			fetchGeocodes(address, function(data){
 				document.getElementById("Longitude").value = data.longitude;
-
 				document.getElementById("Latitude").value = data.latitude;
-
 				document.getElementById("ExclBatchGeoCode").click();
 
                 mapMessage.innerHTML = "Correct GeoCode Found.";
-
                 mapMessage.classList.add("scorpinated");
-
                 mapMessage.style.color = "black";
 
-                saveButton.style.fontSize = "14px";
-
-                saveButton.classList.add("scorpinated");
-
-                saveButton.innerHTML = "Save";
+                if(butSave){
+                    butSave.style.fontSize = "14px";
+                    butSave.classList.add("scorpinated");
+                    butSave.innerHTML = "Save";
+                } else if(butAdd){
+                    butAdd.style.fontSize = "14px";
+                    butAdd.classList.add("scorpinated");
+                    butAdd.innerHTML = "Save";
+                }
 			});
 		}
     }
@@ -1465,8 +1476,7 @@
             var editButton = document.getElementById("butEdit");
             var saveButton = document.getElementById("butSave");
             var addressInput = document.getElementById("Address");
-            var streetLabel, streetSearchLabel, streetSearchInput;
-            var directionsInput;
+            var streetLabel, streetSearchLabel, streetSearchInput, directionsInput;
             var phoneInput, phoneExtInput, altPhoneInput, altPhoneExtInput, mobileInput, mobileLabel;
 
             if(urlContains(["location/add.asp"])){
@@ -1482,11 +1492,9 @@
                     streetLabel.classList.add("scorpinated");
 
                     editButton.classList.add("scorpinated");
-
                     editButton.innerHTML = "Edit";
 
                     saveButton.classList.add("scorpinated");
-
                     saveButton.innerHTML = "Save";
                 }
             } else if(urlContains(["location/edit.asp"])){
@@ -1550,6 +1558,8 @@
                     directionsInput.value = "** "+directionsInput.value;
 
                 }
+
+
             }
         }
     }
@@ -1963,11 +1973,13 @@
         }
     }
 
+
     function scorpBotModal(){
         if(urlContains(["location/detail.asp"])){
             var bodyElement = document.getElementsByTagName('body')[0];
-            bodyElement.appendChild(createModalWindow());
+
             bodyElement.appendChild(createModalOverlay());
+            bodyElement.appendChild(createModalWindow());
 
             function createModalOverlay(){
                 var modalOverlay = document.createElement("div");
@@ -1982,6 +1994,7 @@
                 modalOverlay.style.opacity = "0.5";
                 modalOverlay.style.backgroundColor = "#333";
                 modalOverlay.onclick = dismissModal;
+
                 return modalOverlay;
             }
 
@@ -1995,172 +2008,348 @@
                 modalWindow.style.left = "20%";
                 modalWindow.style.height = "80%";
                 modalWindow.style.width = "60%";
+
                 modalWindow.appendChild(createModalContent());
 
                 return modalWindow;
-            }
 
-            function createModalContent(){
-                var modalContent = document.createElement("div");
-                modalContent.id = "modal-content";
-                modalContent.style.position = "static";
-                modalContent.style.top = "0";
-                modalContent.style.left = "0";
-                modalContent.style.height = "100%";
-                modalContent.style.width = "100%";
-                modalContent.style.border = "1px solid black";
-                modalContent.appendChild(createModalHeader());
-                modalContent.appendChild(createModalBody());
-                modalContent.appendChild(createModalFooter());
+                function createModalContent(){
+                    var modalContent = document.createElement("div");
+                    modalContent.id = "modal-content";
+                    modalContent.style.position = "static";
+                    modalContent.style.top = "0";
+                    modalContent.style.left = "0";
+                    modalContent.style.height = "100%";
+                    modalContent.style.width = "100%";
+                    modalContent.style.border = "1px solid black";
 
-                return modalContent
+                    modalContent.appendChild(createModalHeader());
+                    modalContent.appendChild(createModalBody());
+                    modalContent.appendChild(createModalFooter());
 
-                function createModalHeader(){
-                    var modalHeader = document.createElement("div");
-                    modalHeader.id = "prox-header";
-                    modalHeader.style.height = "15%";
-                    modalHeader.style.width = "100%";
-                    modalHeader.style.backgroundColor = "rgb(153, 10, 32)";
+                    return modalContent
 
-                    modalHeader.appendChild(createModalTitle());
-                    modalHeader.appendChild(createModalExit());
+                    function createModalHeader(){
+                        var modalHeader = document.createElement("div");
+                        modalHeader.id = "prox-header";
+                        modalHeader.style.height = "15%";
+                        modalHeader.style.width = "100%";
+                        modalHeader.style.backgroundColor = "rgb(153, 10, 32)";
 
-                    return modalHeader;
+                        modalHeader.appendChild(createModalTitle());
+                        modalHeader.appendChild(createModalExit());
 
-                    function createModalTitle(){
-                        var modalTitle = document.createElement("span");
-                        modalTitle.id = "prox-title";
-                        modalTitle.innerHTML = "ScorpBot";
-                        return modalTitle;
-                    }
+                        return modalHeader;
 
-                    function createModalExit(){
-                        var modalExit = document.createElement("span");
-                        modalExit.id = "prox-exit";
-                        modalExit.innerHTML = "&#10006;";
-                        modalExit.onclick = dismissModal;
-                        return modalExit;
-                    }
-                }
+                        function createModalTitle(){
+                            var modalTitle = document.createElement("span");
+                            modalTitle.id = "prox-title";
+                            modalTitle.innerHTML = "ScorpBot";
 
-                function createModalBody(){
-                    var modalBody = document.createElement("div");
-                    modalBody.id = "modal-body";
-                    modalBody.style.height = "80%";
-                    modalBody.style.width = "100%";
-                    modalBody.style.backgroundColor = "white";
-
-                    modalBody.appendChild(createScorpBotList());
-                    modalBody.appendChild(createQuerySection());
-
-                    return modalBody;
-
-                    function createScorpBotList(){
-                        var scorpBotList = document.createElement("textarea");
-                        scorpBotList.style.width = "98%";
-                        scorpBotList.style.height = "20%";
-                        scorpBotList.style.margin = "1%";
-                        scorpBotList.style.boxSizing = "border-box";
-                        scorpBotList.style.resize = "vertical";
-
-                        return scorpBotList;
-                    }
-
-                    function createQuerySection(){
-                        var querySection = document.createElement("div");
-                        querySection.style.height = "73%";
-                        querySection.style.width = "98%";
-                        querySection.style.margin = "1%";
-                        querySection.style.border = "1px solid green";
-                        querySection.style.boxSizing = "border-box";
-
-                        querySection.appendChild(createSearchColumn());
-                        querySection.appendChild(createChangeColumn());
-
-                        return querySection;
-
-                        function createSearchColumn(){
-                            var searchColumn = document.createElement("div");
-                            searchColumn.style.display = "inline-block";
-                            searchColumn.style.height = "100%";
-                            searchColumn.style.width = "50%";
-                            searchColumn.style.padding = "1%";
-                            searchColumn.style.border = "1px dotted red";
-                            searchColumn.style.boxSizing = "border-box";
-                            searchColumn.innerHTML = "searchColumn";
-
-                            return searchColumn;
+                            return modalTitle;
                         }
 
-                        function createChangeColumn(){
-                            var changeColumn = document.createElement("div");
-                            changeColumn.style.display = "inline-block";
-                            changeColumn.style.height = "100%";
-                            changeColumn.style.width = "50%";
-                            changeColumn.style.padding = "1%";
-                            changeColumn.style.border = "1px dotted blue";
-                            changeColumn.style.boxSizing = "border-box";
-                            changeColumn.innerHTML = "changeColumn";
+                        function createModalExit(){
+                            var modalExit = document.createElement("span");
+                            modalExit.id = "prox-exit";
+                            modalExit.innerHTML = "&#10006;";
+                            modalExit.onclick = dismissModal;
 
-                            return changeColumn;
+                            return modalExit;
                         }
                     }
-                }
 
-                function createModalFooter(){
-                    var modalFooter = document.createElement("div");
-                    modalFooter.id = "modal-footer";
-                    modalFooter.style.height = "5%";
-                    modalFooter.style.width = "100%";
-                    modalFooter.style.backgroundColor = "cornsilk";
-                    modalFooter.appendChild(createStartButton());
+                    function createModalBody(){
+                        var modalBody = document.createElement("div");
+                        modalBody.id = "modal-body";
+                        modalBody.style.height = "80%";
+                        modalBody.style.width = "100%";
+                        modalBody.style.backgroundColor = "white";
 
-                    return modalFooter;
+                        modalBody.appendChild(createScorpBotList());
+                        modalBody.appendChild(createQuerySection());
 
-                    function createStartButton(){
-                        var startButton = document.createElement("button");
-                        startButton.innerHTML = "Start";
-                        startButton.onclick = startScorpBot;
+                        return modalBody;
 
-                        return startButton;
+                        function createScorpBotList(){
+                            var scorpBotList = document.createElement("textarea");
+                            scorpBotList.id = "scorp-bot-list";
+                            scorpBotList.style.width = "98%";
+                            scorpBotList.style.height = "20%";
+                            scorpBotList.style.margin = "1%";
+                            scorpBotList.style.boxSizing = "border-box";
+                            scorpBotList.style.resize = "none";
+
+                            return scorpBotList;
+                        }
+
+                        function createQuerySection(){
+                            var querySection = document.createElement("div");
+                            querySection.style.display = "flex";
+                            querySection.style.height = "73%";
+                            querySection.style.width = "98%";
+                            querySection.style.margin = "1%";
+                            querySection.style.border = "1px dotted grey";
+                            querySection.style.boxSizing = "border-box";
+
+                            querySection.appendChild(createSearchColumn());
+                            querySection.appendChild(createChangeColumn());
+
+                            return querySection;
+
+                            function createSearchColumn(){
+                                var searchColumn = document.createElement("div");
+                                searchColumn.style.display = "block";
+                                searchColumn.style.height = "100%";
+                                searchColumn.style.width = "50%";
+                                searchColumn.style.padding = "1%";
+                                searchColumn.style.border = "1px dotted grey";
+                                searchColumn.style.boxSizing = "border-box";
+                                searchColumn.innerHTML = "<h3>Search By:</h3>";
+
+                                searchColumn.appendChild(createNameQuery());
+                                searchColumn.appendChild(createInstructionsQuery());
+
+                                return searchColumn;
+
+                                function createNameQuery(){
+                                    var nameQueryDiv = document.createElement("div");
+                                    nameQueryDiv.style.display = "block";
+
+                                    var nameQueryInput = document.createElement("input");
+                                    nameQueryInput.id = "name-query";
+                                    nameQueryInput.type = "text";
+
+                                    var nameQueryLabel = document.createElement("label");
+                                    nameQueryLabel.htmlFor = "name-query";
+                                    nameQueryLabel.innerHTML = "Name:";
+
+                                    nameQueryDiv.appendChild(nameQueryLabel);
+                                    nameQueryDiv.appendChild(nameQueryInput);
+
+                                    return nameQueryDiv;
+                                }
+
+                                function createInstructionsQuery(){
+                                    var instructionsQueryDiv = document.createElement("div");
+                                    instructionsQueryDiv.style.display = "block";
+
+                                    var instructionsQueryInput = document.createElement("input");
+                                    instructionsQueryInput.id = "instructions-query";
+                                    instructionsQueryInput.type = "text";
+
+                                    var instructionsQueryLabel = document.createElement("label");
+                                    instructionsQueryLabel.htmlFor = "instructions-query";
+                                    instructionsQueryLabel.innerHTML = "Instructions:";
+
+                                    instructionsQueryDiv.appendChild(instructionsQueryLabel);
+                                    instructionsQueryDiv.appendChild(instructionsQueryInput);
+
+                                    return instructionsQueryDiv;
+                                }
+                            }
+
+                            function createChangeColumn(){
+                                var changeColumn = document.createElement("div");
+                                changeColumn.style.display = "block";
+                                changeColumn.style.display = "inline-block";
+                                changeColumn.style.height = "100%";
+                                changeColumn.style.width = "50%";
+                                changeColumn.style.padding = "1%";
+                                changeColumn.style.border = "1px dotted grey";
+                                changeColumn.style.boxSizing = "border-box";
+                                changeColumn.innerHTML = "<h3>What to Change:</h3>";
+
+                                changeColumn.appendChild(createNameChange());
+                                changeColumn.appendChild(createFixCall2Sch());
+
+                                return changeColumn;
+
+                                function createNameChange(){
+                                    var nameChangeDiv = document.createElement("div");
+                                    nameChangeDiv.style.display = "block";
+
+                                    var nameChangeInput = document.createElement("input");
+                                    nameChangeInput.id = "name-change";
+                                    nameChangeInput.type = "text";
+
+                                    var nameChangeLabel = document.createElement("label");
+                                    nameChangeLabel.htmlFor = "name-change";
+                                    nameChangeLabel.innerHTML = "Name:";
+
+                                    nameChangeDiv.appendChild(nameChangeLabel);
+                                    nameChangeDiv.appendChild(nameChangeInput);
+
+                                    return nameChangeDiv;
+                                }
+
+                                function createFixCall2Sch(){
+                                    var fixCall2SchDiv = document.createElement("div");
+                                    fixCall2SchDiv.style.display = "block";
+
+                                    var fixCall2Sch = document.createElement("input");
+                                    fixCall2Sch.id = "fix-call-2-sch";
+                                    fixCall2Sch.type = "checkbox";
+
+                                    var fixCall2SchLabel = document.createElement("label");
+                                    fixCall2SchLabel.htmlFor = "fix-call-2-sch";
+                                    fixCall2SchLabel.innerHTML = 'Fix "Call 2 Sch": ';
+
+                                    fixCall2SchDiv.appendChild(fixCall2SchLabel);
+                                    fixCall2SchDiv.appendChild(fixCall2Sch);
+
+                                    return fixCall2SchDiv;
+                                }
+
+                            }
+                        }
+                    }
+
+                    function createModalFooter(){
+                        var modalFooter = document.createElement("div");
+                        modalFooter.id = "modal-footer";
+                        modalFooter.style.height = "5%";
+                        modalFooter.style.width = "100%";
+                        modalFooter.style.backgroundColor = "cornsilk";
+                        modalFooter.appendChild(createStartButton());
+
+                        return modalFooter;
+
+                        function createStartButton(){
+                            var startButton = document.createElement("button");
+                            startButton.innerHTML = "Start";
+                            startButton.onclick = startScorpBot;
+
+                            return startButton;
+                        }
                     }
                 }
             }
 
             function startScorpBot(){
-                sessionStorage.setItem("scorpBotList", scorpBotList.value);
-                sessionStorage.setItem("scorpBotCurrent", 0);
-                dismissModal();
-                autoScorpBot();
+                var scorpBotList = document.getElementById("scorp-bot-list").value;
+
+                if(scorpBotList){
+                    sessionStorage.setItem("scorpBotCurrent", 0);
+                    sessionStorage.setItem("scorpBotQuery", JSON.stringify(getScorpQuery()));
+                    sessionStorage.setItem("scorpBotList", scorpBotList);
+                    dismissModal();
+                    autoScorpBot();
+                } else if(confirm("Iterate over current list?")){
+                    sessionStorage.setItem("scorpBotChange", JSON.stringify(getScorpChange()));
+                    sessionStorage.setItem("scorpBotNext", "location/detail");
+                    dismissModal();
+                    autoScorpBot();
+                }
             }
 
             function dismissModal(){
                 document.getElementById("modal-overlay").style.display = "none";
                 document.getElementById("modal-window").style.display = "none";
             }
+
+            function getScorpQuery(){
+                var scorpQuery = {};
+                scorpQuery.name = document.getElementById("name-query").value;
+                scorpQuery.instructions = document.getElementById("instructions-query").value;
+                return scorpQuery;
+            }
+
+            function getScorpChange(){
+                var scorpChange = {};
+                scorpChange.name = document.getElementById("name-change").value;
+                scorpChange.fixCall2Sch = document.getElementById("fix-call-2-sch").checked;
+                return scorpChange;
+            }
+
         }
     }
 
     function autoScorpBot(){
+        var scorpBotChange = JSON.parse(sessionStorage.getItem("scorpBotChange"));
+        if(!scorpBotChange) return;
+        console.log("autoScorpBotting");
         if(urlContains(["location/detail.asp"])){
-            var _current = sessionStorage.getItem("scorpBotCurrent");
-            var _scorpList = sessionStorage.getItem("scorpBotList");
+            
+        } else if(urlContains(["location/edit.asp"])){
 
-            if(_scorpList){
-                _scorpList = csvToObjectArray(_scorpList);
+        } else if(urlContains(["serviceSetup/detail.asp"])){
+
+        }
+
+    }
+
+    function goToPage(page){
+
+        sessionStorage.setItem("goToPage", page);
+
+        if(page==="next in list"){
+            var downArrow = document.getElementsByClassName("DownArrow")[0];
+            if(downArrow){
+                downArrow.children[0].click();
             } else {
-                return;
+                sessionStorage.removeItem("scorpBotCurrent");
+                sessionStorage.removeItem("scorpBotQuery");
+                sessionStorage.removeItem("scorpBotList");
+                sessionStorage.removeItem("scorpBotNext");
             }
-
-            var _account = _scorpList[_current];
-
-            _current++;
-
-            if(_account){
-                sessionStorage.setItem("scorpBotCurrent", _current);
-                goToAccount(_account.id);
+        } else if(page==="location/edit"){
+            if(urlContains(["location/detail.asp"])){
+                document.getElementById("locationHeaderDetailLink").click();
+            } else if(urlContains(["serviceSetup/detail.asp"])){
+                document.getElementById("butSave").click();
+            }
+        } else if(page==="serviceSetup/edit"){
+            if(urlContains(["location/detail.asp"])){
+                document.getElementById("RsRow1").click();
+            } else if(urlContains(["serviceSetup/detail.asp"])){
+                document.getElementById("butEdit").click();
             }
         }
     }
+
+    function queryStuff(){
+        var scorpBotCurrent = sessionStorage.getItem("scorpBotCurrent");
+        var scorpBotQuery = JSON.parse(sessionStorage.getItem("scorpBotQuery"));
+        var scorpBotList = sessionStorage.getItem("scorpBotList");
+
+        var addressBlockTbody = document.getElementById("location-address-block").children[0];
+        if(addressBlockTbody.children[1].children[0].children[0].tagName === "B"){
+            console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML);
+        }
+
+        if(scorpBotList){
+            var locationId = document.getElementById("locationHeaderDetailLink").children[0].innerHTML;
+            scorpBotList = csvToObjectArray(scorpBotList);
+
+            if(scorpBotList.length <= scorpBotCurrent){
+                sessionStorage.removeItem("scorpBotCurrent");
+                sessionStorage.removeItem("scorpBotQuery");
+                sessionStorage.removeItem("scorpBotList");
+            } else {
+                console.log(scorpBotList[scorpBotCurrent].id +' =?= '+ locationId);
+
+                var addressBlockTbody = document.getElementById("location-address-block").children[0];
+                console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML+" =?= "+scorpBotQuery.name);
+
+                if(addressBlockTbody.children[1].children[0].children[0].tagName === "B"){
+                    console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML+" =?= "+scorpBotQuery.name);
+                    if(addressBlockTbody.children[1].children[0].children[0].innerHTML.includes(scorpBotQuery.name)){
+                        console.log("Name Found!");
+                    }
+                }
+            }
+
+            var next_i = parseInt(scorpBotCurrent)+1;
+            var nextAccount = scorpBotList[next_i];
+
+            if(nextAccount){
+                sessionStorage.setItem("scorpBotCurrent", next_i);
+                goToAccount(nextAccount.id);
+            }
+
+        }
+    }
+
 
 })();
