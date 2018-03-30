@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.200
+// @version      1.201
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -85,7 +85,9 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
+        if(urlContains(["blank"])) return;
         retrieveCSS();
+        focusListener();
         retrieveActiveSetups();
         autoTaskinator();
         autoGeocodinator();
@@ -403,6 +405,35 @@
 
             callback(geoCodes);
         });
+    }
+
+    function focusListener(){
+        if(urlContains(["app.pestpac.com"])){
+
+            recordFocus();
+
+            window.addEventListener("focus", function(event){
+                recordFocus();
+            }, false);
+
+            function recordFocus(){
+                window.name = Date.now();
+                GM_setValue("PestPacFocus", window.name);
+            }
+
+        } else if(urlContains(["app.heymarket.com"])){
+            return;
+        }
+    }
+
+    function checkLastFocus(){
+        var lastFocus = GM_getValue("PestPacFocus");
+
+        if(lastFocus === window.name){
+            return true;
+        } else {
+            return false;
+        }
     }
 
     function proximinator(){
@@ -2010,11 +2041,13 @@
         }
 
         function findAccountListener(){
-            if(urlContains(["iframe", "blank"])) return;
+            if(urlContains(["iframe"])) return;
 
             GM_deleteValue("findAccount");
 
             GM_addValueChangeListener("findAccount", function(name, old_value, new_value, remote){
+                if(!checkLastFocus()) return;
+
                 console.log("New: "+new_value);
                 console.log("Old: "+old_value);
 
@@ -2048,7 +2081,7 @@
     }
 
     function serviceOrderDuplicator(){
-        if(urlContains(["iframe", "blank"])) return;
+        if(urlContains(["iframe"])) return;
         if(urlContains(["location/detail.asp"])){
             if(sessionStorage.getItem("duplicateOrder")){
                 var aButton = document.getElementsByClassName("ui-button")[0];
