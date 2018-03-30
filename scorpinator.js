@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.122
+// @version      1.200
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -11,6 +11,7 @@
 // @grant        window.open
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_deleteValue
 // @grant        GM_addValueChangeListener
 // @grant        GM_removeValueChangeListener
 // @run-at       document-idle
@@ -97,6 +98,12 @@
       //  addPageHeaderButtons();
       //  scorpBotModal();
       //  autoScorpBot();
+    }
+
+    function triggerMouseEvent (node, eventType) {
+        var clickEvent = document.createEvent ('MouseEvents');
+        clickEvent.initEvent (eventType, true, true);
+        node.dispatchEvent (clickEvent);
     }
 
     function retrieveCSS(){
@@ -224,23 +231,58 @@
         return week+frequency;
     }
 
+    function getContactInfo(){
+        var accountId;
+        var accountName;
+
+        var locationHeaderDetailLink = document.getElementById("locationHeaderDetailLink");
+        var addressBlock = document.getElementById("location-address-block");
+
+        if(addressBlock && locationHeaderDetailLink){
+            accountId = locationHeaderDetailLink.children[0].innerHTML;
+            accountName = addressBlock.children[0].children[1].children[0].children[0].innerHTML;
+        } else {
+            accountId = "";
+            accountName = "";
+        }
+        return accountId+"|"+accountName;
+    }
+
     function getServiceDate(input){
-        var month = input.substring(0,3)
-        .replace("01/", "January ").replace("02/", "February ").replace("03/", "March ")
-        .replace("04/", "April ").replace("05/", "May ").replace("06/", "June ")
-        .replace("07/", "July ").replace("08/", "August ").replace("09/", "September ")
-        .replace("10/", "October ").replace("11/", "November ").replace("12/", "December ");
 
-        var day = input.substring(3,6)
-        .replace("01/", "1st").replace("02/", "2nd").replace("03/", "3rd").replace("04/", "4th").replace("05/", "5th")
-        .replace("06/", "6th").replace("07/", "7th").replace("08/", "8th").replace("09/", "9th").replace("10/", "10th")
-        .replace("11/", "11th").replace("12/", "12th").replace("13/", "13th").replace("14/", "14th").replace("15/", "15th")
-        .replace("16/", "16th").replace("17/", "17th").replace("18/", "18th").replace("19/", "19th").replace("20/", "20th")
-        .replace("21/", "21st").replace("22/", "22nd").replace("23/", "23rd").replace("24/", "24th").replace("25/", "25th")
-        .replace("26/", "26th").replace("27/", "27th").replace("28/", "28th").replace("29/", "29th").replace("30/", "30th")
-        .replace("31/", "31st");
+        var month = input.split("/")[0];
 
-        return month+day;
+        if(month.length===1){
+            month = month
+                .replace("1", "January").replace("2", "February").replace("3", "March")
+                .replace("4", "April").replace("5", "May").replace("6", "June")
+                .replace("7", "July").replace("8", "August").replace("9", "September");
+        } else {
+            month = month
+                .replace("01", "January").replace("02", "February").replace("03", "March")
+                .replace("04", "April").replace("05", "May").replace("06", "June")
+                .replace("07", "July").replace("08", "August").replace("09", "September")
+                .replace("10", "October").replace("11", "November").replace("12", "December");
+        }
+
+        var day = input.split("/")[1];
+
+        if(day.length===1){
+            day = day
+                .replace("1", "1st").replace("2", "2nd").replace("3", "3rd").replace("4", "4th")
+                .replace("5", "5th").replace("6", "6th").replace("7", "7th").replace("8", "8th").replace("9", "9th");
+        } else {
+            day = day
+                .replace("01", "1st").replace("02", "2nd").replace("03", "3rd").replace("04", "4th").replace("05", "5th")
+                .replace("06", "6th").replace("07", "7th").replace("08", "8th").replace("09", "9th").replace("10", "10th")
+                .replace("11", "11th").replace("12", "12th").replace("13", "13th").replace("14", "14th").replace("15", "15th")
+                .replace("16", "16th").replace("17", "17th").replace("18", "18th").replace("19", "19th").replace("20", "20th")
+                .replace("21", "21st").replace("22", "22nd").replace("23", "23rd").replace("24", "24th").replace("25", "25th")
+                .replace("26", "26th").replace("27", "27th").replace("28", "28th").replace("29", "29th").replace("30", "30th")
+                .replace("31", "31st");
+        }
+
+        return month+" "+day;
     }
 
     function getNextServiceDate(startDate, schedule, frequency){
@@ -1111,6 +1153,7 @@
             var dueDate = document.getElementById("dueDate").value;
             var taskName = document.getElementById("subject").value;
             var taskDescription = document.getElementById("description").value;
+            var taskType = document.getElementById("taskType").value;
 
             var startDate;
 
@@ -1120,7 +1163,7 @@
                 startDate = getFutureDate(dueDate, -1);
             }
 
-            if(taskName && startDate){
+            if(taskName && startDate && taskType!=="Select"){
                 butSave.click();
                 createFollowUpTask(startDate, taskDescription);
             } else {
@@ -1236,6 +1279,8 @@
         function welcomeListener(event){
             event.preventDefault();
 
+            var taskDescription = document.getElementById('description').value;
+
             var serviceSetup = getServiceSetup(1);
 
             var welcomeLetter = {};
@@ -1244,7 +1289,11 @@
 
             welcomeLetter.schedule = getServiceSchedule(serviceSetup.schedule);
 
-            welcomeLetter.nextService = getServiceDate(serviceSetup.nextService);
+            if(taskDescription.includes("NextDate:")){
+                welcomeLetter.nextService = getServiceDate(taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1]);
+            } else {
+                welcomeLetter.nextService = getServiceDate(serviceSetup.nextService);
+            }
 
             welcomeLetter = JSON.stringify(welcomeLetter);
 
@@ -1280,12 +1329,15 @@
                 var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
 
                 if(!locationPhoneNumberLink) return;
-                document.getElementById("status").value = "C";
                 var textNumber = locationPhoneNumberLink.value;
-                var messageBody = "|Responsible Pest Control here, just following up with service provided on "+startDate+
-                    ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!|";
+                var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
+                    ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!";
 
-                GM_setValue('autoText', textNumber+messageBody+Date.now());
+                GM_setValue('autoText', textNumber+"|"+getContactInfo()+"|"+messageBody+"|"+Date.now());
+
+                document.getElementById("status").value = "C";
+
+                document.getElementById("butSave").click();
 
             }
         }
@@ -1458,8 +1510,39 @@
 
 
     function autoDataFixinator(){
-        if(urlContains(["location/detail.asp"])){
 
+        if(urlContains(["location/detail.asp"])){
+            locationDetailFixes();
+        } else if(urlContains(["location/edit.asp"])){
+            locationEditFixes();
+        } else if(urlContains(["location/add.asp"])){
+            locationAddFixes();
+        } else if(urlContains(["billto/edit.asp"])){
+            billToEditFixes();
+        }
+
+        function billToEditFixes(){
+            var editButton = document.getElementById("butEdit");
+            var saveButton = document.getElementById("butSave");
+            var addressInput = document.getElementById("Address");
+            var streetLabel, streetSearchLabel, streetSearchInput, directionsInput;
+            var phoneInput, phoneExtInput, altPhoneInput, altPhoneExtInput, mobileInput, mobileLabel;
+            if(addressInput.value.indexOf(".") > -1){
+                streetLabel = addressInput.parentElement.previousElementSibling;
+                addressInput.value = addressInput.value.replaceAll(".", "");
+
+                streetLabel.classList.add("scorpinated");
+
+                editButton.classList.add("scorpinated");
+                editButton.innerHTML = "Edit";
+
+                saveButton.classList.add("scorpinated");
+                saveButton.innerHTML = "Save";
+            }
+        }
+
+
+        function locationDetailFixes(){
             var contactLinks = document.getElementsByClassName("contact-link-span");
             var urlString = window.location.search.replace("?", "");
             for(var i = 0; i < contactLinks.length; i++){
@@ -1470,95 +1553,81 @@
                     contactLinks[i].children[1].href = "https://app.pestpac.com/letters/detailEmail.asp?Mode=New&"+urlString;
                 }
             }
+        }
 
-        } else if(urlContains(["location/edit.asp", "billto/edit.asp", "location/add.asp"])){
+        function locationAddFixes(){
+            var directionsInput = document.getElementById("Directions");
+            if(directionsInput.value===""){
+                directionsInput.value = "** ";
+            }
+        }
 
+
+        function locationEditFixes(){
             var editButton = document.getElementById("butEdit");
             var saveButton = document.getElementById("butSave");
             var addressInput = document.getElementById("Address");
-            var streetLabel, streetSearchLabel, streetSearchInput, directionsInput;
-            var phoneInput, phoneExtInput, altPhoneInput, altPhoneExtInput, mobileInput, mobileLabel;
+            var mobileInput = document.getElementById("Mobile");
+            var directionsInput = document.getElementById("Directions");
 
-            if(urlContains(["location/add.asp"])){
-                directionsInput = document.getElementById("Directions");
-                if(directionsInput.value===""){
-                    directionsInput.value = "** ";
+            if(addressInput.value.indexOf(".") > -1){
+
+                var streetSearchInput = document.getElementById("Street");
+
+                var streetLabel = addressInput.parentElement.previousElementSibling;
+                addressInput.value = addressInput.value.replaceAll(".", "");
+                streetLabel.classList.add("scorpinated");
+
+                var streetSearchLabel = streetSearchInput.parentElement.previousElementSibling;
+                streetSearchInput.value = streetSearchInput.value.replaceAll(".", "");
+                streetSearchLabel.classList.add("scorpinated");
+
+                saveButton.classList.add("scorpinated");
+
+                saveButton.innerHTML = "Save";
+
+            }
+
+            if(mobileInput.value === ""){
+                var phoneInput = document.getElementById("Phone");
+                var phoneExtInput = document.getElementById("PhoneExt");
+
+                var altPhoneInput = document.getElementById("AltPhone");
+                var altPhoneExtInput = document.getElementById("AltPhoneExt");
+
+                var mobileLabel = mobileInput.parentElement.previousElementSibling;
+
+                var phoneExt = phoneExtInput.value.toLowerCase();
+                var altPhoneExt = altPhoneExtInput.value.toLowerCase();
+
+                if(directionsInput.value.toLowerCase().includes("call reminders")) return;
+
+                if(phoneExt.includes("cell") || phoneExt.includes("text")){
+                    mobileInput.value = phoneInput.value;
+                } else if(altPhoneExt.includes("cell") || altPhoneExt.includes("text")){
+                    mobileInput.value = altPhoneInput.value;
+                } else if(phoneInput.value !== "" && !phoneExt.includes("home") && !phoneExt.includes("call")){
+                    mobileInput.value = phoneInput.value;
+                } else if(altPhoneInput.value !== "" && !altPhoneExt.includes("home") && !altPhoneExt.includes("call")){
+                    mobileInput.value = altPhoneInput.value;
                 }
-            } else if(urlContains(["billto/edit.asp"])){
-                if(addressInput.value.indexOf(".") > -1){
-                    streetLabel = addressInput.parentElement.previousElementSibling;
-                    addressInput.value = addressInput.value.replaceAll(".", "");
 
-                    streetLabel.classList.add("scorpinated");
+                if(mobileInput.value !== ""){
+                    mobileLabel.classList.add("scorpinated");
 
-                    editButton.classList.add("scorpinated");
-                    editButton.innerHTML = "Edit";
+                    saveButton.innerHTML = "Save";
 
                     saveButton.classList.add("scorpinated");
-                    saveButton.innerHTML = "Save";
                 }
-            } else if(urlContains(["location/edit.asp"])){
-                streetSearchInput = document.getElementById("Street");
-                directionsInput = document.getElementById("Directions");
+            }
 
-                phoneInput = document.getElementById("Phone");
-                phoneExtInput = document.getElementById("PhoneExt");
-                altPhoneInput = document.getElementById("AltPhone");
-                altPhoneExtInput = document.getElementById("AltPhoneExt");
-                mobileInput = document.getElementById("Mobile");
-                mobileLabel = mobileInput.parentElement.previousElementSibling;
+            directionsInput.value = directionsInput.value.replace("scorpions txt reminders", "TEXT REMINDERS - Scorpions");
 
-                if(addressInput.value.indexOf(".") > -1){
+            directionsInput.value = directionsInput.value.replace("scorpions text reminders", "TEXT REMINDERS - Scorpions");
 
-                    streetLabel = addressInput.parentElement.previousElementSibling;
-                    addressInput.value = addressInput.value.replaceAll(".", "");
-                    streetLabel.classList.add("scorpinated");
+            if(!directionsInput.value.match(/\*/g)){
 
-                    streetSearchLabel = streetSearchInput.parentElement.previousElementSibling;
-                    streetSearchInput.value = streetSearchInput.value.replaceAll(".", "");
-                    streetSearchLabel.classList.add("scorpinated");
-
-                    saveButton.classList.add("scorpinated");
-
-                    saveButton.innerHTML = "Save";
-
-                }
-
-                if(mobileInput.value === ""){
-                    var phoneExt = phoneExtInput.value.toLowerCase();
-                    var altPhoneExt = altPhoneExtInput.value.toLowerCase();
-
-                    if(directionsInput.value.toLowerCase().includes("call reminders")) return;
-
-                    if(phoneExt.includes("cell") || phoneExt.includes("text")){
-                        mobileInput.value = phoneInput.value;
-                    } else if(altPhoneExt.includes("cell") || altPhoneExt.includes("text")){
-                        mobileInput.value = altPhoneInput.value;
-                    } else if(phoneInput.value !== "" && !phoneExt.includes("home") && !phoneExt.includes("call")){
-                        mobileInput.value = phoneInput.value;
-                    } else if(altPhoneInput.value !== "" && !altPhoneExt.includes("home") && !altPhoneExt.includes("call")){
-                        mobileInput.value = altPhoneInput.value;
-                    }
-
-                    if(mobileInput.value !== ""){
-                        mobileLabel.classList.add("scorpinated");
-
-                        saveButton.innerHTML = "Save";
-
-                        saveButton.classList.add("scorpinated");
-                    }
-                }
-
-                directionsInput.value = directionsInput.value.replace("scorpions txt reminders", "TEXT REMINDERS - Scorpions");
-
-                directionsInput.value = directionsInput.value.replace("scorpions text reminders", "TEXT REMINDERS - Scorpions");
-
-                if(!directionsInput.value.match(/\*/g)){
-
-                    directionsInput.value = "** "+directionsInput.value;
-
-                }
-
+                directionsInput.value = "** "+directionsInput.value;
 
             }
         }
@@ -1567,7 +1636,9 @@
     function autoTextinator(){
         console.log('Textinator');
 
-        if(urlContains(['/dialog/changeOrder.asp'])){
+        if(urlContains(["location/detail.asp"])){
+            addHeyMarketIcon();
+        } else if(urlContains(['/dialog/changeOrder.asp'])){
             console.log('dialog');
             var sendTextButton = document.createElement('button');
             sendTextButton.innerHTML = 'Send Text';
@@ -1576,7 +1647,7 @@
             sendTextButton.addEventListener('click', function(e){
                 e.preventDefault();
                 var popupData = parsePopupData(GM_getValue('popupData'));
-                GM_setValue('autoText', popupData.phone+"||"+Date.now());
+                GM_setValue('autoText', popupData.phone+"||||"+Date.now());
             });
 
             var focushere = document.getElementsByTagName("table")[3];
@@ -1624,13 +1695,21 @@
             }, true);
 
         } else if(urlContains(['/app.heymarket.com/'])){
-
+            addPestPacIcon();
             GM_addValueChangeListener('autoText', function(name, old_value, new_value, remote){
-                var _textDataList = new_value.split("|");
-                var _textNumber = _textDataList[0];
-                var _textBody = _textDataList[1];
-                var _textTimeStamp = _textDataList[2];
-                sendMessage(_textNumber, _textBody);
+                var _textData = new_value.split("|");
+                var _textNumber = _textData[0];
+                var _textAccount = _textData[1];
+                var _textName = _textData[2];
+                var _textBody = _textData[3];
+                var _textTimeStamp = _textData[4];
+                
+                goToContact(_textNumber, function(){
+                    console.log("callback");
+                    prepareMessage(_textBody);
+                    updateContact(_textAccount, _textName);
+                });
+
             });
 
         }
@@ -1653,20 +1732,12 @@
             return popupData;
         }
 
-        function sendMessage(textNumber, messageBody){
-            var chatList = document.getElementById('chat-list');
-            var contactList = document.getElementById('chat-contact-list');
-
-            var composeButton = document.getElementsByClassName('ico-compose')[0];
-
-            if(contactList.classList.contains('hidden')){
-                composeButton.click();
-            }
-
+        function goToContact(textNumber, callback){
             var inputSearchContact = document.getElementById('inputSearchContact');
 
-            if(inputSearchContact){
+             if(inputSearchContact){
                 var keyUpEvent = document.createEvent("Event");
+
                 keyUpEvent.initEvent('keyup');
 
                 inputSearchContact.value = textNumber;
@@ -1676,12 +1747,52 @@
                 var firstContactRow = document.getElementsByClassName('contact-row')[0];
 
                 firstContactRow.children[0].click();
+            }
 
+            if(callback) callback();
+        }
+
+        function prepareMessage(messageBody){
+            setTimeout(function(){
                 var messageTextarea = document.getElementById('message-textarea');
 
-                messageTextarea.value = messageBody;
+                if(messageTextarea){
 
-                messageTextarea.dispatchEvent(new InputEvent('input'));
+                    messageTextarea.value = messageBody;
+
+                    messageTextarea.dispatchEvent(new InputEvent('input'));
+
+                }
+
+            }, 500);
+        }
+
+        function updateContact(account, name){
+            console.log("updateContact: "+account+" "+name);
+            var nameDiv = document.getElementsByClassName("name")[0];
+            if(nameDiv && nameDiv.innerHTML.includes(account)){
+                console.log("Do nothing "+account+" "+nameDiv.innerHTML);
+            } else {
+                console.log("Update Contact Info");
+                var nameList = name.split(" ");
+                if(nameList.length = 2){
+                    name = name.split(" ")[1]+", "+name.split(" ")[0];
+                }
+
+                setTimeout(function(){
+                    var optionsDot = document.getElementsByClassName("options-dot")[0];
+                    optionsDot.click();
+
+                }, 100);
+
+                setTimeout(function(){
+                    var editButton = document.getElementsByClassName("edit")[0];
+
+                    triggerMouseEvent(editButton, "mousedown");
+
+                    var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
+                    nameInput.value = account+" "+name;
+                }, 100);
 
             }
         }
@@ -1721,8 +1832,7 @@
 
                             var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
                             var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
-
-
+                            
                             var image = document.createElement("img");
                             image.src = "https://rjhuffaker.github.io/heymarket_black.png";
                             image.style.width = "1em";
@@ -1733,8 +1843,7 @@
                             var link = document.createElement("a");
                             link.style.cursor = "pointer";
                             link.addEventListener("click", function(){
-                                GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"||"+Date.now());
-
+                                GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"||"+Date.now());
                                 spinButton(image);
                             });
 
@@ -1748,27 +1857,105 @@
                     }
                 }
             }
+        }
 
-            function spinButton(elem){
-                var _count = 0;
-                var spinterval = setInterval(spinner, 25);
-                function spinner(){
-                    if(_count <= 20){
-                        var size = _count <= 10 ? Math.abs(1+_count*.1)+"em" : Math.abs(3-_count*.1)+"em";
-                        elem.style.width = size;
-                        elem.style.height = size;
-                        elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
-                        _count++;
-                    } else {
-                        clearInterval(spinterval);
+        function addPestPacIcon(){
+
+            var observer = new MutationObserver(function(mutations){
+                mutations.forEach(function(mutation){
+
+                    if (!mutation.addedNodes) return
+
+                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+
+                        var node = mutation.addedNodes[i]
+                        if(!node.classList) return;
+
+                        if(node.id === "profile-content"){
+                            var chatRoomContainer = document.getElementsByClassName("chat-room-container")[0];
+
+                            if(!chatRoomContainer) return;
+
+                            var image = document.createElement("img");
+                            image.src = "https://rjhuffaker.github.io/pestpac_logo.png";
+                            image.style.height = "30px";
+                            image.style.width = "30px";
+
+                            var link = document.createElement("a");
+                            link.style.cursor = "pointer";
+                            link.appendChild(image);
+                            link.style.position = "absolute";
+                            link.style.top = "12px";
+                            link.style.right = "115px";
+                            link.style.height = "30px";
+                            link.style.width = "30px";
+
+                            link.addEventListener("click", function(){
+                                setTimeout(function(){
+                                    var contactInfo = getHeyMarketContactInfo();
+                                    GM_setValue("findAccount", contactInfo+"|"+Date.now());
+                                    spinButton(image, 30);
+                                }, 500);
+                            });
+
+                            chatRoomContainer.appendChild(link);
+
+                        }
                     }
+
+                });
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
+
+            function getHeyMarketContactInfo(){
+                var profileContent = document.getElementById("profile-content");
+                if(!profileContent){
+                    alert("profileContent not found!");
+                    return;
+                }
+                var name = profileContent.children[2].children[0].innerHTML;
+                var phone = profileContent.children[2].children[1].innerHTML;
+
+                var nameDiv = document.getElementsByClassName("name")[0];
+                var phoneLink = document.getElementsByClassName("phone")[0];
+
+                var contactInfo;
+                if(phone){
+                    contactInfo = name.replace("(", "").replace(") ", "-")+" "+phone;
+                } else {
+                    contactInfo = name.replace("(", "").replace(") ", "-");
                 }
 
+                return contactInfo;
+            }
+        }
+
+        function spinButton(elem, size){
+            var _count = 0;
+            var spinterval = setInterval(spinner, 25);
+            function spinner(){
+                if(_count <= 20){
+                    var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
+                    elem.style.width = Math.abs(growth*size)+"px";
+                    elem.style.height = Math.abs(growth*size)+"px";
+                    elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
+                    _count++;
+                } else {
+                    clearInterval(spinterval);
+                }
             }
         }
     }
 
     function traversinator(){
+        findAccountListener();
+
         if(!urlContains(["location/detail.asp?LocationID"])) return;
 
         var advancedSearchWrapper = document.getElementsByClassName("advanced-search-wrapper")[0];
@@ -1821,10 +2008,47 @@
             var newID = forward ? startID+1 : startID-1;
             goToAccount(newID);
         }
+
+        function findAccountListener(){
+            if(urlContains(["iframe", "blank"])) return;
+
+            GM_deleteValue("findAccount");
+
+            GM_addValueChangeListener("findAccount", function(name, old_value, new_value, remote){
+                console.log("New: "+new_value);
+                console.log("Old: "+old_value);
+
+                var accountInfo = new_value.split("|")[0].replace("(", "").replace(") ", "-");
+
+                console.log("accountInfo "+accountInfo);
+
+                var accountIdRegEx = /(?<!\d)\d{5,6}(?!\d)/;
+                var accountIdRegExMatcher = new RegExp(accountIdRegEx);
+                var accountIdMatch = null;
+                accountIdMatch = accountIdRegExMatcher.exec(accountInfo);
+
+                if(accountIdMatch){
+                    console.log("goToAccount: "+accountIdMatch[0]);
+                    goToAccount(accountIdMatch[0]);
+                } else {
+                    console.log("accountId null");
+                    var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+                    var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
+                    var phoneNumberMatch = phoneNumberRegExMatcher.exec(accountInfo);
+
+                    if(phoneNumberMatch){
+                        console.log("goToAccount: "+phoneNumberMatch[0]);
+                        goToAccount(phoneNumberMatch[0]);
+                    }
+                }
+
+            });
+
+        }
     }
 
     function serviceOrderDuplicator(){
-        if(urlContains(["iframe"])) return;
+        if(urlContains(["iframe", "blank"])) return;
         if(urlContains(["location/detail.asp"])){
             if(sessionStorage.getItem("duplicateOrder")){
                 var aButton = document.getElementsByClassName("ui-button")[0];
@@ -1972,7 +2196,6 @@
             }
         }
     }
-
 
     function scorpBotModal(){
         if(urlContains(["location/detail.asp"])){
