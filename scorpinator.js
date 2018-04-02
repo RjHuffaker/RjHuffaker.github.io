@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.201
+// @version      1.202
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -85,7 +85,7 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        if(urlContains(["blank"])) return;
+        if(urlContains(["blank", "iframe"])) return;
         retrieveCSS();
         focusListener();
         retrieveActiveSetups();
@@ -440,21 +440,11 @@
         if(!urlContains(["LocationID","location/add.asp","serviceSetup/detail.asp"])) return;
         if(urlContains(["iframe","letters","dialog","notes"])) return;
 
-        var proxContainer = document.createElement("div");
-        proxContainer.id = "prox-container";
-
-        var proxContent = document.createElement("div");
-        proxContent.id = "prox-content";
-
-        var proxIcon = createProxIcon();
-
-        var proxModal = createProxModal();
-
         var bodyElement = document.getElementsByTagName('body')[0];
 
-        bodyElement.appendChild(proxIcon);
+        bodyElement.appendChild(createProxIcon());
 
-        bodyElement.appendChild(proxModal);
+        bodyElement.appendChild(createProxModal());
 
         function createProxIcon(){
             var proxIcon = document.createElement("img");
@@ -474,107 +464,141 @@
         }
 
         function createProxModal(){
-            var proxHeader = createProxHeader();
-
-            var proxTab = createProxTab();
-
             var proxModal = document.createElement("div");
             proxModal.id = "prox-modal";
             proxModal.style.zIndex = 9000;
 
-            proxContainer.style.position = "absolute";
-            proxContainer.style.zIndex = 10000;
-
-            var caretDiv = document.createElement("div");
-            caretDiv.id = "caret-div";
-            caretDiv.style.zIndex = 10000;
-
-            var caretDivBorder = document.createElement("div");
-            caretDivBorder.id = "caret-div-border";
-            caretDivBorder.style.zIndex = 10000;
-
-            proxModal.appendChild(proxContainer);
-            proxModal.appendChild(proxTab);
-            proxModal.appendChild(caretDivBorder);
-            proxModal.appendChild(caretDiv);
-
-            proxContainer.appendChild(proxHeader);
-            proxContainer.appendChild(proxContent);
+            proxModal.appendChild(createProxContainer());
+            proxModal.appendChild(createProxTab());
+            proxModal.appendChild(createCaretDivBorder());
+            proxModal.appendChild(createCaretDiv());
 
             return proxModal;
 
-            function proxModalDismiss(){
-                proxModal.classList.remove("show");
+            function createCaretDiv(){
+                var caretDiv = document.createElement("div");
+                caretDiv.id = "caret-div";
+                caretDiv.style.zIndex = 10000;
+
+                return caretDiv;
             }
 
-            function createProxHeader(){
-                var proxHeader = document.createElement("div");
-                proxHeader.id = "prox-header";
+            function createCaretDivBorder(){
+                var caretDivBorder = document.createElement("div");
+                caretDivBorder.id = "caret-div-border";
+                caretDivBorder.style.zIndex = 10000;
 
-                var proxExit = document.createElement("span");
-                proxExit.id = "prox-exit";
-                proxExit.innerHTML = "&#10006;";
+                return caretDivBorder;
+            }
 
-                proxExit.onclick = proxModalDismiss;
+            function createProxContainer(){
+                var proxContainer = document.createElement("div");
+                proxContainer.id = "prox-container";
+                proxContainer.style.position = "absolute";
+                proxContainer.style.zIndex = 10000;
 
-                var proxHeaderImage = document.createElement("img");
-                proxHeaderImage.id = "prox-header-image";
-                proxHeaderImage.src = "https://rjhuffaker.github.io/ScorpImage.png";
+                proxContainer.appendChild(createProxHeader());
+                proxContainer.appendChild(createProxContent());
 
-                proxHeaderImage.style.display = "inline";
+                return proxContainer;
 
-                var proxTitle = document.createElement("span");
-                proxTitle.id = "prox-title";
-                proxTitle.style.boxSizing = "border-box";
-                proxTitle.innerHTML = "Scorpinator";
+                function createProxHeader(){
+                    var proxHeader = document.createElement("div");
+                    proxHeader.id = "prox-header";
 
-                proxHeader.appendChild(proxHeaderImage);
-                proxHeader.appendChild(proxTitle);
-                proxHeader.appendChild(proxExit);
+                    proxHeader.appendChild(createProxHeaderImage());
+                    proxHeader.appendChild(createProxTitle());
+                    proxHeader.appendChild(createProxExit());
 
-                return proxHeader
+                    return proxHeader
+
+                    function createProxHeaderImage(){
+                        var proxHeaderImage = document.createElement("img");
+                        proxHeaderImage.id = "prox-header-image";
+                        proxHeaderImage.src = "https://rjhuffaker.github.io/ScorpImage.png";
+                        proxHeaderImage.style.display = "inline";
+
+                        return proxHeaderImage;
+                    }
+
+                    function createProxExit(){
+                        var proxExit = document.createElement("span");
+                        proxExit.id = "prox-exit";
+                        proxExit.innerHTML = "&#10006;";
+                        proxExit.onclick = proxModalDismiss;
+
+                        return proxExit;
+
+                        function proxModalDismiss(){
+                            document.getElementById("prox-modal").classList.remove("show");
+                        }
+                    }
+
+                    function createProxTitle(){
+                        var proxTitle = document.createElement("span");
+                        proxTitle.id = "prox-title";
+                        proxTitle.style.boxSizing = "border-box";
+                        proxTitle.innerHTML = "Scorpinator";
+
+                        return proxTitle;
+                    }
+
+                }
+
+                function createProxContent(){
+                    var proxContent = document.createElement("div");
+                    proxContent.id = "prox-content";
+
+                    return proxContent;
+                }
+
             }
 
             function createProxTab(){
                 var proxTab = document.createElement("div");
                 proxTab.id = "prox-tab";
 
-                var proxTabLabel = document.createElement("div");
-                proxTabLabel.id = "prox-tab-label";
-                proxTabLabel.innerHTML = "Filter By:";
-                proxTabLabel.classList.add("scorpinated");
-                proxTabLabel.onclick = proxTabResize;
-
-                var proxTabContent = document.createElement("div");
-                proxTabContent.id = "prox-tab-content";
-
-                var weekDayFilter = createProxFilter(["MON","TUE","WED","THU","FRI"], excludedWeekDays);
-
-                var weekFilter = createProxFilter(["1","2","3","4"], excludedWeeks);
-
-                var techFilter = createProxFilter(["DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE",
-                    "JOSEPH A", "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "RUSSELL", "SHAWN", "TREVORP"], excludedTechs);
-
-                proxTabContent.appendChild(document.createTextNode("Exclude Week Day"));
-                proxTabContent.appendChild(weekDayFilter);
-                proxTabContent.appendChild(document.createTextNode("Exclude Week"));
-                proxTabContent.appendChild(weekFilter);
-                proxTabContent.appendChild(document.createTextNode("Exclude Tech"));
-                proxTabContent.appendChild(techFilter);
-
-                proxTab.appendChild(proxTabLabel);
-                proxTab.appendChild(proxTabContent);
+                proxTab.appendChild(createProxTabLabel());
+                proxTab.appendChild(createProxTabContent());
 
                 return proxTab;
 
-                function proxTabResize(){
-                    if(proxTab.classList.contains("expanded")){
-                        proxTab.classList.remove("expanded");
-                        proxTab.style.left = "-15px";
-                    } else {
-                        proxTab.classList.add("expanded");
-                        proxTab.style.left = "-224px";
+                function createProxTabLabel(){
+                    var proxTabLabel = document.createElement("div");
+                    proxTabLabel.id = "prox-tab-label";
+                    proxTabLabel.innerHTML = "Filter By:";
+                    proxTabLabel.classList.add("scorpinated");
+                    proxTabLabel.onclick = proxTabResize;
+
+                    return proxTabLabel;
+
+                    function proxTabResize(){
+                        if(proxTab.classList.contains("expanded")){
+                            proxTab.classList.remove("expanded");
+                            proxTab.style.left = "-15px";
+                        } else {
+                            proxTab.classList.add("expanded");
+                            proxTab.style.left = "-224px";
+                        }
                     }
+
+                }
+
+                function createProxTabContent(){
+                    var proxTabContent = document.createElement("div");
+                    proxTabContent.id = "prox-tab-content";
+
+                    proxTabContent.appendChild(document.createTextNode("Exclude Week Day"));
+                    proxTabContent.appendChild(createProxFilter(["MON","TUE","WED","THU","FRI"], excludedWeekDays));
+
+                    proxTabContent.appendChild(document.createTextNode("Exclude Week"));
+                    proxTabContent.appendChild(createProxFilter(["1","2","3","4"], excludedWeeks));
+
+                    proxTabContent.appendChild(document.createTextNode("Exclude Tech"));
+                    proxTabContent.appendChild(createProxFilter(["DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE",
+                    "JOSEPH A", "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "RUSSELL", "SHAWN", "TREVORP"], excludedTechs));
+
+                    return proxTabContent;
                 }
 
                 function createProxFilter(inputList, outputList){
@@ -608,8 +632,7 @@
 
                             fetchGeocodes(getLocationAddress(), function(data){
                                 getNearestActiveSetups(data, function(data){
-                                    proxContent.innerHTML = "";
-                                    proxContent.appendChild(createProxContent(data));
+                                    generateProxContent(data);
                                 });
                             });
                         });
@@ -621,6 +644,7 @@
         }
 
         function proxIconListener(){
+            var proxModal = document.getElementById("prox-modal");
             if(proxModal.classList.contains("show")){
                 addSetupTask = false;
                 proxModal.classList.remove("show");
@@ -628,8 +652,7 @@
                 proxModal.classList.add("show");
                 fetchGeocodes(getLocationAddress(), function(dataList){
                     getNearestActiveSetups(dataList, function(dataList){
-                        proxContent.innerHTML = "";
-                        proxContent.appendChild(createProxContent(dataList));
+                        generateProxContent(dataList);
                         fixDivision(dataList);
                     });
                 });
@@ -660,7 +683,6 @@
                     }
                 }
             }
-
 
             function clickToDismiss(e){
                 var element = e.target;
@@ -759,8 +781,10 @@
             callback(nearestList);
         }
 
-        function createProxContent(data){
-            var _proxContent = document.createElement("div");
+        function generateProxContent(data){
+            var _proxContent = document.getElementById("prox-content");
+
+            _proxContent.innerHTML = "";
 
             var colorScale = [
                 {amount: 450, color: "rgb(0,0,255)"},
@@ -799,7 +823,7 @@
                     _tr.addEventListener("click", function(e) {
                         addSetupTaskDetails(this.dataSetup);
                         addSetupTask = false;
-                        proxModal.classList.remove("show");
+                        document.getElementById("prox-modal").classList.remove("show");
                     });
 
                 }
@@ -893,7 +917,7 @@
                 selectTaskFor.click();
             }
 
-            return _proxContent;
+            // return _proxContent;
         }
     }
 
@@ -1670,6 +1694,8 @@
         if(urlContains(["location/detail.asp"])){
             addHeyMarketIcon();
         } else if(urlContains(['/dialog/changeOrder.asp'])){
+            return;
+
             console.log('dialog');
             var sendTextButton = document.createElement('button');
             sendTextButton.innerHTML = 'Send Text';
@@ -1696,6 +1722,8 @@
             newCell.appendChild(sendTextButton);
 
         } else if(urlContains(['/appointment/'])){
+            return;
+
             window.addEventListener('dblclick', function(e){
 
                 var target = e.target;
