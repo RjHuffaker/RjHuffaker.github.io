@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.210
+// @version      1.211
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -1597,8 +1597,9 @@
 
 
     function autoDataFixinator(){
-
-        menuFixes();
+        if(urlContains(["pestpac.com"])){
+            menuFixes();
+        }
 
         if(urlContains(["location/detail.asp"])){
             locationDetailFixes();

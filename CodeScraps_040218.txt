@@ -1,3 +1,29 @@
+Function to add stuff to dropdown menu
+	
+	function menuFixes(){
+		var ppMenu = document.getElementsByClassName("pp-menu")[0];
+		var reportsLink = ppMenu.children[0].children[0].children[5].children[0];
+		if(reportsLink.innerHTML === "Reports"){
+			reportsLink.href = "/reports/reports.asp";
+			reportsLink.style.textDecoration = "none";
+		}
+
+		var flyoutDiv = document.getElementsByClassName("flyout")[0];
+		var postingAndInvoicingList = flyoutDiv.children[3].children[0].children[1];
+		postingAndInvoicingList.appendChild(newListItem);
+		
+		function createMenuItem(){
+			var billingLink = document.createElement("a");
+			billingLink.innerHTML = "A new link that does stuff.";
+
+			var newListItem = document.createElement("li");
+			newListItem.appendChild(billingLink);
+		}
+		
+	}
+
+
+
 Old autoTextinator:
 
 	function autoTextinator(){
