@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.202
+// @version      1.210
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -97,9 +97,6 @@
         autoWelcomator();
         autoTextinator();
         serviceOrderDuplicator();
-      //  addPageHeaderButtons();
-      //  scorpBotModal();
-      //  autoScorpBot();
     }
 
     function triggerMouseEvent (node, eventType) {
@@ -292,6 +289,7 @@
         day = schedule.substring(1,4),
         week = parseInt(schedule.substring(0,1));
         var newDate = new Date(startDate);
+
         if(day=="Sun") day = 0;
         if(day=="Mon") day = 1;
         if(day=="Tue") day = 2;
@@ -306,10 +304,11 @@
 
         newDate.setDate(newDate.getDate() + daysOut);
 
+
         for(var i = 0; i < 31; i++){
             newDate.setDate(newDate.getDate() + 1);
 
-            if(newDate.getDay() == day && newDate.getDate() > (week-1)*7  && newDate.getDate() < (week)*7 ){
+            if(newDate.getDay() === day && newDate.getDate() > (week-1)*7  && newDate.getDate() <= (week)*7 ){
                 var dd = newDate.getDate();
                 var mm = newDate.getMonth()+1;
                 var yy = newDate.getFullYear().toString().substring(2,4);
@@ -438,7 +437,7 @@
 
     function proximinator(){
         if(!urlContains(["LocationID","location/add.asp","serviceSetup/detail.asp"])) return;
-        if(urlContains(["iframe","letters","dialog","notes"])) return;
+        if(urlContains(["letters","dialog","notes"])) return;
 
         var bodyElement = document.getElementsByTagName('body')[0];
 
@@ -782,9 +781,6 @@
         }
 
         function generateProxContent(data){
-            var _proxContent = document.getElementById("prox-content");
-
-            _proxContent.innerHTML = "";
 
             var colorScale = [
                 {amount: 450, color: "rgb(0,0,255)"},
@@ -810,96 +806,113 @@
                 {amount: 1450, color: "rgb(255,0,255)"}
             ];
 
-            var _table = document.createElement("table");
-            _table.border = 1;
+            var _proxContent = document.getElementById("prox-content");
+            _proxContent.innerHTML = "";
 
-            for(var i = 0; i < data.length; i++){
-                var _tr = _table.insertRow();
+            _proxContent.appendChild(createProxTable(data));
+            _proxContent.appendChild(createGeocodesLabel());
+            _proxContent.appendChild(createProxLegend());
 
-                if(addSetupTask){
+            function createProxTable(data){
+                var proxTable = document.createElement("table");
+                proxTable.border = 1;
 
-                    _tr.classList.add("add-setup-task");
-                    _tr.dataSetup = data[i];
-                    _tr.addEventListener("click", function(e) {
-                        addSetupTaskDetails(this.dataSetup);
-                        addSetupTask = false;
-                        document.getElementById("prox-modal").classList.remove("show");
-                    });
-
+                for(var i = 0; i < data.length; i++){
+                    createTableRow(data[i]);
                 }
 
-                _tr.insertCell().innerHTML = data[i].zipCode.substring(0,5);
-                _tr.insertCell().innerHTML = data[i].schedule;
-                _tr.insertCell().innerHTML = data[i].tech+"/"+data[i].division;
-                _tr.insertCell().innerHTML = data[i].hyp+" km";
-                _tr.insertCell().innerHTML = data[i].dailyStops;
+                createTableHeader();
 
-                for(var ii = 0; ii < colorScale.length; ii++){
-                    if(data[i].dailyTotal < colorScale[ii].amount){
-                        _tr.style.textShadow = "1px 1px 0 "+colorScale[ii].color;
-                        break;
+                return proxTable;
+
+                function createTableRow(rowData){
+                    var _tr = proxTable.insertRow();
+                    _tr.insertCell().innerHTML = rowData.zipCode.substring(0,5);
+                    _tr.insertCell().innerHTML = rowData.schedule;
+                    _tr.insertCell().innerHTML = rowData.tech+"/"+rowData.division;
+                    _tr.insertCell().innerHTML = rowData.hyp+" km";
+                    _tr.insertCell().innerHTML = rowData.dailyStops;
+
+                    if(addSetupTask){
+                        _tr.classList.add("add-setup-task");
+                        _tr.dataSetup = rowData;
+                        _tr.addEventListener("click", function(e) {
+                            addSetupTaskDetails(this.dataSetup);
+                            addSetupTask = false;
+                            document.getElementById("prox-modal").classList.remove("show");
+                        });
                     }
-                    _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
+
+                    for(var ii = 0; ii < colorScale.length; ii++){
+                        if(rowData.dailyTotal < colorScale[ii].amount){
+                            _tr.style.textShadow = "1px 1px 0 "+colorScale[ii].color;
+                            break;
+                        }
+                        _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
+                    }
                 }
+
+                function createTableHeader(){
+                    var _header = proxTable.createTHead();
+
+                    var _headerRow = _header.insertRow(0);
+
+                    _headerRow.insertCell().innerHTML = "Zip Code";
+                    _headerRow.insertCell().innerHTML = "Schedule";
+                    _headerRow.insertCell().innerHTML = "Tech/Division";
+                    _headerRow.insertCell().innerHTML = "Distance *";
+                    _headerRow.insertCell().innerHTML = "Stops";
+                    _headerRow.style.fontWeight = "bold";
+                }
+
             }
 
-            var _header = _table.createTHead();
 
-            var _headerRow = _header.insertRow(0);
+            function createGeocodesLabel(){
+                var geocodesLabel = document.createElement("span");
+                geocodesLabel.id = "geocodesLabel";
+                geocodesLabel.innerHTML = "Latitude: "+sessionStorage.getItem("latitude")+" Longitude: "+sessionStorage.getItem("longitude");
 
-            _headerRow.insertCell().innerHTML = "Zip Code";
-            _headerRow.insertCell().innerHTML = "Schedule";
-            _headerRow.insertCell().innerHTML = "Tech/Division";
-            _headerRow.insertCell().innerHTML = "Distance *";
-            _headerRow.insertCell().innerHTML = "Stops";
-
-            _headerRow.style.fontWeight = "bold";
-
-            var geocodesLabel = document.createElement("span");
-            geocodesLabel.id = "geocodesLabel";
-            geocodesLabel.innerHTML = "Latitude: "+sessionStorage.getItem("latitude")+" Longitude: "+sessionStorage.getItem("longitude");
-
-            var scrollDiv = document.createElement("div");
-            scrollDiv.style.height = "";
-            scrollDiv.style.width = "";
-
-            _proxContent.appendChild(_table);
-
-            _proxContent.appendChild(geocodesLabel);
-
-            var proxLegend = document.createElement("div");
-
-            var legendHeader = document.createElement("div");
-
-            if(addSetupTask){
-                legendHeader.innerHTML = "Select an active setup to assign technician and schedule.<h3>Average Daily Total:</h3>";
-            } else {
-                legendHeader.innerHTML = "<h3>Average Daily Total:</h3>";
+                return geocodesLabel;
             }
 
-            proxLegend.appendChild(legendHeader);
+            function createProxLegend(){
 
-            for(var j = 0; j < colorScale.length; j++){
-                var _div = document.createElement("div");
-                _div.innerHTML = "$"+colorScale[j].amount;
-                _div.style.textShadow = "1px 1px 0 "+colorScale[j].color;
-                _div.style.transform = "rotate(300deg)";
-                _div.style.display = "inline-block";
-                _div.style.marginTop = "12px";
-                _div.style.marginBottom = "16px";
-                _div.style.width = "21px";
-                proxLegend.appendChild(_div);
+                var proxLegend = document.createElement("div");
+
+                proxLegend.appendChild(createLegendHeader());
+
+                for(var j = 0; j < colorScale.length; j++){
+                    var _div = document.createElement("div");
+                    _div.innerHTML = "$"+colorScale[j].amount;
+                    _div.style.textShadow = "1px 1px 0 "+colorScale[j].color;
+                    _div.style.transform = "rotate(300deg)";
+                    _div.style.display = "inline-block";
+                    _div.style.marginTop = "12px";
+                    _div.style.marginBottom = "16px";
+                    _div.style.width = "21px";
+                    proxLegend.appendChild(_div);
+                }
+
+                var fineText = document.createElement("div");
+                fineText.innerHTML = "*As the crow flies, not as the technician drives.";
+                fineText.style.textAlign = "right";
+
+                proxLegend.appendChild(fineText);
+
+                return proxLegend;
+
+                function createLegendHeader(){
+                    var legendHeader = document.createElement("div");
+                    if(addSetupTask){
+                        legendHeader.innerHTML = "Select an active setup to assign technician and schedule.<h3>Average Daily Total:</h3>";
+                    } else {
+                        legendHeader.innerHTML = "<h3>Average Daily Total:</h3>";
+                    }
+                    return legendHeader;
+                }
+
             }
-
-            var fineText = document.createElement("div");
-
-            fineText.innerHTML = "*As the crow flies, not as the technician drives.";
-
-            fineText.style.textAlign = "right";
-
-            proxLegend.appendChild(fineText);
-
-            _proxContent.appendChild(proxLegend);
 
             function addSetupTaskDetails(activeSetup){
                 var taskNameInput = document.getElementById("subject");
@@ -916,8 +929,6 @@
                 descriptionInput.value = descriptionInput.value.concat("\nNextDate: "+_nextDate);
                 selectTaskFor.click();
             }
-
-            // return _proxContent;
         }
     }
 
@@ -944,7 +955,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","RE-START","ROACH","TICK"]
+                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","RE-START","ROACH","TICKS"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -1031,7 +1042,7 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskName = "Generate 2 more GR treatments @ $100 ea";
                         break;
-                    case "TICK":
+                    case "TICKS":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "12";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
@@ -1116,8 +1127,6 @@
 
                         tasksForm.classList.add("buttonated");
 
-                        var taskName = document.getElementById("subject").value;
-
                         var expandedRowButtonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
                         expandedRowButtonsContainer.style.justifyContent = "space-between";
                         expandedRowButtonsContainer.style.position = "static";
@@ -1132,73 +1141,97 @@
                         var locationTaskNoteSection = document.getElementById("locationTaskNoteSection");
                         locationTaskNoteSection.parentNode.style.minHeight = "166px";
 
-                        var spacerDiv = document.createElement("div");
-                        spacerDiv.style.display = "flex";
-                        spacerDiv.style.flex = "1";
-
-                        var otherButtonsContainer = document.createElement("div");
-                        otherButtonsContainer.id = "otherTaskButtons";
-                        otherButtonsContainer.style.display = "flex";
-
-
-                        var taskFollowUpButton = document.createElement("button");
-                        taskFollowUpButton.classList.add("scorpinated");
-                        taskFollowUpButton.innerHTML = "Follow Up";
-                        taskFollowUpButton.onclick = followUpListener;
-
-                        var taskSetupButton = document.createElement("button");
-                        taskSetupButton.innerHTML = "Create Setup";
-                        taskSetupButton.classList.add("scorpinated");
-                        taskSetupButton.onclick = createSetupListener;
-
-                        var taskWelcomeButton = document.createElement("button");
-                        taskWelcomeButton.classList.add("scorpinated");
-                        taskWelcomeButton.innerHTML = "Welcome Letter";
-                        taskWelcomeButton.onclick = welcomeListener;
-
-                        var taskSendFollowUpButton = document.createElement("button");
-                        taskSendFollowUpButton.classList.add("scorpinated");
-                        taskSendFollowUpButton.innerHTML = "Text Follow-up";
-                        taskSendFollowUpButton.onclick = sendFollowUpListener;
-
-                        if(taskName.includes("Follow up")){
-                            otherButtonsContainer.appendChild(taskSendFollowUpButton);
-                        } else if(taskName.includes("New")){
-                            otherButtonsContainer.appendChild(taskFollowUpButton);
-                            otherButtonsContainer.appendChild(taskSetupButton);
-                            otherButtonsContainer.appendChild(taskWelcomeButton);
-                        } else {
-                            otherButtonsContainer.appendChild(taskFollowUpButton);
-                        }
-
-                        if(taskName){
-                            var butSaveContainer = document.getElementById("butSaveContainer");
-                            var completeButton = document.createElement("button");
-                            completeButton.classList.add("scorpinated");
-                            completeButton.innerHTML = "Complete";
-
-                            completeButton.addEventListener("click", function(e){
-                                e.preventDefault();
-
-                                document.getElementById("status").value = "C";
-
-                                document.getElementById("butSave").click();
-
-                            });
-
-
-
-                            otherButtonsContainer.appendChild(completeButton);
-                        }
-
                         var cancelEditContainer = document.getElementById("cancelEditContainer");
-                        expandedRowButtonsContainer.insertBefore(otherButtonsContainer, cancelEditContainer);
-                        expandedRowButtonsContainer.insertBefore(spacerDiv, cancelEditContainer);
+
+                        expandedRowButtonsContainer.insertBefore(createOtherButtonsContainer(), cancelEditContainer);
+                        expandedRowButtonsContainer.insertBefore(createSpacerDiv(), cancelEditContainer);
 
                     }
 
                 }, 500);
             };
+
+            function createSpacerDiv(){
+                var spacerDiv = document.createElement("div");
+                spacerDiv.style.display = "flex";
+                spacerDiv.style.flex = "1";
+
+                return spacerDiv;
+            }
+
+            function createOtherButtonsContainer(){
+                var otherButtonsContainer = document.createElement("div");
+                otherButtonsContainer.id = "otherTaskButtons";
+                otherButtonsContainer.style.display = "flex";
+
+                var taskName = document.getElementById("subject").value;
+
+                if(taskName.includes("Follow up")){
+                    otherButtonsContainer.appendChild(createTaskSendFollowUpButton());
+                } else if(taskName.includes("New")){
+                    otherButtonsContainer.appendChild(createTaskFollowUpButton());
+                    otherButtonsContainer.appendChild(createTaskSetupButton());
+                    otherButtonsContainer.appendChild(createTaskWelcomeButton());
+                } else {
+                    otherButtonsContainer.appendChild(createTaskFollowUpButton());
+                }
+
+                if(taskName){
+                    otherButtonsContainer.appendChild(createCompleteButton());
+                }
+
+                return otherButtonsContainer;
+
+                function createTaskSendFollowUpButton(){
+                    var taskSendFollowUpButton = document.createElement("button");
+                    taskSendFollowUpButton.classList.add("scorpinated");
+                    taskSendFollowUpButton.innerHTML = "Text Follow-up";
+                    taskSendFollowUpButton.onclick = sendFollowUpListener;
+
+                    return taskSendFollowUpButton;
+                }
+
+                function createTaskFollowUpButton(){
+                    var taskFollowUpButton = document.createElement("button");
+                    taskFollowUpButton.classList.add("scorpinated");
+                    taskFollowUpButton.innerHTML = "Follow Up";
+                    taskFollowUpButton.onclick = followUpListener;
+
+                    return taskFollowUpButton;
+                }
+
+                function createTaskSetupButton(){
+                    var taskSetupButton = document.createElement("button");
+                    taskSetupButton.innerHTML = "Create Setup";
+                    taskSetupButton.classList.add("scorpinated");
+                    taskSetupButton.onclick = createSetupListener;
+
+                    return taskSetupButton;
+                }
+
+                function createTaskWelcomeButton(){
+                    var taskWelcomeButton = document.createElement("button");
+                    taskWelcomeButton.classList.add("scorpinated");
+                    taskWelcomeButton.innerHTML = "Welcome Letter";
+                    taskWelcomeButton.onclick = welcomeListener;
+
+                    return taskWelcomeButton;
+                }
+
+                function createCompleteButton(){
+                    var completeButton = document.createElement("button");
+                    completeButton.classList.add("scorpinated");
+                    completeButton.innerHTML = "Complete";
+                    completeButton.addEventListener("click", function(e){
+                        e.preventDefault();
+                        document.getElementById("status").value = "C";
+                        document.getElementById("butSave").click();
+                    });
+
+                    return completeButton;
+                }
+
+            }
         }
 
         function followUpListener(event){
@@ -1399,7 +1432,6 @@
     }
 
     function autoSetupinator(){
-        if(urlContains(["iframe"])) return;
         if(urlContains(["serviceSetup/detail.asp"])){
             var serviceSetup = JSON.parse(sessionStorage.getItem("serviceSetup"));
             console.log(serviceSetup);
@@ -1566,6 +1598,8 @@
 
     function autoDataFixinator(){
 
+        menuFixes();
+
         if(urlContains(["location/detail.asp"])){
             locationDetailFixes();
         } else if(urlContains(["location/edit.asp"])){
@@ -1574,6 +1608,15 @@
             locationAddFixes();
         } else if(urlContains(["billto/edit.asp"])){
             billToEditFixes();
+        }
+
+        function menuFixes(){
+            var ppMenu = document.getElementsByClassName("pp-menu")[0];
+            var reportsLink = ppMenu.children[0].children[0].children[5].children[0];
+            if(reportsLink.innerHTML === "Reports"){
+                reportsLink.href = "/reports/reports.asp";
+                reportsLink.style.textDecoration = "none";
+            }
         }
 
         function billToEditFixes(){
@@ -1676,6 +1719,8 @@
                 }
             }
 
+            directionsInput.value = directionsInput.value.replace("scorpions", "Scorpions");
+
             directionsInput.value = directionsInput.value.replace("scorpions txt reminders", "TEXT REMINDERS - Scorpions");
 
             directionsInput.value = directionsInput.value.replace("scorpions text reminders", "TEXT REMINDERS - Scorpions");
@@ -1693,75 +1738,16 @@
 
         if(urlContains(["location/detail.asp"])){
             addHeyMarketIcon();
-        } else if(urlContains(['/dialog/changeOrder.asp'])){
-            return;
-
-            console.log('dialog');
-            var sendTextButton = document.createElement('button');
-            sendTextButton.innerHTML = 'Send Text';
-            sendTextButton.classList.add('scorpinated');
-
-            sendTextButton.addEventListener('click', function(e){
-                e.preventDefault();
-                var popupData = parsePopupData(GM_getValue('popupData'));
-                GM_setValue('autoText', popupData.phone+"||||"+Date.now());
-            });
-
-            var focushere = document.getElementsByTagName("table")[3];
-
-            var newRow = focushere.insertRow(10);
-
-            newRow.insertCell(0);
-
-            var newCell = newRow.insertCell(1);
-
-            newRow.insertCell(2);
-
-            newCell.style.textAlign = "-webkit-center";
-
-            newCell.appendChild(sendTextButton);
-
-        } else if(urlContains(['/appointment/'])){
-            return;
-
-            window.addEventListener('dblclick', function(e){
-
-                var target = e.target;
-                var popupText;
-
-                if(target.parentElement.getAttribute("popuptext")){
-                    popupText = target.parentElement.getAttribute("popuptext");
-                } else if(target.parentElement.parentElement.getAttribute("popuptext")){
-                    popupText = target.parentElement.parentElement.getAttribute("popuptext");
-                } else if(target.parentElement.parentElement.parentElement.getAttribute("popuptext")){
-                    popupText = target.parentElement.parentElement.parentElement.getAttribute("popuptext");
-                }
-
-                popupText = popupText
-                                .replace(/<\/?[^>]+(>|$)/g, " ")         // Replace all markup with spaces
-                                .replace(/&nbsp;/g, "")                  // Replace fake spaces with real spaces
-                                .trim()                                  // Trim leading/trailing spaces
-                                .replace(/(?<=[0-9]):(?=[0-9])/g, "")    // Remove colons with numbers on either side
-                                .replace(/\s*:\s*/g, ":")                // Remove extra spaces after colons
-                                .replace(/   +/g, '|')                   // Replace 3 or more spaces with |
-                                .replace(/  +/g, ' ');                   // Reduce 2 or more spaces down to 1 space
-
-                console.log(popupText);
-
-                GM_setValue('popupData', popupText);
-
-
-            }, true);
 
         } else if(urlContains(['/app.heymarket.com/'])){
             addPestPacIcon();
+
             GM_addValueChangeListener('autoText', function(name, old_value, new_value, remote){
                 var _textData = new_value.split("|");
                 var _textNumber = _textData[0];
                 var _textAccount = _textData[1];
                 var _textName = _textData[2];
                 var _textBody = _textData[3];
-                var _textTimeStamp = _textData[4];
                 
                 goToContact(_textNumber, function(){
                     console.log("callback");
@@ -1771,6 +1757,22 @@
 
             });
 
+        }
+
+        function spinButton(elem, size){
+            var _count = 0;
+            var spinterval = setInterval(spinner, 25);
+            function spinner(){
+                if(_count <= 20){
+                    var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
+                    elem.style.width = Math.abs(growth*size)+"px";
+                    elem.style.height = Math.abs(growth*size)+"px";
+                    elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
+                    _count++;
+                } else {
+                    clearInterval(spinterval);
+                }
+            }
         }
 
         function parsePopupData(popupText){
@@ -1796,15 +1798,11 @@
 
              if(inputSearchContact){
                 var keyUpEvent = document.createEvent("Event");
-
                 keyUpEvent.initEvent('keyup');
-
                 inputSearchContact.value = textNumber;
-
                 inputSearchContact.dispatchEvent(keyUpEvent);
 
                 var firstContactRow = document.getElementsByClassName('contact-row')[0];
-
                 firstContactRow.children[0].click();
             }
 
@@ -1816,11 +1814,8 @@
                 var messageTextarea = document.getElementById('message-textarea');
 
                 if(messageTextarea){
-
                     messageTextarea.value = messageBody;
-
                     messageTextarea.dispatchEvent(new InputEvent('input'));
-
                 }
 
             }, 500);
@@ -1840,8 +1835,7 @@
 
                 setTimeout(function(){
                     var optionsDot = document.getElementsByClassName("options-dot")[0];
-                    optionsDot.click();
-
+                    if(optionsDot) optionsDot.click();
                 }, 100);
 
                 setTimeout(function(){
@@ -1862,13 +1856,11 @@
 
             var linking = false;
 
-            var linkClass = "autoText-link";
-
             linkPhoneNumbers(document.getElementById("location-address-block"));
 
             linkPhoneNumbers(document.getElementById("billto-address-block"));
 
-            function linkPhoneNumbers(node) {
+            function linkPhoneNumbers(node){
                 if(!node) return;
                 for (var i = 0; i < node.childNodes.length; ++i) {
                     var child = node.childNodes[i];
@@ -1892,28 +1884,35 @@
                             var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
                             var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
                             
-                            var image = document.createElement("img");
-                            image.src = "https://rjhuffaker.github.io/heymarket_black.png";
-                            image.style.width = "1em";
-                            image.style.height = "1em";
-                            image.style.cursor = "pointer";
-
-
-                            var link = document.createElement("a");
-                            link.style.cursor = "pointer";
-                            link.addEventListener("click", function(){
-                                GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"||"+Date.now());
-                                spinButton(image);
-                            });
-
-                            link.class = linkClass;
-                            link.style.marginLeft = "0.25em";
-                            link.appendChild(image);
-
                             child.splitText(phoneNumbers.index + phoneNumbers[0].length);
-                            node.insertBefore(link, node.childNodes[++i]);
+
+                            node.insertBefore(createHeyMarketLink(phoneNumber), node.childNodes[++i]);
                         }
                     }
+                }
+            }
+
+            function createHeyMarketLink(phoneNumber){
+                var link = document.createElement("a");
+                link.style.cursor = "pointer";
+                link.class = "autoText-link";
+                link.style.marginLeft = "0.25em";
+                link.appendChild(createHeyMarketImage());
+                link.addEventListener("click", function(){
+                    GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"||"+Date.now());
+                    spinButton(document.getElementById("heyMarketImage"), 12);
+                });
+
+                return link;
+
+                function createHeyMarketImage(){
+                    var image = document.createElement("img");
+                    image.id = "heyMarketImage";
+                    image.src = "https://rjhuffaker.github.io/heymarket_black.png";
+                    image.style.width = "1em";
+                    image.style.height = "1em";
+
+                    return image;
                 }
             }
         }
@@ -1935,29 +1934,7 @@
 
                             if(!chatRoomContainer) return;
 
-                            var image = document.createElement("img");
-                            image.src = "https://rjhuffaker.github.io/pestpac_logo.png";
-                            image.style.height = "30px";
-                            image.style.width = "30px";
-
-                            var link = document.createElement("a");
-                            link.style.cursor = "pointer";
-                            link.appendChild(image);
-                            link.style.position = "absolute";
-                            link.style.top = "12px";
-                            link.style.right = "115px";
-                            link.style.height = "30px";
-                            link.style.width = "30px";
-
-                            link.addEventListener("click", function(){
-                                setTimeout(function(){
-                                    var contactInfo = getHeyMarketContactInfo();
-                                    GM_setValue("findAccount", contactInfo+"|"+Date.now());
-                                    spinButton(image, 30);
-                                }, 500);
-                            });
-
-                            chatRoomContainer.appendChild(link);
+                            chatRoomContainer.appendChild(createPestPacLink());
 
                         }
                     }
@@ -1971,6 +1948,35 @@
                 attributes: true,
                 characterData: true
             });
+
+            function createPestPacLink(){
+                var link = document.createElement("a");
+                link.style.cursor = "pointer";
+                link.style.position = "absolute";
+                link.style.top = "12px";
+                link.style.right = "115px";
+                link.style.height = "30px";
+                link.style.width = "30px";
+                link.appendChild(createPestPacImage());
+
+                link.addEventListener("click", function(){
+                        var contactInfo = getHeyMarketContactInfo();
+                        GM_setValue("findAccount", contactInfo+"|"+Date.now());
+                        spinButton(document.getElementById("pestPacImage"), 30);
+                });
+
+                return link;
+
+                function createPestPacImage(){
+                    var image = document.createElement("img");
+                    image.id = "pestPacImage";
+                    image.src = "https://rjhuffaker.github.io/pestpac_logo.png";
+                    image.style.height = "30px";
+                    image.style.width = "30px";
+
+                    return image;
+                }
+            }
 
             function getHeyMarketContactInfo(){
                 var profileContent = document.getElementById("profile-content");
@@ -1994,22 +2000,6 @@
                 return contactInfo;
             }
         }
-
-        function spinButton(elem, size){
-            var _count = 0;
-            var spinterval = setInterval(spinner, 25);
-            function spinner(){
-                if(_count <= 20){
-                    var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
-                    elem.style.width = Math.abs(growth*size)+"px";
-                    elem.style.height = Math.abs(growth*size)+"px";
-                    elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
-                    _count++;
-                } else {
-                    clearInterval(spinterval);
-                }
-            }
-        }
     }
 
     function traversinator(){
@@ -2018,50 +2008,62 @@
         if(!urlContains(["location/detail.asp?LocationID"])) return;
 
         var advancedSearchWrapper = document.getElementsByClassName("advanced-search-wrapper")[0];
-        var quickSearchField = document.getElementById("quicksearchfield");
         var locationHeaderDetailLink = document.getElementById("locationHeaderDetailLink");
 
         if(!locationHeaderDetailLink) return;
 
-        var traverseDiv = document.createElement("div");
-        traverseDiv.id = "traverse-div";
-        traverseDiv.style.width = "136px";
-        traverseDiv.style.padding = "10px 0px";
+        advancedSearchWrapper.appendChild(createTraverseDiv());
 
-        var prevLink = document.createElement("a");
-        prevLink.classList.add("advanced-search");
-        prevLink.innerHTML = "Prev";
-        prevLink.href = "#";
-        prevLink.style.width = "25%";
-        prevLink.style.marginRight = "25%";
-        prevLink.style.display = "inline-block";
-        prevLink.style.textAlign = "left";
+        function createTraverseDiv(){
+            var traverseDiv = document.createElement("div");
+            traverseDiv.id = "traverse-div";
+            traverseDiv.style.width = "136px";
+            traverseDiv.style.padding = "10px 0px";
 
-        var nextLink = document.createElement("a");
-        nextLink.classList.add("advanced-search");
-        nextLink.innerHTML = "Next";
-        nextLink.href = "#";
-        nextLink.style.width = "25%";
-        nextLink.style.marginLeft = "25%";
-        nextLink.style.display = "inline-block";
-        nextLink.style.textAlign = "right";
+            traverseDiv.appendChild(createPrevLink());
+            traverseDiv.appendChild(createNextLink());
 
-        traverseDiv.appendChild(prevLink);
-        traverseDiv.appendChild(nextLink);
+            return traverseDiv;
 
-        advancedSearchWrapper.appendChild(traverseDiv);
+            function createPrevLink(){
+                var prevLink = document.createElement("a");
+                prevLink.classList.add("advanced-search");
+                prevLink.innerHTML = "Prev";
+                prevLink.href = "#";
+                prevLink.style.width = "25%";
+                prevLink.style.marginRight = "25%";
+                prevLink.style.display = "inline-block";
+                prevLink.style.textAlign = "left";
 
-        prevLink.addEventListener("click", function(e){
-            e.preventDefault();
-            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
-            traverseAccounts(false, currentID);
-        });
+                prevLink.addEventListener("click", function(e){
+                    e.preventDefault();
+                    var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
+                    traverseAccounts(false, currentID);
+                });
 
-        nextLink.addEventListener("click", function(e){
-            e.preventDefault();
-            var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
-            traverseAccounts(true, currentID);
-        });
+                return prevLink;
+            }
+
+            function createNextLink(){
+                var nextLink = document.createElement("a");
+                nextLink.classList.add("advanced-search");
+                nextLink.innerHTML = "Next";
+                nextLink.href = "#";
+                nextLink.style.width = "25%";
+                nextLink.style.marginLeft = "25%";
+                nextLink.style.display = "inline-block";
+                nextLink.style.textAlign = "right";
+
+                nextLink.addEventListener("click", function(e){
+                    e.preventDefault();
+                    var currentID = parseInt(locationHeaderDetailLink.children[0].innerHTML);
+                    traverseAccounts(true, currentID);
+                });
+
+                return nextLink;
+            }
+
+        }
 
         function traverseAccounts(forward, startID){
             var newID = forward ? startID+1 : startID-1;
@@ -2229,411 +2231,5 @@
             }
         }
     }
-
-    function addPageHeaderButtons(){
-        if(urlContains(["location/detail.asp"])){
-            var pageHeader = document.getElementById("page-header");
-
-            var scorpBotButton = document.createElement("button");
-            scorpBotButton.id = "scorp-bot-button";
-            scorpBotButton.innerHTML = "ScorpBot";
-            scorpBotButton.style.marginRight = "7px";
-            scorpBotButton.classList.add("scorpinated");
-            scorpBotButton.onclick = scorpBotListener;
-
-            pageHeader.children[0].insertBefore(scorpBotButton, pageHeader.children[0].children[0]);
-
-        }
-
-        function scorpBotListener(event){
-            var modalOverlay = document.getElementById("modal-overlay");
-            var modalWindow = document.getElementById("modal-window");
-            if(modalWindow.style.display === "none"){
-                modalOverlay.style.display = "block";
-                modalWindow.style.display = "block";
-            } else {
-                modalOverlay.style.display = "none";
-                modalWindow.style.display = "none";
-            }
-        }
-    }
-
-    function scorpBotModal(){
-        if(urlContains(["location/detail.asp"])){
-            var bodyElement = document.getElementsByTagName('body')[0];
-
-            bodyElement.appendChild(createModalOverlay());
-            bodyElement.appendChild(createModalWindow());
-
-            function createModalOverlay(){
-                var modalOverlay = document.createElement("div");
-                modalOverlay.id = "modal-overlay";
-                modalOverlay.style.position = "fixed";
-                modalOverlay.style.display = "none";
-                modalOverlay.style.zIndex = 20;
-                modalOverlay.style.top = "0";
-                modalOverlay.style.left = "0";
-                modalOverlay.style.height = "100%";
-                modalOverlay.style.width = "100%";
-                modalOverlay.style.opacity = "0.5";
-                modalOverlay.style.backgroundColor = "#333";
-                modalOverlay.onclick = dismissModal;
-
-                return modalOverlay;
-            }
-
-            function createModalWindow(){
-                var modalWindow = document.createElement("div");
-                modalWindow.id = "modal-window";
-                modalWindow.style.position = "fixed";
-                modalWindow.style.display = "none";
-                modalWindow.style.zIndex = 30;
-                modalWindow.style.top = "10%";
-                modalWindow.style.left = "20%";
-                modalWindow.style.height = "80%";
-                modalWindow.style.width = "60%";
-
-                modalWindow.appendChild(createModalContent());
-
-                return modalWindow;
-
-                function createModalContent(){
-                    var modalContent = document.createElement("div");
-                    modalContent.id = "modal-content";
-                    modalContent.style.position = "static";
-                    modalContent.style.top = "0";
-                    modalContent.style.left = "0";
-                    modalContent.style.height = "100%";
-                    modalContent.style.width = "100%";
-                    modalContent.style.border = "1px solid black";
-
-                    modalContent.appendChild(createModalHeader());
-                    modalContent.appendChild(createModalBody());
-                    modalContent.appendChild(createModalFooter());
-
-                    return modalContent
-
-                    function createModalHeader(){
-                        var modalHeader = document.createElement("div");
-                        modalHeader.id = "prox-header";
-                        modalHeader.style.height = "15%";
-                        modalHeader.style.width = "100%";
-                        modalHeader.style.backgroundColor = "rgb(153, 10, 32)";
-
-                        modalHeader.appendChild(createModalTitle());
-                        modalHeader.appendChild(createModalExit());
-
-                        return modalHeader;
-
-                        function createModalTitle(){
-                            var modalTitle = document.createElement("span");
-                            modalTitle.id = "prox-title";
-                            modalTitle.innerHTML = "ScorpBot";
-
-                            return modalTitle;
-                        }
-
-                        function createModalExit(){
-                            var modalExit = document.createElement("span");
-                            modalExit.id = "prox-exit";
-                            modalExit.innerHTML = "&#10006;";
-                            modalExit.onclick = dismissModal;
-
-                            return modalExit;
-                        }
-                    }
-
-                    function createModalBody(){
-                        var modalBody = document.createElement("div");
-                        modalBody.id = "modal-body";
-                        modalBody.style.height = "80%";
-                        modalBody.style.width = "100%";
-                        modalBody.style.backgroundColor = "white";
-
-                        modalBody.appendChild(createScorpBotList());
-                        modalBody.appendChild(createQuerySection());
-
-                        return modalBody;
-
-                        function createScorpBotList(){
-                            var scorpBotList = document.createElement("textarea");
-                            scorpBotList.id = "scorp-bot-list";
-                            scorpBotList.style.width = "98%";
-                            scorpBotList.style.height = "20%";
-                            scorpBotList.style.margin = "1%";
-                            scorpBotList.style.boxSizing = "border-box";
-                            scorpBotList.style.resize = "none";
-
-                            return scorpBotList;
-                        }
-
-                        function createQuerySection(){
-                            var querySection = document.createElement("div");
-                            querySection.style.display = "flex";
-                            querySection.style.height = "73%";
-                            querySection.style.width = "98%";
-                            querySection.style.margin = "1%";
-                            querySection.style.border = "1px dotted grey";
-                            querySection.style.boxSizing = "border-box";
-
-                            querySection.appendChild(createSearchColumn());
-                            querySection.appendChild(createChangeColumn());
-
-                            return querySection;
-
-                            function createSearchColumn(){
-                                var searchColumn = document.createElement("div");
-                                searchColumn.style.display = "block";
-                                searchColumn.style.height = "100%";
-                                searchColumn.style.width = "50%";
-                                searchColumn.style.padding = "1%";
-                                searchColumn.style.border = "1px dotted grey";
-                                searchColumn.style.boxSizing = "border-box";
-                                searchColumn.innerHTML = "<h3>Search By:</h3>";
-
-                                searchColumn.appendChild(createNameQuery());
-                                searchColumn.appendChild(createInstructionsQuery());
-
-                                return searchColumn;
-
-                                function createNameQuery(){
-                                    var nameQueryDiv = document.createElement("div");
-                                    nameQueryDiv.style.display = "block";
-
-                                    var nameQueryInput = document.createElement("input");
-                                    nameQueryInput.id = "name-query";
-                                    nameQueryInput.type = "text";
-
-                                    var nameQueryLabel = document.createElement("label");
-                                    nameQueryLabel.htmlFor = "name-query";
-                                    nameQueryLabel.innerHTML = "Name:";
-
-                                    nameQueryDiv.appendChild(nameQueryLabel);
-                                    nameQueryDiv.appendChild(nameQueryInput);
-
-                                    return nameQueryDiv;
-                                }
-
-                                function createInstructionsQuery(){
-                                    var instructionsQueryDiv = document.createElement("div");
-                                    instructionsQueryDiv.style.display = "block";
-
-                                    var instructionsQueryInput = document.createElement("input");
-                                    instructionsQueryInput.id = "instructions-query";
-                                    instructionsQueryInput.type = "text";
-
-                                    var instructionsQueryLabel = document.createElement("label");
-                                    instructionsQueryLabel.htmlFor = "instructions-query";
-                                    instructionsQueryLabel.innerHTML = "Instructions:";
-
-                                    instructionsQueryDiv.appendChild(instructionsQueryLabel);
-                                    instructionsQueryDiv.appendChild(instructionsQueryInput);
-
-                                    return instructionsQueryDiv;
-                                }
-                            }
-
-                            function createChangeColumn(){
-                                var changeColumn = document.createElement("div");
-                                changeColumn.style.display = "block";
-                                changeColumn.style.display = "inline-block";
-                                changeColumn.style.height = "100%";
-                                changeColumn.style.width = "50%";
-                                changeColumn.style.padding = "1%";
-                                changeColumn.style.border = "1px dotted grey";
-                                changeColumn.style.boxSizing = "border-box";
-                                changeColumn.innerHTML = "<h3>What to Change:</h3>";
-
-                                changeColumn.appendChild(createNameChange());
-                                changeColumn.appendChild(createFixCall2Sch());
-
-                                return changeColumn;
-
-                                function createNameChange(){
-                                    var nameChangeDiv = document.createElement("div");
-                                    nameChangeDiv.style.display = "block";
-
-                                    var nameChangeInput = document.createElement("input");
-                                    nameChangeInput.id = "name-change";
-                                    nameChangeInput.type = "text";
-
-                                    var nameChangeLabel = document.createElement("label");
-                                    nameChangeLabel.htmlFor = "name-change";
-                                    nameChangeLabel.innerHTML = "Name:";
-
-                                    nameChangeDiv.appendChild(nameChangeLabel);
-                                    nameChangeDiv.appendChild(nameChangeInput);
-
-                                    return nameChangeDiv;
-                                }
-
-                                function createFixCall2Sch(){
-                                    var fixCall2SchDiv = document.createElement("div");
-                                    fixCall2SchDiv.style.display = "block";
-
-                                    var fixCall2Sch = document.createElement("input");
-                                    fixCall2Sch.id = "fix-call-2-sch";
-                                    fixCall2Sch.type = "checkbox";
-
-                                    var fixCall2SchLabel = document.createElement("label");
-                                    fixCall2SchLabel.htmlFor = "fix-call-2-sch";
-                                    fixCall2SchLabel.innerHTML = 'Fix "Call 2 Sch": ';
-
-                                    fixCall2SchDiv.appendChild(fixCall2SchLabel);
-                                    fixCall2SchDiv.appendChild(fixCall2Sch);
-
-                                    return fixCall2SchDiv;
-                                }
-
-                            }
-                        }
-                    }
-
-                    function createModalFooter(){
-                        var modalFooter = document.createElement("div");
-                        modalFooter.id = "modal-footer";
-                        modalFooter.style.height = "5%";
-                        modalFooter.style.width = "100%";
-                        modalFooter.style.backgroundColor = "cornsilk";
-                        modalFooter.appendChild(createStartButton());
-
-                        return modalFooter;
-
-                        function createStartButton(){
-                            var startButton = document.createElement("button");
-                            startButton.innerHTML = "Start";
-                            startButton.onclick = startScorpBot;
-
-                            return startButton;
-                        }
-                    }
-                }
-            }
-
-            function startScorpBot(){
-                var scorpBotList = document.getElementById("scorp-bot-list").value;
-
-                if(scorpBotList){
-                    sessionStorage.setItem("scorpBotCurrent", 0);
-                    sessionStorage.setItem("scorpBotQuery", JSON.stringify(getScorpQuery()));
-                    sessionStorage.setItem("scorpBotList", scorpBotList);
-                    dismissModal();
-                    autoScorpBot();
-                } else if(confirm("Iterate over current list?")){
-                    sessionStorage.setItem("scorpBotChange", JSON.stringify(getScorpChange()));
-                    sessionStorage.setItem("scorpBotNext", "location/detail");
-                    dismissModal();
-                    autoScorpBot();
-                }
-            }
-
-            function dismissModal(){
-                document.getElementById("modal-overlay").style.display = "none";
-                document.getElementById("modal-window").style.display = "none";
-            }
-
-            function getScorpQuery(){
-                var scorpQuery = {};
-                scorpQuery.name = document.getElementById("name-query").value;
-                scorpQuery.instructions = document.getElementById("instructions-query").value;
-                return scorpQuery;
-            }
-
-            function getScorpChange(){
-                var scorpChange = {};
-                scorpChange.name = document.getElementById("name-change").value;
-                scorpChange.fixCall2Sch = document.getElementById("fix-call-2-sch").checked;
-                return scorpChange;
-            }
-
-        }
-    }
-
-    function autoScorpBot(){
-        var scorpBotChange = JSON.parse(sessionStorage.getItem("scorpBotChange"));
-        if(!scorpBotChange) return;
-        console.log("autoScorpBotting");
-        if(urlContains(["location/detail.asp"])){
-            
-        } else if(urlContains(["location/edit.asp"])){
-
-        } else if(urlContains(["serviceSetup/detail.asp"])){
-
-        }
-
-    }
-
-    function goToPage(page){
-
-        sessionStorage.setItem("goToPage", page);
-
-        if(page==="next in list"){
-            var downArrow = document.getElementsByClassName("DownArrow")[0];
-            if(downArrow){
-                downArrow.children[0].click();
-            } else {
-                sessionStorage.removeItem("scorpBotCurrent");
-                sessionStorage.removeItem("scorpBotQuery");
-                sessionStorage.removeItem("scorpBotList");
-                sessionStorage.removeItem("scorpBotNext");
-            }
-        } else if(page==="location/edit"){
-            if(urlContains(["location/detail.asp"])){
-                document.getElementById("locationHeaderDetailLink").click();
-            } else if(urlContains(["serviceSetup/detail.asp"])){
-                document.getElementById("butSave").click();
-            }
-        } else if(page==="serviceSetup/edit"){
-            if(urlContains(["location/detail.asp"])){
-                document.getElementById("RsRow1").click();
-            } else if(urlContains(["serviceSetup/detail.asp"])){
-                document.getElementById("butEdit").click();
-            }
-        }
-    }
-
-    function queryStuff(){
-        var scorpBotCurrent = sessionStorage.getItem("scorpBotCurrent");
-        var scorpBotQuery = JSON.parse(sessionStorage.getItem("scorpBotQuery"));
-        var scorpBotList = sessionStorage.getItem("scorpBotList");
-
-        var addressBlockTbody = document.getElementById("location-address-block").children[0];
-        if(addressBlockTbody.children[1].children[0].children[0].tagName === "B"){
-            console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML);
-        }
-
-        if(scorpBotList){
-            var locationId = document.getElementById("locationHeaderDetailLink").children[0].innerHTML;
-            scorpBotList = csvToObjectArray(scorpBotList);
-
-            if(scorpBotList.length <= scorpBotCurrent){
-                sessionStorage.removeItem("scorpBotCurrent");
-                sessionStorage.removeItem("scorpBotQuery");
-                sessionStorage.removeItem("scorpBotList");
-            } else {
-                console.log(scorpBotList[scorpBotCurrent].id +' =?= '+ locationId);
-
-                var addressBlockTbody = document.getElementById("location-address-block").children[0];
-                console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML+" =?= "+scorpBotQuery.name);
-
-                if(addressBlockTbody.children[1].children[0].children[0].tagName === "B"){
-                    console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML+" =?= "+scorpBotQuery.name);
-                    if(addressBlockTbody.children[1].children[0].children[0].innerHTML.includes(scorpBotQuery.name)){
-                        console.log("Name Found!");
-                    }
-                }
-            }
-
-            var next_i = parseInt(scorpBotCurrent)+1;
-            var nextAccount = scorpBotList[next_i];
-
-            if(nextAccount){
-                sessionStorage.setItem("scorpBotCurrent", next_i);
-                goToAccount(nextAccount.id);
-            }
-
-        }
-    }
-
 
 })();

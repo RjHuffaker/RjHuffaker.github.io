@@ -1,0 +1,746 @@
+Old autoTextinator:
+
+	function autoTextinator(){
+		console.log('Textinator');
+
+		if(urlContains(["location/detail.asp"])){
+			addHeyMarketIcon();
+		} else if(urlContains(['/dialog/changeOrder.asp'])){
+			return;
+
+			console.log('dialog');
+			var sendTextButton = document.createElement('button');
+			sendTextButton.innerHTML = 'Send Text';
+			sendTextButton.classList.add('scorpinated');
+
+			sendTextButton.addEventListener('click', function(e){
+				e.preventDefault();
+				var popupData = parsePopupData(GM_getValue('popupData'));
+				GM_setValue('autoText', popupData.phone+"||||"+Date.now());
+			});
+
+			var focushere = document.getElementsByTagName("table")[3];
+
+			var newRow = focushere.insertRow(10);
+
+			newRow.insertCell(0);
+
+			var newCell = newRow.insertCell(1);
+
+			newRow.insertCell(2);
+
+			newCell.style.textAlign = "-webkit-center";
+
+			newCell.appendChild(sendTextButton);
+
+		} else if(urlContains(['/appointment/'])){
+			return;
+
+			window.addEventListener('dblclick', function(e){
+
+				var target = e.target;
+				var popupText;
+
+				if(target.parentElement.getAttribute("popuptext")){
+					popupText = target.parentElement.getAttribute("popuptext");
+				} else if(target.parentElement.parentElement.getAttribute("popuptext")){
+					popupText = target.parentElement.parentElement.getAttribute("popuptext");
+				} else if(target.parentElement.parentElement.parentElement.getAttribute("popuptext")){
+					popupText = target.parentElement.parentElement.parentElement.getAttribute("popuptext");
+				}
+
+				popupText = popupText
+								.replace(/<\/?[^>]+(>|$)/g, " ")         // Replace all markup with spaces
+								.replace(/&nbsp;/g, "")                  // Replace fake spaces with real spaces
+								.trim()                                  // Trim leading/trailing spaces
+								.replace(/(?<=[0-9]):(?=[0-9])/g, "")    // Remove colons with numbers on either side
+								.replace(/\s*:\s*/g, ":")                // Remove extra spaces after colons
+								.replace(/   +/g, '|')                   // Replace 3 or more spaces with |
+								.replace(/  +/g, ' ');                   // Reduce 2 or more spaces down to 1 space
+
+				console.log(popupText);
+
+				GM_setValue('popupData', popupText);
+
+
+			}, true);
+
+		} else if(urlContains(['/app.heymarket.com/'])){
+			addPestPacIcon();
+			GM_addValueChangeListener('autoText', function(name, old_value, new_value, remote){
+				var _textData = new_value.split("|");
+				var _textNumber = _textData[0];
+				var _textAccount = _textData[1];
+				var _textName = _textData[2];
+				var _textBody = _textData[3];
+				var _textTimeStamp = _textData[4];
+				
+				goToContact(_textNumber, function(){
+					console.log("callback");
+					prepareMessage(_textBody);
+					updateContact(_textAccount, _textName);
+				});
+
+			});
+
+		}
+
+		function spinButton(elem, size){
+			var _count = 0;
+			var spinterval = setInterval(spinner, 25);
+			function spinner(){
+				if(_count <= 20){
+					var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
+					elem.style.width = Math.abs(growth*size)+"px";
+					elem.style.height = Math.abs(growth*size)+"px";
+					elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
+					_count++;
+				} else {
+					clearInterval(spinterval);
+				}
+			}
+		}
+
+		function parsePopupData(popupText){
+			var popupList = popupText.split('|');
+
+			var popupData = [];
+
+			for(var i = 0; i < popupList.length; i++){
+				var keyValuePair = popupList[i].split(':');
+
+				if(keyValuePair[1]){
+					popupData[keyValuePair[0].toLowerCase()] = keyValuePair[1];
+				} else {
+					popupData[i] = keyValuePair[0];
+				}
+			}
+
+			return popupData;
+		}
+
+		function goToContact(textNumber, callback){
+			var inputSearchContact = document.getElementById('inputSearchContact');
+
+			 if(inputSearchContact){
+				var keyUpEvent = document.createEvent("Event");
+
+				keyUpEvent.initEvent('keyup');
+
+				inputSearchContact.value = textNumber;
+
+				inputSearchContact.dispatchEvent(keyUpEvent);
+
+				var firstContactRow = document.getElementsByClassName('contact-row')[0];
+
+				firstContactRow.children[0].click();
+			}
+
+			if(callback) callback();
+		}
+
+		function prepareMessage(messageBody){
+			setTimeout(function(){
+				var messageTextarea = document.getElementById('message-textarea');
+
+				if(messageTextarea){
+
+					messageTextarea.value = messageBody;
+
+					messageTextarea.dispatchEvent(new InputEvent('input'));
+
+				}
+
+			}, 500);
+		}
+
+		function updateContact(account, name){
+			console.log("updateContact: "+account+" "+name);
+			var nameDiv = document.getElementsByClassName("name")[0];
+			if(nameDiv && nameDiv.innerHTML.includes(account)){
+				console.log("Do nothing "+account+" "+nameDiv.innerHTML);
+			} else {
+				console.log("Update Contact Info");
+				var nameList = name.split(" ");
+				if(nameList.length = 2){
+					name = name.split(" ")[1]+", "+name.split(" ")[0];
+				}
+
+				setTimeout(function(){
+					var optionsDot = document.getElementsByClassName("options-dot")[0];
+					if(optionsDot) optionsDot.click();
+				}, 100);
+
+				setTimeout(function(){
+					var editButton = document.getElementsByClassName("edit")[0];
+
+					triggerMouseEvent(editButton, "mousedown");
+
+					var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
+					nameInput.value = account+" "+name;
+				}, 100);
+
+			}
+		}
+
+		function addHeyMarketIcon(){
+			var phoneNumberRegEx = /(?:^|[\s\(])(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?!\.\S|[^\s\)x\.])/;
+			var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
+
+			var linking = false;
+
+			linkPhoneNumbers(document.getElementById("location-address-block"));
+
+			linkPhoneNumbers(document.getElementById("billto-address-block"));
+
+			function linkPhoneNumbers(node){
+				if(!node) return;
+				for (var i = 0; i < node.childNodes.length; ++i) {
+					var child = node.childNodes[i];
+					if (child.nodeName == "SCRIPT" || child.nodeName == "NOSCRIPT"
+						|| child.nodeName == "OBJECT" || child.nodeName == "EMBED"
+						|| child.nodeName == "APPLET" || child.nodeName == "IFRAME") {
+						continue;
+					}
+
+					if (child.childNodes.length > 0) {
+						linkPhoneNumbers(child);
+					} else if (child.nodeType == 3) {
+						var phoneNumbers = phoneNumberRegExMatcher.exec(child.nodeValue);
+						if (phoneNumbers){
+							console.log(phoneNumbers);
+							var nextChild = child.nextSibling;
+							if (nextChild && nextChild.class == linkClass) {
+								continue;
+							}
+
+							var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
+							var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
+							
+							child.splitText(phoneNumbers.index + phoneNumbers[0].length);
+
+							node.insertBefore(createHeyMarketLink(phoneNumber), node.childNodes[++i]);
+						}
+					}
+				}
+			}
+
+			function createHeyMarketLink(phoneNumber){
+				var link = document.createElement("a");
+				link.style.cursor = "pointer";
+				link.class = "autoText-link";
+				link.style.marginLeft = "0.25em";
+				link.appendChild(createHeyMarketImage());
+				link.addEventListener("click", function(){
+					GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"||"+Date.now());
+					spinButton(document.getElementById("heyMarketImage"), 12);
+				});
+
+				return link;
+
+				function createHeyMarketImage(){
+					var image = document.createElement("img");
+					image.id = "heyMarketImage";
+					image.src = "https://rjhuffaker.github.io/heymarket_black.png";
+					image.style.width = "1em";
+					image.style.height = "1em";
+
+					return image;
+				}
+			}
+		}
+
+		function addPestPacIcon(){
+
+			var observer = new MutationObserver(function(mutations){
+				mutations.forEach(function(mutation){
+
+					if (!mutation.addedNodes) return
+
+					for (var i = 0; i < mutation.addedNodes.length; i++) {
+
+						var node = mutation.addedNodes[i]
+						if(!node.classList) return;
+
+						if(node.id === "profile-content"){
+							var chatRoomContainer = document.getElementsByClassName("chat-room-container")[0];
+
+							if(!chatRoomContainer) return;
+
+							chatRoomContainer.appendChild(createPestPacLink());
+
+						}
+					}
+
+				});
+			});
+
+			observer.observe(document.body, {
+				childList: true,
+				subtree: true,
+				attributes: true,
+				characterData: true
+			});
+
+			function createPestPacLink(){
+				var link = document.createElement("a");
+				link.style.cursor = "pointer";
+				link.style.position = "absolute";
+				link.style.top = "12px";
+				link.style.right = "115px";
+				link.style.height = "30px";
+				link.style.width = "30px";
+				link.appendChild(createPestPacImage());
+
+				link.addEventListener("click", function(){
+						var contactInfo = getHeyMarketContactInfo();
+						GM_setValue("findAccount", contactInfo+"|"+Date.now());
+						spinButton(document.getElementById("pestPacImage"), 30);
+				});
+
+				return link;
+
+				function createPestPacImage(){
+					var image = document.createElement("img");
+					image.id = "pestPacImage";
+					image.src = "https://rjhuffaker.github.io/pestpac_logo.png";
+					image.style.height = "30px";
+					image.style.width = "30px";
+
+					return image;
+				}
+			}
+
+			function getHeyMarketContactInfo(){
+				var profileContent = document.getElementById("profile-content");
+				if(!profileContent){
+					alert("profileContent not found!");
+					return;
+				}
+				var name = profileContent.children[2].children[0].innerHTML;
+				var phone = profileContent.children[2].children[1].innerHTML;
+
+				var nameDiv = document.getElementsByClassName("name")[0];
+				var phoneLink = document.getElementsByClassName("phone")[0];
+
+				var contactInfo;
+				if(phone){
+					contactInfo = name.replace("(", "").replace(") ", "-")+" "+phone;
+				} else {
+					contactInfo = name.replace("(", "").replace(") ", "-");
+				}
+
+				return contactInfo;
+			}
+		}
+	}
+
+Old addPageHeaderButtons:
+
+    function addPageHeaderButtons(){
+        if(urlContains(["location/detail.asp"])){
+            var pageHeader = document.getElementById("page-header");
+
+            var scorpBotButton = document.createElement("button");
+            scorpBotButton.id = "scorp-bot-button";
+            scorpBotButton.innerHTML = "ScorpBot";
+            scorpBotButton.style.marginRight = "7px";
+            scorpBotButton.classList.add("scorpinated");
+            scorpBotButton.onclick = scorpBotListener;
+
+            pageHeader.children[0].insertBefore(scorpBotButton, pageHeader.children[0].children[0]);
+
+        }
+
+        function scorpBotListener(event){
+            var modalOverlay = document.getElementById("modal-overlay");
+            var modalWindow = document.getElementById("modal-window");
+            if(modalWindow.style.display === "none"){
+                modalOverlay.style.display = "block";
+                modalWindow.style.display = "block";
+            } else {
+                modalOverlay.style.display = "none";
+                modalWindow.style.display = "none";
+            }
+        }
+    }
+
+Old scorpBotModal Stuff:
+
+    function scorpBotModal(){
+        if(urlContains(["location/detail.asp"])){
+            var bodyElement = document.getElementsByTagName('body')[0];
+
+            bodyElement.appendChild(createModalOverlay());
+            bodyElement.appendChild(createModalWindow());
+
+            function createModalOverlay(){
+                var modalOverlay = document.createElement("div");
+                modalOverlay.id = "modal-overlay";
+                modalOverlay.style.position = "fixed";
+                modalOverlay.style.display = "none";
+                modalOverlay.style.zIndex = 20;
+                modalOverlay.style.top = "0";
+                modalOverlay.style.left = "0";
+                modalOverlay.style.height = "100%";
+                modalOverlay.style.width = "100%";
+                modalOverlay.style.opacity = "0.5";
+                modalOverlay.style.backgroundColor = "#333";
+                modalOverlay.onclick = dismissModal;
+
+                return modalOverlay;
+            }
+
+            function createModalWindow(){
+                var modalWindow = document.createElement("div");
+                modalWindow.id = "modal-window";
+                modalWindow.style.position = "fixed";
+                modalWindow.style.display = "none";
+                modalWindow.style.zIndex = 30;
+                modalWindow.style.top = "10%";
+                modalWindow.style.left = "20%";
+                modalWindow.style.height = "80%";
+                modalWindow.style.width = "60%";
+
+                modalWindow.appendChild(createModalContent());
+
+                return modalWindow;
+
+                function createModalContent(){
+                    var modalContent = document.createElement("div");
+                    modalContent.id = "modal-content";
+                    modalContent.style.position = "static";
+                    modalContent.style.top = "0";
+                    modalContent.style.left = "0";
+                    modalContent.style.height = "100%";
+                    modalContent.style.width = "100%";
+                    modalContent.style.border = "1px solid black";
+
+                    modalContent.appendChild(createModalHeader());
+                    modalContent.appendChild(createModalBody());
+                    modalContent.appendChild(createModalFooter());
+
+                    return modalContent
+
+                    function createModalHeader(){
+                        var modalHeader = document.createElement("div");
+                        modalHeader.id = "prox-header";
+                        modalHeader.style.height = "15%";
+                        modalHeader.style.width = "100%";
+                        modalHeader.style.backgroundColor = "rgb(153, 10, 32)";
+
+                        modalHeader.appendChild(createModalTitle());
+                        modalHeader.appendChild(createModalExit());
+
+                        return modalHeader;
+
+                        function createModalTitle(){
+                            var modalTitle = document.createElement("span");
+                            modalTitle.id = "prox-title";
+                            modalTitle.innerHTML = "ScorpBot";
+
+                            return modalTitle;
+                        }
+
+                        function createModalExit(){
+                            var modalExit = document.createElement("span");
+                            modalExit.id = "prox-exit";
+                            modalExit.innerHTML = "&#10006;";
+                            modalExit.onclick = dismissModal;
+
+                            return modalExit;
+                        }
+                    }
+
+                    function createModalBody(){
+                        var modalBody = document.createElement("div");
+                        modalBody.id = "modal-body";
+                        modalBody.style.height = "80%";
+                        modalBody.style.width = "100%";
+                        modalBody.style.backgroundColor = "white";
+
+                        modalBody.appendChild(createScorpBotList());
+                        modalBody.appendChild(createQuerySection());
+
+                        return modalBody;
+
+                        function createScorpBotList(){
+                            var scorpBotList = document.createElement("textarea");
+                            scorpBotList.id = "scorp-bot-list";
+                            scorpBotList.style.width = "98%";
+                            scorpBotList.style.height = "20%";
+                            scorpBotList.style.margin = "1%";
+                            scorpBotList.style.boxSizing = "border-box";
+                            scorpBotList.style.resize = "none";
+
+                            return scorpBotList;
+                        }
+
+                        function createQuerySection(){
+                            var querySection = document.createElement("div");
+                            querySection.style.display = "flex";
+                            querySection.style.height = "73%";
+                            querySection.style.width = "98%";
+                            querySection.style.margin = "1%";
+                            querySection.style.border = "1px dotted grey";
+                            querySection.style.boxSizing = "border-box";
+
+                            querySection.appendChild(createSearchColumn());
+                            querySection.appendChild(createChangeColumn());
+
+                            return querySection;
+
+                            function createSearchColumn(){
+                                var searchColumn = document.createElement("div");
+                                searchColumn.style.display = "block";
+                                searchColumn.style.height = "100%";
+                                searchColumn.style.width = "50%";
+                                searchColumn.style.padding = "1%";
+                                searchColumn.style.border = "1px dotted grey";
+                                searchColumn.style.boxSizing = "border-box";
+                                searchColumn.innerHTML = "<h3>Search By:</h3>";
+
+                                searchColumn.appendChild(createNameQuery());
+                                searchColumn.appendChild(createInstructionsQuery());
+
+                                return searchColumn;
+
+                                function createNameQuery(){
+                                    var nameQueryDiv = document.createElement("div");
+                                    nameQueryDiv.style.display = "block";
+
+                                    var nameQueryInput = document.createElement("input");
+                                    nameQueryInput.id = "name-query";
+                                    nameQueryInput.type = "text";
+
+                                    var nameQueryLabel = document.createElement("label");
+                                    nameQueryLabel.htmlFor = "name-query";
+                                    nameQueryLabel.innerHTML = "Name:";
+
+                                    nameQueryDiv.appendChild(nameQueryLabel);
+                                    nameQueryDiv.appendChild(nameQueryInput);
+
+                                    return nameQueryDiv;
+                                }
+
+                                function createInstructionsQuery(){
+                                    var instructionsQueryDiv = document.createElement("div");
+                                    instructionsQueryDiv.style.display = "block";
+
+                                    var instructionsQueryInput = document.createElement("input");
+                                    instructionsQueryInput.id = "instructions-query";
+                                    instructionsQueryInput.type = "text";
+
+                                    var instructionsQueryLabel = document.createElement("label");
+                                    instructionsQueryLabel.htmlFor = "instructions-query";
+                                    instructionsQueryLabel.innerHTML = "Instructions:";
+
+                                    instructionsQueryDiv.appendChild(instructionsQueryLabel);
+                                    instructionsQueryDiv.appendChild(instructionsQueryInput);
+
+                                    return instructionsQueryDiv;
+                                }
+                            }
+
+                            function createChangeColumn(){
+                                var changeColumn = document.createElement("div");
+                                changeColumn.style.display = "block";
+                                changeColumn.style.display = "inline-block";
+                                changeColumn.style.height = "100%";
+                                changeColumn.style.width = "50%";
+                                changeColumn.style.padding = "1%";
+                                changeColumn.style.border = "1px dotted grey";
+                                changeColumn.style.boxSizing = "border-box";
+                                changeColumn.innerHTML = "<h3>What to Change:</h3>";
+
+                                changeColumn.appendChild(createNameChange());
+                                changeColumn.appendChild(createFixCall2Sch());
+
+                                return changeColumn;
+
+                                function createNameChange(){
+                                    var nameChangeDiv = document.createElement("div");
+                                    nameChangeDiv.style.display = "block";
+
+                                    var nameChangeInput = document.createElement("input");
+                                    nameChangeInput.id = "name-change";
+                                    nameChangeInput.type = "text";
+
+                                    var nameChangeLabel = document.createElement("label");
+                                    nameChangeLabel.htmlFor = "name-change";
+                                    nameChangeLabel.innerHTML = "Name:";
+
+                                    nameChangeDiv.appendChild(nameChangeLabel);
+                                    nameChangeDiv.appendChild(nameChangeInput);
+
+                                    return nameChangeDiv;
+                                }
+
+                                function createFixCall2Sch(){
+                                    var fixCall2SchDiv = document.createElement("div");
+                                    fixCall2SchDiv.style.display = "block";
+
+                                    var fixCall2Sch = document.createElement("input");
+                                    fixCall2Sch.id = "fix-call-2-sch";
+                                    fixCall2Sch.type = "checkbox";
+
+                                    var fixCall2SchLabel = document.createElement("label");
+                                    fixCall2SchLabel.htmlFor = "fix-call-2-sch";
+                                    fixCall2SchLabel.innerHTML = 'Fix "Call 2 Sch": ';
+
+                                    fixCall2SchDiv.appendChild(fixCall2SchLabel);
+                                    fixCall2SchDiv.appendChild(fixCall2Sch);
+
+                                    return fixCall2SchDiv;
+                                }
+
+                            }
+                        }
+                    }
+
+                    function createModalFooter(){
+                        var modalFooter = document.createElement("div");
+                        modalFooter.id = "modal-footer";
+                        modalFooter.style.height = "5%";
+                        modalFooter.style.width = "100%";
+                        modalFooter.style.backgroundColor = "cornsilk";
+                        modalFooter.appendChild(createStartButton());
+
+                        return modalFooter;
+
+                        function createStartButton(){
+                            var startButton = document.createElement("button");
+                            startButton.innerHTML = "Start";
+                            startButton.onclick = startScorpBot;
+
+                            return startButton;
+                        }
+                    }
+                }
+            }
+
+            function startScorpBot(){
+                var scorpBotList = document.getElementById("scorp-bot-list").value;
+
+                if(scorpBotList){
+                    sessionStorage.setItem("scorpBotCurrent", 0);
+                    sessionStorage.setItem("scorpBotQuery", JSON.stringify(getScorpQuery()));
+                    sessionStorage.setItem("scorpBotList", scorpBotList);
+                    dismissModal();
+                    autoScorpBot();
+                } else if(confirm("Iterate over current list?")){
+                    sessionStorage.setItem("scorpBotChange", JSON.stringify(getScorpChange()));
+                    sessionStorage.setItem("scorpBotNext", "location/detail");
+                    dismissModal();
+                    autoScorpBot();
+                }
+            }
+
+            function dismissModal(){
+                document.getElementById("modal-overlay").style.display = "none";
+                document.getElementById("modal-window").style.display = "none";
+            }
+
+            function getScorpQuery(){
+                var scorpQuery = {};
+                scorpQuery.name = document.getElementById("name-query").value;
+                scorpQuery.instructions = document.getElementById("instructions-query").value;
+                return scorpQuery;
+            }
+
+            function getScorpChange(){
+                var scorpChange = {};
+                scorpChange.name = document.getElementById("name-change").value;
+                scorpChange.fixCall2Sch = document.getElementById("fix-call-2-sch").checked;
+                return scorpChange;
+            }
+
+        }
+    }
+
+    function autoScorpBot(){
+        var scorpBotChange = JSON.parse(sessionStorage.getItem("scorpBotChange"));
+        if(!scorpBotChange) return;
+        console.log("autoScorpBotting");
+        if(urlContains(["location/detail.asp"])){
+            
+        } else if(urlContains(["location/edit.asp"])){
+
+        } else if(urlContains(["serviceSetup/detail.asp"])){
+
+        }
+
+    }
+
+    function goToPage(page){
+
+        sessionStorage.setItem("goToPage", page);
+
+        if(page==="next in list"){
+            var downArrow = document.getElementsByClassName("DownArrow")[0];
+            if(downArrow){
+                downArrow.children[0].click();
+            } else {
+                sessionStorage.removeItem("scorpBotCurrent");
+                sessionStorage.removeItem("scorpBotQuery");
+                sessionStorage.removeItem("scorpBotList");
+                sessionStorage.removeItem("scorpBotNext");
+            }
+        } else if(page==="location/edit"){
+            if(urlContains(["location/detail.asp"])){
+                document.getElementById("locationHeaderDetailLink").click();
+            } else if(urlContains(["serviceSetup/detail.asp"])){
+                document.getElementById("butSave").click();
+            }
+        } else if(page==="serviceSetup/edit"){
+            if(urlContains(["location/detail.asp"])){
+                document.getElementById("RsRow1").click();
+            } else if(urlContains(["serviceSetup/detail.asp"])){
+                document.getElementById("butEdit").click();
+            }
+        }
+    }
+
+    function queryStuff(){
+        var scorpBotCurrent = sessionStorage.getItem("scorpBotCurrent");
+        var scorpBotQuery = JSON.parse(sessionStorage.getItem("scorpBotQuery"));
+        var scorpBotList = sessionStorage.getItem("scorpBotList");
+
+        var addressBlockTbody = document.getElementById("location-address-block").children[0];
+        if(addressBlockTbody.children[1].children[0].children[0].tagName === "B"){
+            console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML);
+        }
+
+        if(scorpBotList){
+            var locationId = document.getElementById("locationHeaderDetailLink").children[0].innerHTML;
+            scorpBotList = csvToObjectArray(scorpBotList);
+
+            if(scorpBotList.length <= scorpBotCurrent){
+                sessionStorage.removeItem("scorpBotCurrent");
+                sessionStorage.removeItem("scorpBotQuery");
+                sessionStorage.removeItem("scorpBotList");
+            } else {
+                console.log(scorpBotList[scorpBotCurrent].id +' =?= '+ locationId);
+
+                var addressBlockTbody = document.getElementById("location-address-block").children[0];
+                console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML+" =?= "+scorpBotQuery.name);
+
+                if(addressBlockTbody.children[1].children[0].children[0].tagName === "B"){
+                    console.log(addressBlockTbody.children[1].children[0].children[0].innerHTML+" =?= "+scorpBotQuery.name);
+                    if(addressBlockTbody.children[1].children[0].children[0].innerHTML.includes(scorpBotQuery.name)){
+                        console.log("Name Found!");
+                    }
+                }
+            }
+
+            var next_i = parseInt(scorpBotCurrent)+1;
+            var nextAccount = scorpBotList[next_i];
+
+            if(nextAccount){
+                sessionStorage.setItem("scorpBotCurrent", next_i);
+                goToAccount(nextAccount.id);
+            }
+
+        }
+    }
+
