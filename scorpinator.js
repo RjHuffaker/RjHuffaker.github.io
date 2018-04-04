@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.211
+// @version      1.212
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -816,6 +816,7 @@
             function createProxTable(data){
                 var proxTable = document.createElement("table");
                 proxTable.border = 1;
+                proxTable.style.right = "10px";
 
                 for(var i = 0; i < data.length; i++){
                     createTableRow(data[i]);
@@ -827,6 +828,14 @@
 
                 function createTableRow(rowData){
                     var _tr = proxTable.insertRow();
+                    var _goToAnchor = document.createElement("a");
+                    _goToAnchor.innerHTML = rowData.id;
+                    _goToAnchor.style.textDecoration = "none";
+                    _goToAnchor.style.color = "#000";
+
+                    var _firstCell = _tr.insertCell();
+                    _firstCell.appendChild(_goToAnchor);
+
                     _tr.insertCell().innerHTML = rowData.zipCode.substring(0,5);
                     _tr.insertCell().innerHTML = rowData.schedule;
                     _tr.insertCell().innerHTML = rowData.tech+"/"+rowData.division;
@@ -840,6 +849,11 @@
                             addSetupTaskDetails(this.dataSetup);
                             addSetupTask = false;
                             document.getElementById("prox-modal").classList.remove("show");
+                        });
+                    } else {
+                        _goToAnchor.style.cursor = "pointer";
+                        _goToAnchor.addEventListener("click", function(e) {
+                            goToAccount(rowData.id);
                         });
                     }
 
@@ -857,6 +871,7 @@
 
                     var _headerRow = _header.insertRow(0);
 
+                    _headerRow.insertCell().innerHTML = "Account#";
                     _headerRow.insertCell().innerHTML = "Zip Code";
                     _headerRow.insertCell().innerHTML = "Schedule";
                     _headerRow.insertCell().innerHTML = "Tech/Division";
@@ -1613,6 +1628,7 @@
 
         function menuFixes(){
             var ppMenu = document.getElementsByClassName("pp-menu")[0];
+            if(!ppMenu) return;
             var reportsLink = ppMenu.children[0].children[0].children[5].children[0];
             if(reportsLink.innerHTML === "Reports"){
                 reportsLink.href = "/reports/reports.asp";
