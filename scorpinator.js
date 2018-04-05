@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.212
+// @version      1.213
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -367,23 +367,28 @@
         }
     }
 
-    function goToAccount(accountId){
-        var quickSearchField = document.getElementById("quicksearchfield");
-        quickSearchField.value = accountId;
-        var keyUpEvent = document.createEvent("Event");
-        keyUpEvent.initEvent('keyup');
-        quickSearchField.dispatchEvent(keyUpEvent);
+    function goToAccount(accountId, openWindow){
+        if(openWindow){
+            GM_setValue("goToAccount", accountId);
+            var newWindow = window.open("http://app.pestpac.com/search/default.asp");
+        } else {
+            var quickSearchField = document.getElementById("quicksearchfield");
+            quickSearchField.value = accountId;
+            var keyUpEvent = document.createEvent("Event");
+            keyUpEvent.initEvent('keyup');
+            quickSearchField.dispatchEvent(keyUpEvent);
 
-        var i = 0;
-        var clickInterval = setInterval(function(){
-            i++;
-            var searchResults = document.getElementsByClassName("quick-search-result");
-            if(searchResults.length > 0){
-                clearInterval(clickInterval);
-                searchResults[0].click();
-            }
-            if(i > 10) clearInterval(clickInterval);
-        }, 100);
+            var i = 0;
+            var clickInterval = setInterval(function(){
+                i++;
+                var searchResults = document.getElementsByClassName("quick-search-result");
+                if(searchResults.length > 0){
+                    clearInterval(clickInterval);
+                    searchResults[0].click();
+                }
+                if(i > 10) clearInterval(clickInterval);
+            }, 100);
+        }
     }
 
     function fetchGeocodes(address, callback){
@@ -853,7 +858,7 @@
                     } else {
                         _goToAnchor.style.cursor = "pointer";
                         _goToAnchor.addEventListener("click", function(e) {
-                            goToAccount(rowData.id);
+                            goToAccount(rowData.id, true);
                         });
                     }
 
@@ -1610,7 +1615,6 @@
 		}
     }
 
-
     function autoDataFixinator(){
         if(urlContains(["pestpac.com"])){
             menuFixes();
@@ -2088,8 +2092,6 @@
         }
 
         function findAccountListener(){
-            if(urlContains(["iframe"])) return;
-
             GM_deleteValue("findAccount");
 
             GM_addValueChangeListener("findAccount", function(name, old_value, new_value, remote){
@@ -2123,6 +2125,13 @@
                 }
 
             });
+
+            var goToAccountId = GM_getValue("goToAccount");
+
+            if(goToAccountId){
+                GM_deleteValue("goToAccount");
+                goToAccount(goToAccountId);
+            }
 
         }
     }
