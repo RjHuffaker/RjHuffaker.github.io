@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.213
+// @version      1.214
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -1032,11 +1032,14 @@
                     case "FREE ESTIMATE":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
-                        taskName = getSetupPrice(serviceOrder.instructions)+"?";
-                        taskDescription = "StartDate: "+serviceOrder.date;
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskName = "Check to see what estimate was";
                         break;
                     case "FREE ESTIMATE C":
-                        console.log("TODO: Do commercial estimate stuff.");
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "16";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskName = "Check to see what estimate was";
                         break;
                     case "IN":
                         prioritySelect.value = "3";
@@ -1555,9 +1558,11 @@
                 setTimeout(function(){
                     var welcomeLetter = JSON.parse(sessionStorage.getItem("welcomeLetter"));
 
+                    sessionStorage.removeItem("welcomeLetter");
+
                     var iframe = document.getElementById('Letter_ifr').contentWindow.document;
 
-                    var letter = iframe.getElementById("letter");
+                    var letter = iframe.getElementById("tinymce");
 
                     var nameInput = document.getElementById('Name');
 
@@ -1568,8 +1573,6 @@
                         .replace("DATE", welcomeLetter.nextService);
 
                     nameInput.value = "Welcome";
-
-                    sessionStorage.removeItem("welcomeLetter");
 
                 }, 1500);
             }
