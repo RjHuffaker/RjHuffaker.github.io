@@ -1833,8 +1833,6 @@
                         var node = mutation.addedNodes[i]
                         if(!node.classList) return;
 
-                        console.log(node.id);
-
                         if(node.id === "view_body" && node.style.display !== "none"){
                             addHeyMarketIcon(node);
                         }
