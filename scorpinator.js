@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.214
+// @version      1.220
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
 // @match        app.pestpac.com/*
 // @match        https://app.pestpac.com/*
 // @match        *app.heymarket.com/*
+// @match        https://email24.godaddy.com/webmail.php
 // @grant        window.open
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -34,6 +35,12 @@
     var excludedWeeks = [];
 
     var excludedTechs = [];
+
+  //  var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+
+    var phoneNumberRegEx = /(?:^|[\s\(])(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?!\.\S|[^\s\)x\.])/;
+
+    var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
 
     class ActiveSetup {
         constructor(setupArray) {
@@ -114,6 +121,7 @@
     }
 
     function retrieveActiveSetups(){
+        if(!urlContains(["app.pestpac.com"])) return;
         httpGetAsync("https://rjhuffaker.github.io/residential.csv",
                      function(response){
             activeSetups = tsvToObjectArray(response, 1);
@@ -368,27 +376,35 @@
     }
 
     function goToAccount(accountId, openWindow){
-        if(openWindow){
-            GM_setValue("goToAccount", accountId);
-            var newWindow = window.open("http://app.pestpac.com/search/default.asp");
-        } else {
-            var quickSearchField = document.getElementById("quicksearchfield");
-            quickSearchField.value = accountId;
-            var keyUpEvent = document.createEvent("Event");
-            keyUpEvent.initEvent('keyup');
-            quickSearchField.dispatchEvent(keyUpEvent);
+        var quickSearchField = document.getElementById("quicksearchfield");
+        quickSearchField.value = accountId;
 
-            var i = 0;
-            var clickInterval = setInterval(function(){
-                i++;
-                var searchResults = document.getElementsByClassName("quick-search-result");
-                if(searchResults.length > 0){
-                    clearInterval(clickInterval);
-                    searchResults[0].click();
+        var keyUpEvent = document.createEvent("Event");
+        keyUpEvent.initEvent('keyup');
+        quickSearchField.dispatchEvent(keyUpEvent);
+
+        var i = 0;
+        var clickInterval = setInterval(function(){
+            i++;
+            var searchResults = document.getElementsByClassName("quick-search-result");
+            if(searchResults.length > 0){
+                clearInterval(clickInterval);
+
+                var pattern = new RegExp(/'(.*?)'/g);
+                var onclickText = searchResults[0].getAttribute('onclick');
+                var newURL = pattern.exec(onclickText)[0].replaceAll("'", "");
+
+                if(openWindow){
+                    var newWindow = window.open("http://app.pestpac.com"+newURL);
+                    quickSearchField.value = "";
+                    document.getElementsByClassName("actions")[0].children[1].click();
+                } else {
+                    window.location.href="http://app.pestpac.com"+newURL;
                 }
-                if(i > 10) clearInterval(clickInterval);
-            }, 100);
-        }
+            }
+
+            if(i > 10) clearInterval(clickInterval);
+        }, 100);
     }
 
     function fetchGeocodes(address, callback){
@@ -955,7 +971,7 @@
     function autoTaskinator(){
         if(urlContains(["/task"])){
             document.getElementById("taskFilter").click(); //Makes task page a little easier to use
-        } else if(urlContains(["location/detail.asp"]) && !urlContains(["iframe"])){
+        } else if(urlContains(["location/detail.asp"])){
             addCreateTaskLink();
             addTaskButtons();
         }
@@ -1309,8 +1325,27 @@
 
                     selectTaskFor.click();
 
+                    assignTaskTo("ryan");
+
                 }, 1000);
             }
+
+            function assignTaskTo(text){
+                setTimeout(function(){
+                    var iframe = document.getElementById('iframe-modal-0').contentWindow.document;
+
+                    Array.from(iframe.getElementsByClassName("modal-result-row")).forEach(
+                        function(element, index, array) {
+                            if(element.children[1].innerHTML.toLowerCase().includes(text.toLowerCase())){
+                                element.children[0].children[0].click();
+                            }
+                        }
+                    );
+
+                    iframe.getElementById("butAdd").click();
+                }, 1000);
+            }
+
         }
 
         function createSetupListener(event){
@@ -1381,9 +1416,11 @@
 
             sessionStorage.setItem("serviceSetup", serviceSetup);
 
-            var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
+          //  var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
 
-            window.location.href = newUrl;
+          //  window.location.href = newUrl;
+
+            window.open(window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&"));
 
         }
 
@@ -1410,7 +1447,7 @@
 
             sessionStorage.setItem("welcomeLetter", welcomeLetter);
 
-            document.getElementById("butLetter").click();
+            window.open(window.location.href.replace("location","letters").replace("detail","default"));
         }
 
         function sendFollowUpListener(event){
@@ -1580,7 +1617,7 @@
     }
 
     function autoGeocodinator(){
-		if(!urlContains(["location/edit.asp", "location/add.asp"])) return;
+		if(!urlContains(["app.pestpac.com", "location/edit.asp", "location/add.asp"])) return;
         console.log("autoGeocodinating");
 
 		var butSave = document.getElementById("butSave");
@@ -1758,10 +1795,12 @@
     }
 
     function autoTextinator(){
-        console.log('Textinator');
-
         if(urlContains(["location/detail.asp"])){
-            addHeyMarketIcon();
+            addHeyMarketIcon(document.getElementById("location-address-block"));
+            addHeyMarketIcon(document.getElementById("billto-address-block"));
+
+        } else if(urlContains(["godaddy.com/webmail.php"])){
+            watchWebmail();
 
         } else if(urlContains(['/app.heymarket.com/'])){
             addPestPacIcon();
@@ -1772,15 +1811,44 @@
                 var _textAccount = _textData[1];
                 var _textName = _textData[2];
                 var _textBody = _textData[3];
-                
+
+                window.focus();
+
                 goToContact(_textNumber, function(){
-                    console.log("callback");
                     prepareMessage(_textBody);
                     updateContact(_textAccount, _textName);
                 });
 
             });
 
+        }
+
+        function watchWebmail(){
+            var observer = new MutationObserver(function(mutations){
+                mutations.forEach(function(mutation){
+                    if (!mutation.addedNodes) return
+
+                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+
+                        var node = mutation.addedNodes[i]
+                        if(!node.classList) return;
+
+                        console.log(node.id);
+
+                        if(node.id === "view_body" && node.style.display !== "none"){
+                            addHeyMarketIcon(node);
+                        }
+                    }
+
+                });
+            });
+
+            observer.observe(document.getElementById("main"), {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
         }
 
         function spinButton(elem, size){
@@ -1797,24 +1865,6 @@
                     clearInterval(spinterval);
                 }
             }
-        }
-
-        function parsePopupData(popupText){
-            var popupList = popupText.split('|');
-
-            var popupData = [];
-
-            for(var i = 0; i < popupList.length; i++){
-                var keyValuePair = popupList[i].split(':');
-
-                if(keyValuePair[1]){
-                    popupData[keyValuePair[0].toLowerCase()] = keyValuePair[1];
-                } else {
-                    popupData[i] = keyValuePair[0];
-                }
-            }
-
-            return popupData;
         }
 
         function goToContact(textNumber, callback){
@@ -1874,44 +1924,34 @@
             }
         }
 
-        function addHeyMarketIcon(){
-            var phoneNumberRegEx = /(?:^|[\s\(])(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?!\.\S|[^\s\)x\.])/;
-            var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
+        function addHeyMarketIcon(node){
+            if(!node.childNodes) return;
 
-            var linking = false;
+            for(var i = 0; i < node.childNodes.length; ++i){
+                var child = node.childNodes[i];
+                if (child.nodeName == "SCRIPT" || child.nodeName == "NOSCRIPT"
+                    || child.nodeName == "OBJECT" || child.nodeName == "EMBED"
+                    || child.nodeName == "APPLET" || child.nodeName == "IFRAME") {
+                    continue;
+                }
 
-            linkPhoneNumbers(document.getElementById("location-address-block"));
+                if(child.childNodes.length > 0){
+                    addHeyMarketIcon(child);
+                } else if (child.nodeType == 3){
+                    var phoneNumbers = phoneNumberRegExMatcher.exec(child.nodeValue);
+                    if(phoneNumbers){
 
-            linkPhoneNumbers(document.getElementById("billto-address-block"));
-
-            function linkPhoneNumbers(node){
-                if(!node) return;
-                for (var i = 0; i < node.childNodes.length; ++i) {
-                    var child = node.childNodes[i];
-                    if (child.nodeName == "SCRIPT" || child.nodeName == "NOSCRIPT"
-                        || child.nodeName == "OBJECT" || child.nodeName == "EMBED"
-                        || child.nodeName == "APPLET" || child.nodeName == "IFRAME") {
-                        continue;
-                    }
-
-                    if (child.childNodes.length > 0) {
-                        linkPhoneNumbers(child);
-                    } else if (child.nodeType == 3) {
-                        var phoneNumbers = phoneNumberRegExMatcher.exec(child.nodeValue);
-                        if (phoneNumbers){
-                            console.log(phoneNumbers);
-                            var nextChild = child.nextSibling;
-                            if (nextChild && nextChild.class == linkClass) {
-                                continue;
-                            }
-
-                            var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
-                            var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
-                            
-                            child.splitText(phoneNumbers.index + phoneNumbers[0].length);
-
-                            node.insertBefore(createHeyMarketLink(phoneNumber), node.childNodes[++i]);
+                        var nextChild = child.nextSibling;
+                        if(nextChild && nextChild.class == "autoText-link"){
+                            continue;
                         }
+
+                        var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
+                        var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
+
+                        child.splitText(phoneNumbers.index + phoneNumbers[0].length);
+
+                        node.insertBefore(createHeyMarketLink(phoneNumber), node.childNodes[++i]);
                     }
                 }
             }
@@ -1939,6 +1979,7 @@
                     return image;
                 }
             }
+
         }
 
         function addPestPacIcon(){
@@ -2024,9 +2065,12 @@
                 return contactInfo;
             }
         }
+
     }
 
     function traversinator(){
+        if(!urlContains(["app.pestpac.com"])) return;
+
         findAccountListener();
 
         if(!urlContains(["location/detail.asp?LocationID"])) return;
@@ -2100,6 +2144,8 @@
             GM_addValueChangeListener("findAccount", function(name, old_value, new_value, remote){
                 if(!checkLastFocus()) return;
 
+                window.focus();
+
                 console.log("New: "+new_value);
                 console.log("Old: "+old_value);
 
@@ -2117,8 +2163,8 @@
                     goToAccount(accountIdMatch[0]);
                 } else {
                     console.log("accountId null");
-                    var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
-                    var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
+                  //  var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+                  //  var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
                     var phoneNumberMatch = phoneNumberRegExMatcher.exec(accountInfo);
 
                     if(phoneNumberMatch){
@@ -2140,7 +2186,6 @@
     }
 
     function serviceOrderDuplicator(){
-        if(urlContains(["iframe"])) return;
         if(urlContains(["location/detail.asp"])){
             if(sessionStorage.getItem("duplicateOrder")){
                 var aButton = document.getElementsByClassName("ui-button")[0];
