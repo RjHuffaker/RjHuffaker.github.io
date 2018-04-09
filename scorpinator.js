@@ -1625,6 +1625,7 @@
 		var addressInput = document.getElementById("Address");
 		var mapMessage = document.getElementById("map_message");
 
+        if(!mapMessage) return;
 		if(mapMessage.innerHTML === "Address not found; position is approximate"){
 
 			var address = addressInput.value.replaceAll(" ", "+");
