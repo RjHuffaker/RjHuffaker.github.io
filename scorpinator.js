@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.220
+// @version      1.221
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -51,7 +51,7 @@
             this.zipCode = setupArray[4];
             this.latitude = parseFloat(setupArray[5]);
             this.longitude = parseFloat(setupArray[6]);
-			this.division = setupArray[7];
+            this.division = setupArray[7];
             this.service = setupArray[8];
             this.week = setupArray[9];
             this.weekDay = setupArray[10];
@@ -307,8 +307,8 @@
         if(day=="Sat") day = 6;
 
         if(frequency=="M") daysOut = 20;
-        if(frequency=="B") daysOut = 31;
-        if(frequency=="Q") daysOut = 56;
+        if(frequency=="B") daysOut = 45;
+        if(frequency=="Q") daysOut = 60;
 
         newDate.setDate(newDate.getDate() + daysOut);
 
@@ -411,7 +411,7 @@
         address = address.replaceAll(", ", "+");
         address = address.replaceAll(" ", "+");
 
-        var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+"+AZ,+AZ&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
+        var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+",&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
 
         httpGetAsync(requestString, function(data){
             var dataObj = JSON.parse(data);
@@ -1034,6 +1034,8 @@
                 var dueDateInput = document.getElementById("dueDate");
                 var taskForButton = document.getElementById("selectTaskFor");
 
+                var target = getSetupTarget(document.getElementById("tblDirections").value);
+
                 var taskName = "";
 
                 var taskDescription = "";
@@ -1063,7 +1065,7 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         addSetupTask = true;
                         taskName = getSetupPrice(serviceOrder.instructions);
-                        taskDescription = "StartDate: "+serviceOrder.date;
+                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "RE-START":
@@ -1072,7 +1074,7 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         addSetupTask = true;
                         taskName = getSetupPrice(serviceOrder.instructions);
-                        taskDescription = "StartDate: "+serviceOrder.date;
+                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "ROACH":
@@ -1146,6 +1148,25 @@
                     }
 
                     return setupName;
+                }
+
+                function getSetupTarget(data){
+                    data = data.toLowerCase();
+                    if(data.includes("scorpion")){
+                        return "SCORPIONS";
+                    } else if(data.includes("spider")){
+                        return "SPIDERS";
+                    } else if(data.includes("roach")){
+                        return "ROACHES";
+                    } else if(data.includes("cricket")){
+                        return "CRICKETS";
+                    } else if(data.includes("ticks")){
+                        return "TICKS";
+                    } else if(data.includes("ants")){
+                        return "ANTS";
+                    } else {
+                        return "";
+                    }
                 }
             }
         }
@@ -1378,6 +1399,15 @@
             serviceSetup.nextDate = nextDate;
             serviceSetup.target = getSetupTarget(directions);
 
+            serviceSetup = JSON.stringify(serviceSetup);
+
+            sessionStorage.setItem("serviceSetup", serviceSetup);
+
+            var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
+
+            window.location.href = newUrl;
+
+
             function getTechnician(name){
                 if(name==="Daniel"){
                     return "DANIEL A";
@@ -1391,7 +1421,6 @@
                     return name;
                 }
             }
-
 
             function getSetupTarget(data){
                 data = data.toLowerCase();
@@ -1411,17 +1440,6 @@
                     return "";
                 }
             }
-
-            serviceSetup = JSON.stringify(serviceSetup);
-
-            sessionStorage.setItem("serviceSetup", serviceSetup);
-
-          //  var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
-
-          //  window.location.href = newUrl;
-
-            window.open(window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&"));
-
         }
 
         function welcomeListener(event){
@@ -1447,7 +1465,9 @@
 
             sessionStorage.setItem("welcomeLetter", welcomeLetter);
 
-            window.open(window.location.href.replace("location","letters").replace("detail","default"));
+            var newUrl = window.location.href.replace("location","letters").replace("detail","default");
+
+            window.location.href = newUrl;
         }
 
         function sendFollowUpListener(event){
@@ -1494,8 +1514,8 @@
     function autoSetupinator(){
         if(urlContains(["serviceSetup/detail.asp"])){
             var serviceSetup = JSON.parse(sessionStorage.getItem("serviceSetup"));
-            console.log(serviceSetup);
             sessionStorage.removeItem("serviceSetup");
+
             if(serviceSetup){
 
                 var serviceCodeInput = document.getElementById("ServiceCode1");
@@ -1515,11 +1535,7 @@
                 unitPriceInput.blur();
 
                 workTimeInput.focus();
-                var hours = new Date().getHours();
-                hours = hours<12?hours:hours-12;
-                var minutes = new Date().getMinutes();
-                minutes = minutes>10?minutes:"0"+minutes;
-                workTimeInput.value = hours+":"+minutes;
+                workTimeInput.value = getCurrentReadableTime();
                 workTimeInput.blur();
 
                 startDateInput.focus();
@@ -1535,36 +1551,52 @@
                 techInput.blur();
 
                 scheduleInput.focus();
-
-                var month;
-
-                if(serviceSetup.nextDate.includes("/")){
-                    month = parseInt(serviceSetup.nextDate.split("/")[0]);
-                } else {
-                    month = parseInt(serviceSetup.startDate.split("/")[0]);
-                }
-
-                if(serviceSetup.frequency === "BIMONTHLY"){
-                    if(month % 2){
-                        scheduleInput.value = serviceSetup.schedule+"J";
-                    } else {
-                        scheduleInput.value = serviceSetup.schedule+"F";
-                    }
-                } else if(serviceSetup.frequency === "QUARTERLY"){
-                    if(month===1 || month===4 || month===7 || month===10){
-                        scheduleInput.value = serviceSetup.schedule+"J";
-                    } else if(month===2 || month===5 || month===8 || month===11){
-                        scheduleInput.value = serviceSetup.schedule+"F";
-                    } else if(month===3 || month===6 || month===9 || month===12){
-                        scheduleInput.value = serviceSetup.schedule+"M";
-                    }
-                } else {
-                    scheduleInput.value = serviceSetup.schedule;
-                }
-
+                scheduleInput.value = parseSchedule(serviceSetup);
                 scheduleInput.blur();
 
             }
+        }
+
+        function getCurrentReadableTime(){
+            var hours = new Date().getHours();
+            hours = hours<12?hours:hours-12;
+
+            var minutes = new Date().getMinutes();
+            minutes = minutes>10?minutes:"0"+minutes;
+
+            return hours+":"+minutes
+        }
+
+        function parseSchedule(setup){
+            var month;
+            var schedule;
+
+            if(setup.nextDate.includes("/")){
+                month = parseInt(setup.nextDate.split("/")[0]);
+            } else {
+                month = parseInt(setup.startDate.split("/")[0]);
+            }
+
+            if(setup.frequency === "BIMONTHLY"){
+                if(month % 2){
+                    schedule = setup.schedule+"J";
+                } else {
+                    schedule = setup.schedule+"F";
+                }
+            } else if(serviceSetup.frequency === "QUARTERLY"){
+                if(month===1 || month===4 || month===7 || month===10){
+                    schedule = setup.schedule+"J";
+                } else if(month===2 || month===5 || month===8 || month===11){
+                    schedule = setup.schedule+"F";
+                } else if(month===3 || month===6 || month===9 || month===12){
+                    schedule = setup.schedule+"M";
+                }
+            } else {
+                schedule = setup.schedule;
+            }
+
+            return schedule;
+
         }
 
     }
@@ -1617,19 +1649,19 @@
     }
 
     function autoGeocodinator(){
-		if(!urlContains(["app.pestpac.com", "location/edit.asp", "location/add.asp"])) return;
-        console.log("autoGeocodinating");
-
+		if(!urlContains(["location/edit.asp", "location/add.asp"])) return;
+        
 		var butSave = document.getElementById("butSave");
 		var butAdd = document.getElementById("butAdd");
 		var addressInput = document.getElementById("Address");
+        var stateInput = document.getElementById("State");
 		var mapMessage = document.getElementById("map_message");
 
         if(!mapMessage) return;
 		if(mapMessage.innerHTML === "Address not found; position is approximate"){
 
-			var address = addressInput.value.replaceAll(" ", "+");
-			var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+",+AZ&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
+			var address = addressInput.value.replaceAll(" ", "+")+"+"+stateInput.value;
+			var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+",&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
 
 			var longitudeInput = document.getElementById("Longitude");
 			var latitudeInput = document.getElementById("Latitude");
@@ -1701,7 +1733,6 @@
             }
         }
 
-
         function locationDetailFixes(){
             var contactLinks = document.getElementsByClassName("contact-link-span");
             var urlString = window.location.search.replace("?", "");
@@ -1721,7 +1752,6 @@
                 directionsInput.value = "** ";
             }
         }
-
 
         function locationEditFixes(){
             var editButton = document.getElementById("butEdit");
@@ -2067,6 +2097,43 @@
 
     }
 
+    addressGrabber();
+
+    function addressGrabber(){
+        if(urlContains(["godaddy.com/webmail.php"])){
+            var observer = new MutationObserver(function(mutations){
+                mutations.forEach(function(mutation){
+                    if (!mutation.addedNodes) return
+
+                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+
+                        var node = mutation.addedNodes[i];
+
+                        if(node.id === "view_body" && node.style.display !== "none"){
+
+                            console.log(node);
+
+                            var wmMessage = document.getElementById("wmMessage");
+
+                        }
+                    }
+                });
+            });
+
+            observer.observe(document.getElementById("main"), {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
+        }
+
+        function getElementsByBgColor(color){
+
+        }
+
+    }
+
     function traversinator(){
         if(!urlContains(["app.pestpac.com"])) return;
 
@@ -2162,8 +2229,7 @@
                     goToAccount(accountIdMatch[0]);
                 } else {
                     console.log("accountId null");
-                  //  var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
-                  //  var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
+
                     var phoneNumberMatch = phoneNumberRegExMatcher.exec(accountInfo);
 
                     if(phoneNumberMatch){
