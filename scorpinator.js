@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.221
+// @version      1.300
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
 // @match        app.pestpac.com/*
 // @match        https://app.pestpac.com/*
+// @match        reporting.pestpac.com/reports/serviceSetups/reportRemote.asp
 // @match        *app.heymarket.com/*
 // @match        https://email24.godaddy.com/webmail.php
+// @require      https://unpkg.com/github-api/dist/GitHub.bundle.js
 // @grant        window.open
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -17,6 +19,7 @@
 // @grant        GM_removeValueChangeListener
 // @run-at       document-idle
 // ==/UserScript==
+
 
 (function() {
     'use strict';
@@ -92,21 +95,24 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        if(urlContains(["blank", "iframe"])) return;
-        retrieveCSS();
-        focusListener();
-        retrieveActiveSetups();
-        autoTaskinator();
-        autoGeocodinator();
-        autoDataFixinator();
-        traversinator();
-        autoSetupinator();
-        autoWelcomator();
-        autoTextinator();
-        serviceOrderDuplicator();
+        if(!urlContains(["blank", "iframe"])){
+            retrieveCSS();
+            focusListener();
+            retrieveActiveSetups();
+            autoTaskinator();
+            autoGeocodinator();
+            autoDataFixinator();
+            traversinator();
+            autoSetupinator();
+            autoWelcomator();
+            autoTextinator();
+            serviceOrderDuplicator();
+            accountListExtractinator();
+            goDaddyAddressGrabber();
+        }
     }
 
-    function triggerMouseEvent (node, eventType) {
+    function triggerMouseEvent(node, eventType) {
         var clickEvent = document.createEvent ('MouseEvents');
         clickEvent.initEvent (eventType, true, true);
         node.dispatchEvent (clickEvent);
@@ -121,13 +127,27 @@
     }
 
     function retrieveActiveSetups(){
-        if(!urlContains(["app.pestpac.com"])) return;
-        httpGetAsync("https://rjhuffaker.github.io/residential.csv",
-                     function(response){
-            activeSetups = tsvToObjectArray(response, 1);
+        if(urlContains(["app.pestpac.com"])){
+            var residential = GM_getValue("residential");
+            if(residential){
+                activeSetups = tsvToObjectArray(residential, 0);
 
-            proximinator();
-        });
+                proximinator();
+            } else {
+                httpGetAsync("https://rjhuffaker.github.io/residential.csv",
+                             function(response){
+                    activeSetups = tsvToObjectArray(response, 0);
+
+                    proximinator();
+                });
+            }
+
+            GM_addValueChangeListener("residential", function(name, old_value, new_value, remote){
+                activeSetups = tsvToObjectArray(new_value, 0);
+
+                proximinator();
+            });
+        }
     }
 
     function urlContains(list){
@@ -196,6 +216,22 @@
                 return true;
             } else {
                 currentElement = currentElement.parentNode;
+            }
+        }
+    }
+
+    function spinButton(elem, size){
+        var _count = 0;
+        var spinterval = setInterval(spinner, 25);
+        function spinner(){
+            if(_count <= 20){
+                var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
+                elem.style.width = Math.abs(growth*size)+"px";
+                elem.style.height = Math.abs(growth*size)+"px";
+                elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
+                _count++;
+            } else {
+                clearInterval(spinterval);
             }
         }
     }
@@ -832,6 +868,7 @@
 
             _proxContent.appendChild(createProxTable(data));
             _proxContent.appendChild(createGeocodesLabel());
+            _proxContent.appendChild(createRetrieveLink());
             _proxContent.appendChild(createProxLegend());
 
             function createProxTable(data){
@@ -912,6 +949,27 @@
                 return geocodesLabel;
             }
 
+            function createRetrieveLink(){
+                var retrieveLink = document.createElement("a");
+                retrieveLink.innerHTML = "Retrieve Account Data";
+                retrieveLink.style.position = "absolute";
+                retrieveLink.style.paddingTop = "2px";
+                retrieveLink.style.right = "10px";
+                retrieveLink.style.cursor = "pointer";
+
+                retrieveLink.onclick = function(){
+                    GM_setValue("retrieveAccountData", "residential");
+
+                    var retrieveURL = "http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
+
+                    window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
+
+                  //  window.open("http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12");
+                }
+
+                return retrieveLink;
+            }
+
             function createProxLegend(){
 
                 var proxLegend = document.createElement("div");
@@ -954,7 +1012,6 @@
                 var taskNameInput = document.getElementById("subject");
                 var descriptionInput = document.getElementById("description");
                 var dueDateInput = document.getElementById("dueDate");
-                var selectTaskFor = document.getElementById("selectTaskFor");
 
                 var _frequency = taskNameInput.value.slice(-1);
                 var _startDate = dueDateInput.value;
@@ -963,7 +1020,7 @@
                 var _nextDate = getNextServiceDate(_startDate, _schedule, _frequency);
                 taskNameInput.value = taskNameInput.value.concat(" "+_schedule+" "+_tech);
                 descriptionInput.value = descriptionInput.value.concat("\nNextDate: "+_nextDate);
-                selectTaskFor.click();
+                
             }
         }
     }
@@ -991,7 +1048,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","RE-START","ROACH","TICKS"]
+                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","RE-START","ROACH","TICKS"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -1032,7 +1089,7 @@
                 var prioritySelect = document.getElementById("priority");
                 var taskTypeSelect = document.getElementById("taskType");
                 var dueDateInput = document.getElementById("dueDate");
-                var taskForButton = document.getElementById("selectTaskFor");
+                var taskForSelect = document.getElementById("taskForID");
 
                 var target = getSetupTarget(document.getElementById("tblDirections").value);
 
@@ -1066,6 +1123,24 @@
                         addSetupTask = true;
                         taskName = getSetupPrice(serviceOrder.instructions);
                         taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
+                        document.getElementById("prox-icon").click();
+                        break;
+                    case "IN.2":
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "16";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        addSetupTask = true;
+                        taskName = getSetupPrice(serviceOrder.instructions);
+                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
+                        document.getElementById("prox-icon").click();
+                        break;
+                    case "COM-IN":
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "16";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        addSetupTask = true;
+                        taskName = getSetupPrice(serviceOrder.instructions);
+                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date+"\nCOMMERCIAL";
                         document.getElementById("prox-icon").click();
                         break;
                     case "RE-START":
@@ -1155,7 +1230,7 @@
                     if(data.includes("scorpion")){
                         return "SCORPIONS";
                     } else if(data.includes("spider")){
-                        return "SPIDERS";
+                        return "SPIDERS, E";
                     } else if(data.includes("roach")){
                         return "ROACHES";
                     } else if(data.includes("cricket")){
@@ -1336,37 +1411,17 @@
                     var descriptionInput = document.getElementById("description");
                     var taskTypeSelect = document.getElementById("taskType");
                     var dueDateInput = document.getElementById("dueDate");
-                    var selectTaskFor = document.getElementById("selectTaskFor");
+                    var taskForSelect = document.getElementById("taskForID");
 
                     prioritySelect.value = "2";
                     taskNameInput.value = "Follow up for initial";
                     descriptionInput.value = taskDescription;
                     taskTypeSelect.value = "16";
                     dueDateInput.value = getFutureDate(taskDate, 14);
-
-                    selectTaskFor.click();
-
-                    assignTaskTo("ryan");
+                    taskForSelect.value = "2915"
 
                 }, 1000);
             }
-
-            function assignTaskTo(text){
-                setTimeout(function(){
-                    var iframe = document.getElementById('iframe-modal-0').contentWindow.document;
-
-                    Array.from(iframe.getElementsByClassName("modal-result-row")).forEach(
-                        function(element, index, array) {
-                            if(element.children[1].innerHTML.toLowerCase().includes(text.toLowerCase())){
-                                element.children[0].children[0].click();
-                            }
-                        }
-                    );
-
-                    iframe.getElementById("butAdd").click();
-                }, 1000);
-            }
-
         }
 
         function createSetupListener(event){
@@ -1427,7 +1482,7 @@
                 if(data.includes("scorpion")){
                     return "SCORPIONS";
                 } else if(data.includes("spider")){
-                    return "SPIDERS";
+                    return "SPIDERS, E";
                 } else if(data.includes("roach")){
                     return "ROACHES";
                 } else if(data.includes("cricket")){
@@ -1559,7 +1614,7 @@
 
         function getCurrentReadableTime(){
             var hours = new Date().getHours();
-            hours = hours<12?hours:hours-12;
+            hours = hours<13?hours:hours-12;
 
             var minutes = new Date().getMinutes();
             minutes = minutes>10?minutes:"0"+minutes;
@@ -1880,22 +1935,6 @@
             });
         }
 
-        function spinButton(elem, size){
-            var _count = 0;
-            var spinterval = setInterval(spinner, 25);
-            function spinner(){
-                if(_count <= 20){
-                    var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
-                    elem.style.width = Math.abs(growth*size)+"px";
-                    elem.style.height = Math.abs(growth*size)+"px";
-                    elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
-                    _count++;
-                } else {
-                    clearInterval(spinterval);
-                }
-            }
-        }
-
         function goToContact(textNumber, callback){
             var inputSearchContact = document.getElementById('inputSearchContact');
 
@@ -2097,9 +2136,7 @@
 
     }
 
-    addressGrabber();
-
-    function addressGrabber(){
+    function goDaddyAddressGrabber(){
         if(urlContains(["godaddy.com/webmail.php"])){
             var observer = new MutationObserver(function(mutations){
                 mutations.forEach(function(mutation){
@@ -2111,9 +2148,7 @@
 
                         if(node.id === "view_body" && node.style.display !== "none"){
 
-                            console.log(node);
-
-                            var wmMessage = document.getElementById("wmMessage");
+                            node.appendChild(createPestPacLink());
 
                         }
                     }
@@ -2128,7 +2163,193 @@
             });
         }
 
-        function getElementsByBgColor(color){
+
+        if(urlContains(["app.pestpac.com"])){
+
+            if(urlContains(["blank", "iframe"])) return;
+
+            if(!checkLastFocus()) return;
+
+            var contact = GM_getValue("contactInfo");
+
+            if(contact){
+
+                console.log("contact detected");
+
+                console.log(contact);
+
+                if(urlContains(["location/add.asp"])){
+
+                    inputContactInfo(JSON.parse(contact));
+
+                } else {
+
+                    if(!checkLastFocus()) return;
+
+                    window.focus();
+
+                    window.location = "http://app.pestpac.com/location/add.asp";
+
+                }
+
+            } else {
+
+                console.log("no contact");
+
+                GM_addValueChangeListener('contactInfo', function(name, old_value, new_value, remote){
+
+                    if(urlContains(["location/add.asp"])){
+
+                        if(!checkLastFocus()) return;
+
+                        window.focus();
+                        console.log("New:");
+                        console.log(new_value);
+                        console.log("Old:");
+                        console.log(old_value);
+
+                        inputContactInfo(JSON.parse(new_value));
+
+                    } else {
+
+                        if(!checkLastFocus()) return;
+
+                        window.focus();
+
+                        window.location = "http://app.pestpac.com/location/add.asp";
+
+                    }
+
+                });
+
+            }
+
+        }
+
+
+        function inputContactInfo(contact){
+            console.log("updateContactInfo");
+
+            GM_deleteValue("contactInfo");
+
+            console.log("inputContactInfo");
+
+            var fNameInput = document.getElementById("FName");
+            var lNameInput = document.getElementById("LName");
+            var addressInput = document.getElementById("Address");
+            var zipInput = document.getElementById("Zip");
+            var phoneInput = document.getElementById("Phone");
+            var emailInput = document.getElementById("EMail");
+
+            if(fNameInput && contact.fname){
+                fNameInput.value = contact.fname;
+                lNameInput.value = contact.lname;
+            }
+
+            if(contact.address){
+                addressInput.value = contact.address.replace(".", "");
+            }
+
+            if(contact.zip){
+                zipInput.value = contact.zip;
+            }
+
+            if(contact.phone){
+                phoneInput.value = contact.phone;
+            }
+
+            if(contact.email){
+                emailInput.value = contact.email;
+            }
+
+            setTimeout(function(){
+                fNameInput.focus();
+                fNameInput.blur();
+                lNameInput.focus();
+                lNameInput.blur();
+                addressInput.focus();
+                addressInput.blur();
+                zipInput.focus();
+                zipInput.blur();
+                phoneInput.focus();
+                phoneInput.blur();
+                emailInput.focus();
+                emailInput.blur();
+            }, 1000);
+
+        }
+
+        function createPestPacLink(){
+            var pestPacIcon = document.createElement("img");
+            pestPacIcon.id = "pestPacIcon";
+            pestPacIcon.src = "https://rjhuffaker.github.io/pestpac_logo.png";
+            pestPacIcon.style.width = "20px";
+            pestPacIcon.style.height = "20px";
+            pestPacIcon.style.marginBottom = "-4px";
+
+            var pestPacLink = document.createElement("a");
+            pestPacLink.style.margin = "4px";
+            pestPacLink.style.cursor = "pointer";
+            pestPacLink.appendChild(pestPacIcon);
+            pestPacLink.appendChild(document.createTextNode("Send to PestPac"));
+
+            pestPacLink.onclick = sendContactInfo;
+
+            return pestPacLink;
+
+            function sendContactInfo(){
+                spinButton(document.getElementById("pestPacIcon"), 20);
+                GM_setValue("contactInfo", JSON.stringify(getContactInfo()));
+
+                function getContactInfo(){
+                    var contact = {};
+
+                    Array.from(document.getElementsByTagName("tr")).forEach(
+                        function(element, index, array){
+                            if(element.hasAttribute("bgcolor")){
+                                if(element.bgColor === "#EAF2FA"){
+                                    var headerText = element.children[0].children[0].children[0].innerHTML;
+                                    var contentRow = element.nextElementSibling.children[1].children[0].innerHTML;
+
+                                    if(headerText === "Name"){
+                                        contact.name = contentRow.replace(/<(?:.|\n)*?>/gm, '');
+
+                                        if(contact.name.split(" ")){
+                                            contact.fname = contact.name.split(" ")[0];
+                                            contact.lname = contact.name.split(" ")[1];
+                                        }
+
+                                    } else if(headerText === "Email"){
+                                        contact.email = contentRow.replace(/<(?:.|\n)*?>/gm, '');
+                                    } else if(headerText === "Phone"){
+                                        contact.phone = contentRow.replace(/<(?:.|\n)*?>/gm, '').replace("(", "").replace(") ", "-");
+                                    } else if(headerText === "Address"){
+                                        if(contentRow.split("<br>").length){
+                                            contact.address = contentRow.split("<br>")[0];
+                                            var zipCodeRegEx = /85[0-9]{3}/;
+                                            var zipCodeRegExMatcher = new RegExp(zipCodeRegEx);
+
+                                            if(zipCodeRegExMatcher.exec(contentRow)){
+                                                contact.zip = zipCodeRegExMatcher.exec(contentRow)[0];
+                                            }
+                                        }
+
+                                    } else if(headerText === "Pest concerns &amp; square footage."){
+                                        contact.details = contentRow.replace(/<(?:.|\n)*?>/gm, '');
+                                    }
+                                }
+                            }
+                        });
+
+                    contact.date = Date.now();
+
+                    console.log(contact);
+
+                    return contact;
+
+                }
+
+            }
 
         }
 
@@ -2369,6 +2590,220 @@
                 
             }
         }
+    }
+
+    function accountListExtractinator(){
+        if(urlContains(["reporting.pestpac.com/reports/serviceSetups/reportRemote.asp"])){
+
+            console.log(GM_getValue("retrieveAccountData"));
+
+            if(GM_getValue("retrieveAccountData") === "residential"){
+
+                GM_deleteValue("retrieveAccountData");
+
+                var rowList = Array.from(document.getElementsByTagName("tr"));
+
+                var accountString = "";
+
+                rowList.forEach(
+                    function(element, index, array) {
+                        if(!element) return;
+                        if(element.children[0]){
+                            if(element.children[0].children[0]){
+                                if(element.children[0].children[0].children[0]){
+                                    var account = extractAccount(element);
+                                    if(account) accountString += account;
+                                }
+                            }
+                        }
+                    }
+                );
+
+                let api = new GithubAPI({username: 'RjHuffaker',password: 'Ph@ntom8'});
+
+                api.setRepo('RjHuffaker', 'RjHuffaker.github.io');
+
+                var nowDate = Date.now();
+
+                console.log(nowDate);
+
+                api.setBranch('master')
+                    .then( () => api.pushFiles(
+                    'Commit '+nowDate,
+                    [
+                        {content: accountString, path: 'residential.csv'}
+                    ])
+                         )
+                    .then(function() {
+                    console.log('Files committed!');
+                });
+
+                GM_setValue("residential", accountString);
+
+                window.close();
+
+            }
+        }
+
+        function extractAccount(element){
+            var tdList = Array.from(element.children);
+            var data = "";
+            tdList.forEach(
+                function(element, index, array){
+                    if(element.children[0]){
+                        if(element.children[0].children[0]){
+                            data += element.children[0].children[0].innerHTML.replace("&nbsp;", "");
+                        } else {
+                            data += element.children[0].innerHTML.replace("&nbsp;", "").replace("&nbsp;", "");
+                        }
+                    }
+
+                    if(index+1 !== array.length){
+                        data += "\t";
+                    } else {
+                        data += "\n";
+                    }
+                }
+            );
+
+            var accountString = formatSchedule(data);
+
+            if(accountString.includes("WEEKLY") || accountString.includes("BIWEEKLY") || accountString.includes("Report Totals")){
+                return;
+            } else {
+                return accountString;
+            }
+
+            function formatSchedule(schedule){
+                var _schedule = schedule;
+                var scheduleList = [
+                    {input: "1MON", output: "1\tMON\t1MON"},
+                    {input: "1TUE", output: "1\tTUE\t1TUE"},
+                    {input: "1WED", output: "1\tWED\t1WED"},
+                    {input: "1THU", output: "1\tTHU\t1THU"},
+                    {input: "1FRI", output: "1\tFRI\t1FRI"},
+                    {input: "2MON", output: "2\tMON\t2MON"},
+                    {input: "2TUE", output: "2\tTUE\t2TUE"},
+                    {input: "2WED", output: "2\tWED\t2WED"},
+                    {input: "2THU", output: "2\tTHU\t2THU"},
+                    {input: "2FRI", output: "2\tFRI\t2FRI"},
+                    {input: "3MON", output: "3\tMON\t3MON"},
+                    {input: "3TUE", output: "3\tTUE\t3TUE"},
+                    {input: "3WED", output: "3\tWED\t3WED"},
+                    {input: "3THU", output: "3\tTHU\t3THU"},
+                    {input: "3FRI", output: "3\tFRI\t3FRI"},
+                    {input: "4MON", output: "4\tMON\t4MON"},
+                    {input: "4TUE", output: "4\tTUE\t4TUE"},
+                    {input: "4WED", output: "4\tWED\t4WED"},
+                    {input: "4THU", output: "4\tTHU\t4THU"},
+                    {input: "4FRI", output: "4\tFRI\t4FRI"}
+                ];
+
+                for(var i = 0; i < scheduleList.length; i++){
+                    _schedule = _schedule.replace(scheduleList[i].input, scheduleList[i].output);
+                }
+
+                return _schedule;
+            }
+        }
+
+    }
+
+    function GithubAPI(auth) {
+        let repo;
+        let filesToCommit = [];
+        let currentBranch = {};
+        let newCommit = {};
+        this.gh = new GitHub(auth);
+
+        this.setRepo = function(userName, repoName) {
+            repo = this.gh.getRepo(userName, repoName);
+        };
+
+        this.setBranch = function(branchName) {
+            return repo.listBranches()
+                .then((branches) => {
+                let branchExists = branches.data
+                .find( branch => branch.name === branchName );
+                if (!branchExists) {
+                    return repo.createBranch('master', branchName)
+                        .then(() => {
+                        currentBranch.name = branchName;
+                    });
+                } else {
+                    currentBranch.name = branchName;
+                }
+            });
+        };
+
+        this.pushFiles = function(message, files) {
+            return getCurrentCommitSHA()
+                .then(getCurrentTreeSHA)
+                .then( () => createFiles(files) )
+                .then(createTree)
+                .then( () => createCommit(message) )
+                .then(updateHead)
+                .catch((e) => {
+                console.error(e);
+            });
+        };
+
+        function getCurrentCommitSHA() {
+            return repo.getRef('heads/' + currentBranch.name)
+                .then((ref) => {
+                currentBranch.commitSHA = ref.data.object.sha;
+            });
+        }
+
+        function getCurrentTreeSHA() {
+            return repo.getCommit(currentBranch.commitSHA)
+                .then((commit) => {
+                currentBranch.treeSHA = commit.data.tree.sha;
+            });
+        }
+
+        function createFiles(files) {
+            let promises = [];
+            let length = files.length;
+            for (let i = 0; i < length; i++) {
+                promises.push(createFile(files[i]));
+            }
+            return Promise.all(promises);
+        }
+
+        function createFile(file) {
+            return repo.createBlob(file.content)
+                .then((blob) => {
+                filesToCommit.push({
+                    sha: blob.data.sha,
+                    path: file.path,
+                    mode: '100644',
+                    type: 'blob'
+                });
+            });
+        }
+
+        function createTree() {
+            return repo.createTree(filesToCommit, currentBranch.treeSHA)
+                .then((tree) => {
+                newCommit.treeSHA = tree.data.sha;
+            });
+        }
+
+        function createCommit(message) {
+            return repo.commit(currentBranch.commitSHA, newCommit.treeSHA, message)
+                .then((commit) => {
+                newCommit.sha = commit.data.sha;
+            });
+        }
+
+        function updateHead() {
+            return repo.updateHead(
+                'heads/' + currentBranch.name,
+                newCommit.sha
+            );
+        }
+
     }
 
 })();
