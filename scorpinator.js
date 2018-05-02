@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.301
+// @version      1.302
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -165,21 +165,10 @@
         var result = [];
 
         for(var i = start?start:0; i < lines.length;i++){
-            var currentline = lines[i].split("\t");
-
-            result.push(new ActiveSetup(currentline));
-        }
-        return result;
-    }
-
-    function csvToObjectArray(tsv, start){
-        var lines = tsv.split("\n");
-        var result = [];
-
-        for(var i = start?start:0; i < lines.length;i++){
-            var currentline = lines[i].split(",");
-
-            result.push(new ActiveSetup(currentline));
+            var _current = lines[i].split("\t");
+            if(_current.length > 10){
+                result.push(new ActiveSetup(_current));
+            }
         }
         return result;
     }
@@ -611,6 +600,11 @@
             }
 
             function createProxTab(){
+                var weekDayList = ["MON","TUE","WED","THU","FRI"];
+                var weekList = ["1","2","3","4"];
+                var techList = ["BRYANJ", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE", "JOSEPH A",
+                                    "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "SHAWN", "TREVORP"];
+
                 var proxTab = document.createElement("div");
                 proxTab.id = "prox-tab";
 
@@ -622,7 +616,10 @@
                 function createProxTabLabel(){
                     var proxTabLabel = document.createElement("div");
                     proxTabLabel.id = "prox-tab-label";
-                    proxTabLabel.innerHTML = "Filter By:";
+                    proxTabLabel.style.fontSize = "14pt";
+                    proxTabLabel.style.cursor = "pointer";
+
+                    proxTabLabel.innerHTML = "Filter Results By:";
                     proxTabLabel.classList.add("scorpinated");
                     proxTabLabel.onclick = proxTabResize;
 
@@ -643,29 +640,95 @@
                 function createProxTabContent(){
                     var proxTabContent = document.createElement("div");
                     proxTabContent.id = "prox-tab-content";
+                    proxTabContent.style.padding = "5px";
 
-                    proxTabContent.appendChild(document.createTextNode("Exclude Week Day"));
-                    proxTabContent.appendChild(createProxFilter(["MON","TUE","WED","THU","FRI"], excludedWeekDays));
+                    var weekDayExclude = document.createElement("input");
+                    weekDayExclude.type = "checkbox";
+                    weekDayExclude.name = "weekDayExcludeBox";
 
-                    proxTabContent.appendChild(document.createTextNode("Exclude Week"));
-                    proxTabContent.appendChild(createProxFilter(["1","2","3","4"], excludedWeeks));
+                    var weekDayInclude = document.createElement("input");
+                    weekDayInclude.type = "checkbox";
+                    weekDayInclude.name = "weekDayIncludeBox";
 
-                    proxTabContent.appendChild(document.createTextNode("Exclude Tech"));
-                    proxTabContent.appendChild(createProxFilter(["DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE",
-                    "JOSEPH A", "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "RUSSELL", "SHAWN", "TREVORP"], excludedTechs));
+                    proxTabContent.appendChild(createProxFilterHeader("WeekDay", weekDayList, excludedWeekDays));
+                    proxTabContent.appendChild(createProxFilter(weekDayList, excludedWeekDays, "WeekDay"));
+                    proxTabContent.appendChild(document.createElement("hr"));
+
+                    proxTabContent.appendChild(createProxFilterHeader("Week", weekList, excludedWeeks));
+                    proxTabContent.appendChild(createProxFilter(weekList, excludedWeeks, "Week"));
+                    proxTabContent.appendChild(document.createElement("hr"));
+
+                    proxTabContent.appendChild(createProxFilterHeader("Technician", techList, excludedTechs));
+                    proxTabContent.appendChild(createProxFilter(techList, excludedTechs, "Technician"));
 
                     return proxTabContent;
                 }
 
-                function createProxFilter(inputList, outputList){
+                function createProxFilterHeader(filterName, inputList, outputList){
+                    var _filterTitle = document.createElement("div");
+                    _filterTitle.innerHTML = filterName;
+                    _filterTitle.style.fontSize = "10pt";
+                    _filterTitle.style.fontWeight = "bold";
+
+                    var _selectAllBox = document.createElement("input");
+                    _selectAllBox.type = "checkbox";
+                    _selectAllBox.name = filterName+"SelectAllBox";
+                    _selectAllBox.id = filterName+"SelectAllBox";
+                    _selectAllBox.onclick = selectAll;
+
+                    var _selectAllLabel = document.createElement("label");
+                    _selectAllLabel.innerHTML = "&nbsp;Select All&nbsp;";
+                    _selectAllLabel.htmlFor = filterName+"SelectAllBox";
+                    _selectAllLabel.style.cursor = "pointer";
+                    _selectAllLabel.style.fontWeight = "bold";
+
+                    var _headerDiv = document.createElement("div");
+                    _headerDiv.appendChild(_filterTitle);
+                    _headerDiv.appendChild(_selectAllBox);
+                    _headerDiv.appendChild(_selectAllLabel);
+
+                    return _headerDiv;
+
+                    function selectAll(event){
+                        var checkBoxes = Array.from(document.getElementsByClassName(filterName+"Box"))
+
+                        if(event.target.checked){
+                            inputList.forEach(function(item){
+                                if(outputList.indexOf(item) > -1) return;
+                                outputList.push(item);
+                                checkBoxes.forEach(function(checkBox){
+                                    checkBox.checked = true;
+                                });
+                            });
+
+                        } else {
+                            outputList.length = 0;
+                            checkBoxes.forEach(function(checkBox){
+                                checkBox.checked = false;
+                            });
+                        }
+
+                        fetchGeocodes(getLocationAddress(), function(data){
+                            getNearestActiveSetups(data, function(data){
+                                generateProxContent(data);
+                            });
+                        });
+                    }
+
+                }
+
+
+                function createProxFilter(inputList, outputList, filterType){
                     var _checkList = document.createElement("div");
 
                     inputList.forEach(function(filter){
                         var _checkBox = document.createElement("input");
                         _checkBox.type = "checkbox";
                         _checkBox.name = filter+"Box";
-                        _checkBox.checked = false;
+                        _checkBox.checked = outputList.indexOf(filter) > -1;
                         _checkBox.id = filter+"Box";
+                        _checkBox.style.cursor = "pointer";
+                        _checkBox.classList.add(filterType+"Box");
 
                         var _spacer = document.createElement("span");
                         _spacer.innerHTML = "<br/>";
@@ -673,17 +736,27 @@
                         var _label = document.createElement("label");
                         _label.innerHTML = filter+"&nbsp;&nbsp;";
                         _label.htmlFor = filter+"Box";
+                        _label.style.cursor = "pointer";
 
                         _checkList.appendChild(_checkBox);
                         _checkList.appendChild(_label);
                         _checkList.appendChild(_spacer);
 
-                        _checkBox.addEventListener("click", function(){
-                            outputList.length = 0;
-                            for(var i = 0; i < inputList.length; i++){
-                                if(document.getElementById(inputList[i]+"Box").checked){
-                                    outputList.push(inputList[i]);
-                                }
+                        _checkBox.onclick = function(event){
+                            var checkBoxData = event.target.id.replace("Box", "");
+                            var selectAllBox = document.getElementById(filterType+"SelectAllBox")
+
+                            if(event.target.checked){
+                                outputList.push(checkBoxData);
+                            } else {
+                                var index = outputList.indexOf(checkBoxData);
+                                outputList.splice(index, 1);
+                            }
+
+                            if(inputList.length === outputList.length){
+                                selectAllBox.checked = true;
+                            } else {
+                                selectAllBox.checked = false;
                             }
 
                             fetchGeocodes(getLocationAddress(), function(data){
@@ -691,12 +764,14 @@
                                     generateProxContent(data);
                                 });
                             });
-                        });
+                        };
                     });
 
                     return _checkList;
                 }
+
             }
+
         }
 
         function proxIconListener(){
@@ -785,8 +860,12 @@
 
             for(var i = 1; i < al; i++){
                 var setup = activeSetups[i];
+                if(!setup.id){
+                    console.log("ummmm");
+                }
 
                 var addTech = true;
+                if(techList.length)
                 for(var ii = 0; ii < techList.length; ii++){
                     var _tech = techList[ii];
                     if(activeSetups[i].tech && activeSetups[i].tech === _tech.name){
@@ -800,12 +879,18 @@
                             multiplier = 0.25;
                         }
 
-                        _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
-                        _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += 1;
+                        if(activeSetups[i].schedule){
+                            _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
+                            _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += 1;
+                        } else {
+                            console.log("NO SCHEDULE 1: "+activeSetups[i]);
+                        }
                     }
                 }
 
-                if(addTech) techList.push(new technician(activeSetups[i].tech));
+                if(addTech && activeSetups[i].tech){
+                    techList.push(new technician(activeSetups[i].tech));
+                }
 
                 if(excludedWeekDays.indexOf(setup.weekDay) < 0 && excludedWeeks.indexOf(setup.week) < 0 && excludedTechs.indexOf(setup.tech) < 0)
 
@@ -825,11 +910,17 @@
                 }
             }
 
-            for(var j = 0; j < nearestList.length; j++){
-                for(var ji = 0; ji < techList.length; ji++){
-                    if(techList[ji].name === nearestList[j].tech){
-                        nearestList[j].dailyTotal = techList[ji].dailyTotals[nearestList[j].schedule.substring(0,4)];
-                        nearestList[j].dailyStops = techList[ji].dailyStops[nearestList[j].schedule.substring(0,4)];
+            if(nearestList.length > 1){
+                for(var j = 0; j < nearestList.length; j++){
+                    var _nearest = nearestList[j];
+                    for(var ji = 0; ji < techList.length; ji++){
+                        var _tech = techList[ji];
+                        if(_tech.name === _nearest.tech){
+                            if(_nearest.schedule){
+                                _nearest.dailyTotal = _tech.dailyTotals[_nearest.schedule.substring(0,4)];
+                                _nearest.dailyStops = _tech.dailyStops[_nearest.schedule.substring(0,4)];
+                            }
+                        }
                     }
                 }
             }
@@ -875,16 +966,20 @@
                 var proxTable = document.createElement("table");
                 proxTable.border = 1;
                 proxTable.style.right = "10px";
-
-                for(var i = 0; i < data.length; i++){
-                    createTableRow(data[i]);
+                if(data.length > 1){
+                    for(var i = 0; i < data.length; i++){
+                        createTableRow(data[i]);
+                    }
                 }
-
                 createTableHeader();
 
                 return proxTable;
 
                 function createTableRow(rowData){
+                    if(!rowData.zipCode){
+                        console.log(rowData);
+                    }
+
                     var _tr = proxTable.insertRow();
                     var _goToAnchor = document.createElement("a");
                     _goToAnchor.innerHTML = rowData.id;
@@ -2612,7 +2707,12 @@
                             if(element.children[0].children[0]){
                                 if(element.children[0].children[0].children[0]){
                                     var account = extractAccount(element);
-                                    if(account) accountString += account;
+                                    if(account){
+                                        accountString += account;
+                                        if(index+1 !== array.length){
+                                            accountString += "\n";
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2624,8 +2724,6 @@
                 api.setRepo('RjHuffaker', 'RjHuffaker.github.io');
 
                 var nowDate = Date.now();
-
-                console.log(nowDate);
 
                 api.setBranch('master')
                     .then( () => api.pushFiles(
@@ -2660,16 +2758,18 @@
 
                     if(index+1 !== array.length){
                         data += "\t";
-                    } else {
-                        data += "\n";
                     }
                 }
             );
 
             var accountString = formatSchedule(data);
 
-            if(accountString.includes("WEEKLY") || accountString.includes("BIWEEKLY") || accountString.includes("Report Totals")){
-                return;
+            if(accountString.includes("WEEKLY") || accountString.includes("BIWEEKLY") || accountString.includes("Report Totals") || accountString.includes("28 DAYS") || accountString.includes("3 WEEKS") || accountString.includes("6 WEEKS")){
+                return false;
+            } else if(accountString.split("\t").length !== 14){
+                return false;
+            } else if(["","CRISSANNA","DN","GABBY","JULIA","MYLISSA","RENAE","SKYE"].indexOf(accountString.split("\t")[12]) > -1){
+                return false;
             } else {
                 return accountString;
             }
