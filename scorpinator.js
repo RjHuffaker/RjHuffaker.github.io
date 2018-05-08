@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.302
+// @version      1.310
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -105,7 +105,7 @@
             traversinator();
             autoSetupinator();
             autoWelcomator();
-            autoTextinator();
+            autoContactinator();
             serviceOrderDuplicator();
             accountListExtractinator();
             goDaddyAddressGrabber();
@@ -215,6 +215,7 @@
         function spinner(){
             if(_count <= 20){
                 var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
+                elem.style.margin = "-"+Math.abs(growth*size*.25)+"px";
                 elem.style.width = Math.abs(growth*size)+"px";
                 elem.style.height = Math.abs(growth*size)+"px";
                 elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
@@ -602,7 +603,7 @@
             function createProxTab(){
                 var weekDayList = ["MON","TUE","WED","THU","FRI"];
                 var weekList = ["1","2","3","4"];
-                var techList = ["BRYANJ", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE", "JOSEPH A",
+                var techList = ["BRYANJ", "CONNOR", "CRAIG L", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE", "JOSEPH A",
                                     "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "SHAWN", "TREVORP"];
 
                 var proxTab = document.createElement("div");
@@ -1267,6 +1268,8 @@
 
                 descriptionInput.value = taskDescription;
 
+                taskForSelect.value = "2915"
+
                 function getSetupPrice(data){
                     var setupName = "";
 
@@ -1329,7 +1332,7 @@
                     } else if(data.includes("roach")){
                         return "ROACHES";
                     } else if(data.includes("cricket")){
-                        return "CRICKETS";
+                        return "CRICKETS,";
                     } else if(data.includes("ticks")){
                         return "TICKS";
                     } else if(data.includes("ants")){
@@ -1561,6 +1564,8 @@
             function getTechnician(name){
                 if(name==="Daniel"){
                     return "DANIEL A";
+                } else if(name==="Craig" || name==="Kody"){
+                    return "CRAIG L";
                 } else if(name==="Jeff"){
                     return "JEFF H";
                 } else if(name==="Joseph"){
@@ -1581,7 +1586,7 @@
                 } else if(data.includes("roach")){
                     return "ROACHES";
                 } else if(data.includes("cricket")){
-                    return "CRICKETS";
+                    return "CRICKETS,";
                 } else if(data.includes("ticks")){
                     return "TICKS";
                 } else if(data.includes("ants")){
@@ -1888,6 +1893,8 @@
             var urlString = window.location.search.replace("?", "");
             for(var i = 0; i < contactLinks.length; i++){
                 if(contactLinks[i].hasAttribute("onclick")){
+                    var makeCall = contactLinks[i].onclick;
+                    // Disables calling on click
                     contactLinks[i].onclick = null;
                     contactLinks[i].style.cursor = "inherit";
                 } else if(contactLinks[i].children[1]){
@@ -1975,10 +1982,39 @@
         }
     }
 
-    function autoTextinator(){
+    function autoContactinator(){
         if(urlContains(["location/detail.asp"])){
-            addHeyMarketIcon(document.getElementById("location-address-block"));
-            addHeyMarketIcon(document.getElementById("billto-address-block"));
+            GM_addValueChangeListener('autoCall', function(name, old_value, new_value, remote){
+                console.log("autoCall");
+
+                console.log(GM_getValue('autoCall'));
+
+                if(!checkLastFocus()) return;
+
+                console.log(new_value);
+
+                var _callData = new_value.split("|");
+                var phoneNumber = _callData[0];
+
+                $.ajax({
+                    type: "POST",
+                    url:  'https://188107.voiceforpest.com:8443/WebProxy/api/sessions/' + window.localStorage.getItem("AltigenSessionID") + '/calls',
+                    data: {
+                        sessionId: window.localStorage.getItem("AltigenSessionID"),
+                        target: phoneNumber
+                    }
+                })
+                    .success(function(data){
+                    console.log("ClickToCall");
+                    window.localStorage.setItem("AltigenSessionState", "ClickToCall");
+                });
+
+            });
+        }
+
+        if(urlContains(["location/detail.asp"])){
+            addContactIcons(document.getElementById("location-address-block"));
+            addContactIcons(document.getElementById("billto-address-block"));
 
         } else if(urlContains(["godaddy.com/webmail.php"])){
             watchWebmail();
@@ -2015,7 +2051,7 @@
                         if(!node.classList) return;
 
                         if(node.id === "view_body" && node.style.display !== "none"){
-                            addHeyMarketIcon(node);
+                            addContactIcons(node);
                         }
                     }
 
@@ -2087,7 +2123,7 @@
             }
         }
 
-        function addHeyMarketIcon(node){
+        function addContactIcons(node){
             if(!node.childNodes) return;
 
             for(var i = 0; i < node.childNodes.length; ++i){
@@ -2099,7 +2135,7 @@
                 }
 
                 if(child.childNodes.length > 0){
-                    addHeyMarketIcon(child);
+                    addContactIcons(child);
                 } else if (child.nodeType == 3){
                     var phoneNumbers = phoneNumberRegExMatcher.exec(child.nodeValue);
                     if(phoneNumbers){
@@ -2114,30 +2150,64 @@
 
                         child.splitText(phoneNumbers.index + phoneNumbers[0].length);
 
-                        node.insertBefore(createHeyMarketLink(phoneNumber), node.childNodes[++i]);
+                        node.insertBefore(document.createTextNode("  "), node.childNodes[++i]);
+                        node.insertBefore(createTextLink(phoneNumber), node.childNodes[++i]);
+                        node.insertBefore(document.createTextNode("  "), node.childNodes[++i]);
+                        node.insertBefore(createPhoneLink(phoneNumber), node.childNodes[++i]);
+
                     }
                 }
             }
 
-            function createHeyMarketLink(phoneNumber){
+            function createTextLink(phoneNumber){
                 var link = document.createElement("a");
                 link.style.cursor = "pointer";
                 link.class = "autoText-link";
-                link.style.marginLeft = "0.25em";
-                link.appendChild(createHeyMarketImage());
+                link.style.marginLeft = "4px";
+                link.style.marginRight = "4px";
+                var textIcon = createTextIcon();
+                link.appendChild(textIcon);
                 link.addEventListener("click", function(){
                     GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"||"+Date.now());
-                    spinButton(document.getElementById("heyMarketImage"), 12);
+                    spinButton(textIcon, 20);
                 });
 
                 return link;
 
-                function createHeyMarketImage(){
+                function createTextIcon(){
                     var image = document.createElement("img");
-                    image.id = "heyMarketImage";
+                    image.id = "textIcon";
                     image.src = "https://rjhuffaker.github.io/heymarket_black.png";
-                    image.style.width = "1em";
-                    image.style.height = "1em";
+                    image.style.margin = "-4px";
+                    image.style.width = "20px";
+                    image.style.height = "20px";
+
+                    return image;
+                }
+            }
+
+            function createPhoneLink(phoneNumber){
+                var link = document.createElement("a");
+                link.style.cursor = "pointer";
+                link.class = "autoText-link";
+                link.style.marginLeft = "4px";
+                link.style.marginRight = "4px";
+                var phoneIcon = createPhoneIcon();
+                link.appendChild(phoneIcon);
+                link.onclick = function(){
+                    GM_setValue('autoCall', phoneNumber+"|"+Date.now());
+                    spinButton(phoneIcon, 20);
+                };
+
+                return link;
+
+                function createPhoneIcon(){
+                    var image = document.createElement("img");
+                    image.id = "phoneIcon";
+                    image.src = "https://rjhuffaker.github.io/phone_icon.png";
+                    image.style.margin = "-4px";
+                    image.style.width = "20px";
+                    image.style.height = "20px";
 
                     return image;
                 }
