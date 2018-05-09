@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.317
+// @version      1.318
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -2036,7 +2036,7 @@
     }
 
     function autoContactinator(){
-        if(urlContains(["location/detail.asp"])){
+        if(urlContains(["app.pestpac.com/location"])){
             GM_addValueChangeListener('autoCall', function(name, old_value, new_value, remote){
                 console.log("autoCall");
 
@@ -2366,6 +2366,7 @@
 
                         if(node.id === "view_body" && node.style.display !== "none"){
 
+                            node.appendChild(document.createElement("p"));
                             node.appendChild(createPestPacLink());
 
                         }
@@ -2501,15 +2502,15 @@
             var pestPacIcon = document.createElement("img");
             pestPacIcon.id = "pestPacIcon";
             pestPacIcon.src = "https://rjhuffaker.github.io/pestpac_logo.png";
+            pestPacIcon.style.margin = "-4px";
             pestPacIcon.style.width = "20px";
             pestPacIcon.style.height = "20px";
-            pestPacIcon.style.marginBottom = "-4px";
 
             var pestPacLink = document.createElement("a");
-            pestPacLink.style.margin = "4px";
+            pestPacLink.style.margin = "12px";
             pestPacLink.style.cursor = "pointer";
             pestPacLink.appendChild(pestPacIcon);
-            pestPacLink.appendChild(document.createTextNode("Send to PestPac"));
+            pestPacLink.appendChild(document.createTextNode(" Send to PestPac"));
 
             pestPacLink.onclick = sendContactInfo;
 
@@ -2540,7 +2541,7 @@
                                     } else if(headerText === "Email"){
                                         contact.email = contentRow.replace(/<(?:.|\n)*?>/gm, '');
                                     } else if(headerText === "Phone"){
-                                        contact.phone = contentRow.replace(/<(?:.|\n)*?>/gm, '').replace("(", "").replace(") ", "-");
+                                        contact.phone = contentRow.replace(/<(?:.|\n)*?>/gm, '').replace("(", "").replace(") ", "-").replace(/\s+/g, "");
                                     } else if(headerText === "Address"){
                                         if(contentRow.split("<br>").length){
                                             contact.address = contentRow.split("<br>")[0];
