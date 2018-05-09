@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.310
+// @version      1.315
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -38,6 +38,14 @@
     var excludedWeeks = [];
 
     var excludedTechs = [];
+
+    var WEEKDAYS = ["MON","TUE","WED","THU","FRI"];
+
+    var WEEKS = ["1","2","3","4"];
+
+    var TECHNICIANS = ["BRYANJ", "CONNOR", "CRAIG L", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE", "JOSEPH A",
+                                    "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "SHAWN", "TREVORP"];
+    var ROUTELIST = [];
 
   //  var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
 
@@ -229,17 +237,17 @@
     function getFutureDate(startDate, daysOut){
         var newDate = new Date(startDate);
         newDate.setDate(newDate.getDate() + daysOut);
-        
+
         if(newDate.getDay() === 0){ //Sunday
             newDate.setDate(newDate.getDate() + 1);
         } else if(newDate.getDay() === 6){
             newDate.setDate(newDate.getDate() + 2);
         }
-        
+
         var dd = newDate.getDate();
         var mm = newDate.getMonth()+1;
         var yy = newDate.getFullYear().toString().substring(2,4);
-        
+
         return mm+"/"+dd+"/"+yy;
     }
 
@@ -251,7 +259,7 @@
     function getServiceSchedule(input){
         var week = input.substring(0,1)
         .replace("1", "first week ").replace("2", "second week ").replace("3", "third week ").replace("4", "fourth week ");
-        
+
         var frequency = input.substring(4)
         .replace("QJ", "of every January, April, July and October")
         .replace("QF", "of every February, May, August and November")
@@ -260,7 +268,7 @@
         .replace("BF", "of every other month");
 
         if(input.substring(4) === "M") frequency = "of each month";
-        
+
         return week+frequency;
     }
 
@@ -385,7 +393,7 @@
         var setupTableRows = null;
         if(setupTable){
             setupTableRows = setupTable.children[0].children;
-            
+
             if(!setupTableRows[row].classList.contains("noncollapsible")){
                 var setupColumns = setupTableRows[row].children;
                 serviceSetup.serviceCode = setupColumns[2].children[0].innerHTML.replace("&nbsp;", "");
@@ -515,7 +523,7 @@
             proxModal.style.zIndex = 9000;
 
             proxModal.appendChild(createProxContainer());
-            proxModal.appendChild(createProxTab());
+            proxModal.appendChild(createProxFilter());
             proxModal.appendChild(createCaretDivBorder());
             proxModal.appendChild(createCaretDiv());
 
@@ -600,48 +608,43 @@
 
             }
 
-            function createProxTab(){
-                var weekDayList = ["MON","TUE","WED","THU","FRI"];
-                var weekList = ["1","2","3","4"];
-                var techList = ["BRYANJ", "CONNOR", "CRAIG L", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE", "JOSEPH A",
-                                    "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "SHAWN", "TREVORP"];
+            function createProxFilter(){
+                var proxFilter = document.createElement("div");
+                proxFilter.id = "prox-tab";
 
-                var proxTab = document.createElement("div");
-                proxTab.id = "prox-tab";
+                proxFilter.appendChild(createProxFilterLabel());
+                proxFilter.appendChild(createProxFilterContent());
 
-                proxTab.appendChild(createProxTabLabel());
-                proxTab.appendChild(createProxTabContent());
+                return proxFilter;
 
-                return proxTab;
+                function createProxFilterLabel(){
+                    var proxFilterLabel = document.createElement("div");
+                    proxFilterLabel.id = "prox-tab-label";
+                    proxFilterLabel.style.fontSize = "14pt";
+                    proxFilterLabel.style.cursor = "pointer";
 
-                function createProxTabLabel(){
-                    var proxTabLabel = document.createElement("div");
-                    proxTabLabel.id = "prox-tab-label";
-                    proxTabLabel.style.fontSize = "14pt";
-                    proxTabLabel.style.cursor = "pointer";
+                    proxFilterLabel.innerHTML = "Filter Results By:";
+                    proxFilterLabel.classList.add("scorpinated");
+                    proxFilterLabel.onclick = proxFilterResize;
 
-                    proxTabLabel.innerHTML = "Filter Results By:";
-                    proxTabLabel.classList.add("scorpinated");
-                    proxTabLabel.onclick = proxTabResize;
+                    return proxFilterLabel;
 
-                    return proxTabLabel;
-
-                    function proxTabResize(){
-                        if(proxTab.classList.contains("expanded")){
-                            proxTab.classList.remove("expanded");
-                            proxTab.style.left = "-15px";
+                    function proxFilterResize(){
+                        if(proxFilter.classList.contains("expanded")){
+                            proxFilter.classList.remove("expanded");
+                            proxFilter.style.left = "-15px";
                         } else {
-                            proxTab.classList.add("expanded");
-                            proxTab.style.left = "-224px";
+                            proxFilter.classList.add("expanded");
+                            proxFilter.style.left = "-224px";
                         }
                     }
 
                 }
 
-                function createProxTabContent(){
-                    var proxTabContent = document.createElement("div");
-                    proxTabContent.id = "prox-tab-content";
-                    proxTabContent.style.padding = "5px";
+                function createProxFilterContent(){
+                    var proxFilterContent = document.createElement("div");
+                    proxFilterContent.id = "prox-tab-content";
+                    proxFilterContent.style.padding = "5px";
 
                     var weekDayExclude = document.createElement("input");
                     weekDayExclude.type = "checkbox";
@@ -651,18 +654,18 @@
                     weekDayInclude.type = "checkbox";
                     weekDayInclude.name = "weekDayIncludeBox";
 
-                    proxTabContent.appendChild(createProxFilterHeader("WeekDay", weekDayList, excludedWeekDays));
-                    proxTabContent.appendChild(createProxFilter(weekDayList, excludedWeekDays, "WeekDay"));
-                    proxTabContent.appendChild(document.createElement("hr"));
+                    proxFilterContent.appendChild(createProxFilterHeader("WeekDay", WEEKDAYS, excludedWeekDays));
+                    proxFilterContent.appendChild(createProxFilter(WEEKDAYS, excludedWeekDays, "WeekDay"));
+                    proxFilterContent.appendChild(document.createElement("hr"));
 
-                    proxTabContent.appendChild(createProxFilterHeader("Week", weekList, excludedWeeks));
-                    proxTabContent.appendChild(createProxFilter(weekList, excludedWeeks, "Week"));
-                    proxTabContent.appendChild(document.createElement("hr"));
+                    proxFilterContent.appendChild(createProxFilterHeader("Week", WEEKS, excludedWeeks));
+                    proxFilterContent.appendChild(createProxFilter(WEEKS, excludedWeeks, "Week"));
+                    proxFilterContent.appendChild(document.createElement("hr"));
 
-                    proxTabContent.appendChild(createProxFilterHeader("Technician", techList, excludedTechs));
-                    proxTabContent.appendChild(createProxFilter(techList, excludedTechs, "Technician"));
+                    proxFilterContent.appendChild(createProxFilterHeader("Technician", TECHNICIANS, excludedTechs));
+                    proxFilterContent.appendChild(createProxFilter(TECHNICIANS, excludedTechs, "Technician"));
 
-                    return proxTabContent;
+                    return proxFilterContent;
                 }
 
                 function createProxFilterHeader(filterName, inputList, outputList){
@@ -857,7 +860,7 @@
             var _long = parseFloat(data.longitude);
             var _lat = parseFloat(data.latitude);
 
-            var techList = [];
+            ROUTELIST.length = 0;
 
             for(var i = 1; i < al; i++){
                 var setup = activeSetups[i];
@@ -866,9 +869,9 @@
                 }
 
                 var addTech = true;
-                if(techList.length)
-                for(var ii = 0; ii < techList.length; ii++){
-                    var _tech = techList[ii];
+                if(ROUTELIST.length)
+                for(var ii = 0; ii < ROUTELIST.length; ii++){
+                    var _tech = ROUTELIST[ii];
                     if(activeSetups[i].tech && activeSetups[i].tech === _tech.name){
                         addTech = false;
                         var multiplier;
@@ -890,7 +893,7 @@
                 }
 
                 if(addTech && activeSetups[i].tech){
-                    techList.push(new technician(activeSetups[i].tech));
+                    ROUTELIST.push(new technician(activeSetups[i].tech));
                 }
 
                 if(excludedWeekDays.indexOf(setup.weekDay) < 0 && excludedWeeks.indexOf(setup.week) < 0 && excludedTechs.indexOf(setup.tech) < 0)
@@ -914,8 +917,8 @@
             if(nearestList.length > 1){
                 for(var j = 0; j < nearestList.length; j++){
                     var _nearest = nearestList[j];
-                    for(var ji = 0; ji < techList.length; ji++){
-                        var _tech = techList[ji];
+                    for(var ji = 0; ji < ROUTELIST.length; ji++){
+                        var _tech = ROUTELIST[ji];
                         if(_tech.name === _nearest.tech){
                             if(_nearest.schedule){
                                 _nearest.dailyTotal = _tech.dailyTotals[_nearest.schedule.substring(0,4)];
@@ -981,18 +984,21 @@
                         console.log(rowData);
                     }
 
-                    var _tr = proxTable.insertRow();
                     var _goToAnchor = document.createElement("a");
                     _goToAnchor.innerHTML = rowData.id;
                     _goToAnchor.style.textDecoration = "none";
                     _goToAnchor.style.color = "#000";
 
-                    var _firstCell = _tr.insertCell();
-                    _firstCell.appendChild(_goToAnchor);
+                    var _techAnchor = document.createElement("a");
+                    _techAnchor.innerHTML = rowData.tech+"/"+rowData.division;
+                    _techAnchor.style.textDecoration = "none";
+                    _techAnchor.style.color = "#000";
 
+                    var _tr = proxTable.insertRow();
+                    _tr.insertCell().appendChild(_goToAnchor);
                     _tr.insertCell().innerHTML = rowData.zipCode.substring(0,5);
                     _tr.insertCell().innerHTML = rowData.schedule;
-                    _tr.insertCell().innerHTML = rowData.tech+"/"+rowData.division;
+                    _tr.insertCell().appendChild(_techAnchor);
                     _tr.insertCell().innerHTML = rowData.hyp+" km";
                     _tr.insertCell().innerHTML = rowData.dailyStops;
 
@@ -1009,6 +1015,12 @@
                         _goToAnchor.addEventListener("click", function(e) {
                             goToAccount(rowData.id, true);
                         });
+
+                        _techAnchor.style.cursor = "pointer";
+                        _techAnchor.addEventListener("click", function(e) {
+
+                            alert(createTechSchedule(rowData.tech));
+                        });
                     }
 
                     for(var ii = 0; ii < colorScale.length; ii++){
@@ -1018,6 +1030,47 @@
                         }
                         _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
                     }
+
+                    function createTechSchedule(tech){
+                        var schedule = "";
+
+                        ROUTELIST.forEach(
+                            function(route){
+                                if(route.name === tech){
+                                    schedule = "Daily Stops/Totals for "+route.name+"\n        MON              TUE               WED               THU                FRI\n";
+
+                                    for(var day in route.dailyStops){
+                                        var dayString = "";
+
+                                        dayString = dayString+route.dailyStops[day]+"/"+route.dailyTotals[day];
+
+                                        console.log(dayString.length);
+
+                                        for(var i = dayString.length; i < 7; i++){
+                                            console.log(i);
+                                            dayString = " "+dayString+" ";
+                                        }
+
+
+                                        if(day.includes("MON")){
+                                            dayString = day[0]+":   " + dayString;
+                                        }
+
+                                        if(day.includes("FRI")){
+                                            dayString = dayString+"\n";
+                                        } else {
+                                            dayString = dayString+"    |    ";
+                                        }
+
+                                        schedule = schedule+dayString;
+                                    }
+
+                                }
+                            });
+
+                        return schedule;
+                    }
+
                 }
 
                 function createTableHeader(){
@@ -1116,7 +1169,7 @@
                 var _nextDate = getNextServiceDate(_startDate, _schedule, _frequency);
                 taskNameInput.value = taskNameInput.value.concat(" "+_schedule+" "+_tech);
                 descriptionInput.value = descriptionInput.value.concat("\nNextDate: "+_nextDate);
-                
+
             }
         }
     }
@@ -1805,7 +1858,7 @@
 
     function autoGeocodinator(){
 		if(!urlContains(["location/edit.asp", "location/add.asp"])) return;
-        
+
 		var butSave = document.getElementById("butSave");
 		var butAdd = document.getElementById("butAdd");
 		var addressInput = document.getElementById("Address");
@@ -2643,12 +2696,12 @@
                 if(aButton){
                     setTimeout(function(){aButton.click();}, 0);
                 }
-                
+
                 document.getElementById("butOrder").click();
             }
         }
         if(urlContains(["serviceOrder/detail.asp"])){
-            
+
             var serviceCodeInput = document.getElementById("ServiceCode1");
             var unitPriceInput = document.getElementById("UnitPrice1");
             var workDateInput = document.getElementById("WorkDate");
@@ -2659,17 +2712,17 @@
             var targetInput = document.getElementById("TargetPest");
             var techInput = document.getElementById("Tech1");
             var directionsInput = document.getElementById("Directions");
-            
+
             var choicesSpan = document.getElementById("Choices");
             var butExit = document.getElementById("butExit");
-            
+
             if(choicesSpan){
-            
+
                 var duplicatorButton = document.createElement("button");
                 duplicatorButton.classList.add("scorpinated");
                 duplicatorButton.innerHTML = "Duplicate";
                 duplicatorButton.style.marginRight = "8px";
-                
+
                 choicesSpan.insertBefore(duplicatorButton, choicesSpan.children[0]);
 
                 duplicatorButton.addEventListener("click", function(e){
@@ -2696,14 +2749,14 @@
                     butExit.click();
 
                 });
-                
+
             } else {
-                
+
                 var duplicateOrder = JSON.parse(sessionStorage.getItem("duplicateOrder"));
                 if(!duplicateOrder) return;
-                
+
                 sessionStorage.removeItem("duplicateOrder");
-                
+
                 serviceCodeInput.focus();
                 serviceCodeInput.value = duplicateOrder.serviceCode;
                 serviceCodeInput.blur();
@@ -2715,14 +2768,14 @@
                 workDateInput.focus();
                 workDateInput.value = duplicateOrder.workDate;
                 workDateInput.blur();
-                
+
                 workTimeInput.focus();
                 workTimeInput.value = duplicateOrder.workTime;
                 workTimeInput.blur();
-                
+
                 setTimeout(function(){
                     document.getElementById("ToggleOptimizationFields").click();
-                    
+
                     timeRangeInput.focus();
                     timeRangeInput.value = duplicateOrder.timeRange;
                     timeRangeInput.blur();
@@ -2734,9 +2787,9 @@
                     timeEndInput.focus();
                     timeEndInput.value = duplicateOrder.timeEnd;
                     timeEndInput.blur();
-                    
+
                 },1000);
-                
+
                 targetInput.focus();
                 targetInput.value = duplicateOrder.target;
                 targetInput.blur();
@@ -2744,15 +2797,15 @@
                 techInput.focus();
                 techInput.value = duplicateOrder.tech;
                 techInput.blur();
-                
+
                 setTimeout(function(){
                     document.getElementById("spanDirections").click();
-                    
+
                     directionsInput.focus();
                     directionsInput.value = duplicateOrder.directions;
                     directionsInput.blur();
                 },1000);
-                
+
             }
         }
     }
