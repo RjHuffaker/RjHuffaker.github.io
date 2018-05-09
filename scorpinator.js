@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.316
+// @version      1.317
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -880,11 +880,11 @@
                         } else if(activeSetups[i].schedule[4] === "B"){
                             multiplier = 0.5;
                         } else if(activeSetups[i].schedule[4] === "Q"){
-                            multiplier = 0.25;
+                            multiplier = 0.33;
                         }
 
                         if(activeSetups[i].schedule){
-                            _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
+                            _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.ceil(parseInt(activeSetups[i].total) * multiplier);
                             _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += multiplier;
                         } else {
                             console.log("NO SCHEDULE 1: "+activeSetups[i]);
@@ -1000,7 +1000,7 @@
                     _tr.insertCell().innerHTML = rowData.schedule;
                     _tr.insertCell().appendChild(_techAnchor);
                     _tr.insertCell().innerHTML = rowData.hyp+" km";
-                    _tr.insertCell().innerHTML = rowData.dailyStops;
+                    _tr.insertCell().innerHTML = Math.ceil(rowData.dailyStops);
 
                     if(addSetupTask){
                         _tr.classList.add("add-setup-task");
@@ -1042,7 +1042,7 @@
                                     for(var day in route.dailyStops){
                                         var dayString = "";
 
-                                        dayString = dayString+route.dailyStops[day]+"/"+route.dailyTotals[day];
+                                        dayString = dayString+Math.ceil(route.dailyStops[day])+"/"+Math.ceil(route.dailyTotals[day]);
 
                                         console.log(dayString.length);
 
