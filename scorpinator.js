@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.315
+// @version      1.316
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -879,13 +879,13 @@
                             multiplier = 1;
                         } else if(activeSetups[i].schedule[4] === "B"){
                             multiplier = 0.5;
-                        } else if(activeSetups[i].schedule[4] === "q"){
+                        } else if(activeSetups[i].schedule[4] === "Q"){
                             multiplier = 0.25;
                         }
 
                         if(activeSetups[i].schedule){
                             _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.round(parseInt(activeSetups[i].total) * multiplier);
-                            _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += 1;
+                            _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += multiplier;
                         } else {
                             console.log("NO SCHEDULE 1: "+activeSetups[i]);
                         }
