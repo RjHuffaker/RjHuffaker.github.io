@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.318
+// @version      1.400
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -19,7 +19,6 @@
 // @grant        GM_removeValueChangeListener
 // @run-at       document-idle
 // ==/UserScript==
-
 
 (function() {
     'use strict';
@@ -43,8 +42,8 @@
 
     var WEEKS = ["1","2","3","4"];
 
-    var TECHNICIANS = ["BRYANJ", "CONNOR", "CRAIG L", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE", "JOSEPH A",
-                                    "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "SHAWN", "TREVORP"];
+    var TECHNICIANS = ["BRYANJ", "CONNOR", "CRAIG L", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE",
+                       "JOSEPH A", "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "SHAWN", "TREVORP", "WESTON"];
     var ROUTELIST = [];
 
   //  var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
@@ -132,6 +131,15 @@
         link.type = 'text/css';
         link.href = 'https://RjHuffaker.github.io/scorpinator.css';
         document.getElementsByTagName("HEAD")[0].appendChild(link);
+
+        var maps = window.document.createElement('link');
+        maps.rel = 'stylesheet';
+        maps.type = 'text/css';
+        maps.href = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI&callback=initMap';
+        document.getElementsByTagName("HEAD")[0].appendChild(link);
+
+
+
     }
 
     function retrieveActiveSetups(){
@@ -290,7 +298,7 @@
     }
 
     function getServiceDate(input){
-
+        console.log(input);
         var month = input.split("/")[0];
 
         if(month.length===1){
@@ -342,7 +350,7 @@
 
         if(frequency=="M") daysOut = 20;
         if(frequency=="B") daysOut = 45;
-        if(frequency=="Q") daysOut = 60;
+        if(frequency=="Q") daysOut = 75;
 
         newDate.setDate(newDate.getDate() + daysOut);
 
@@ -500,6 +508,8 @@
 
         bodyElement.appendChild(createProxModal());
 
+        window.addEventListener("click", clickToDismiss);
+
         function createProxIcon(){
             var proxIcon = document.createElement("img");
             proxIcon.src = "https://rjhuffaker.github.io/scorpIcon.png";
@@ -548,11 +558,11 @@
             function createProxContainer(){
                 var proxContainer = document.createElement("div");
                 proxContainer.id = "prox-container";
-                proxContainer.style.position = "absolute";
                 proxContainer.style.zIndex = 10000;
+                proxContainer.style.boxSizing = "border-box";
 
                 proxContainer.appendChild(createProxHeader());
-                proxContainer.appendChild(createProxContent());
+                proxContainer.appendChild(createProxTabs());
 
                 return proxContainer;
 
@@ -599,11 +609,104 @@
 
                 }
 
-                function createProxContent(){
-                    var proxContent = document.createElement("div");
-                    proxContent.id = "prox-content";
+                function createProxTabs(){
+                    var proxTabContainer = document.createElement("div");
+                    proxTabContainer.id = "prox-tab-container";
+                    proxTabContainer.style.height = "452px";
+                    proxTabContainer.style.width = "466px";
+                    proxTabContainer.style.position = "absolute";
+                    proxTabContainer.style.boxSizing = "border-box";
 
-                    return proxContent;
+                    var tabList = [
+                        {id: "list", title: "List", shown: true},
+                        {id: "map", title: "Map", shown: false}
+                    ];
+
+                    proxTabContainer.appendChild(createProxTabLabels(tabList));
+                    proxTabContainer.appendChild(createProxTabContent(tabList));
+
+                    return proxTabContainer;
+
+                    function createProxTabLabels(tabs){
+                        var proxTabLabels = document.createElement("div");
+                        proxTabLabels.style.height = "20px";
+                        proxTabLabels.style.width = "100%";
+                        proxTabLabels.style.position = "absolute";
+                        proxTabLabels.style.marginTop = "-20px";
+                        proxTabLabels.style.borderBottom = "solid 1px";
+                        proxTabLabels.style.boxSizing = "border-box";
+
+                        tabs.forEach(function(tab){
+                            var tabLabel = document.createElement("div");
+                            tabLabel.innerHTML = tab.title;
+                            tabLabel.id = tab.id+"-tab-label";
+                            tabLabel.classList.add("tab-label");
+                            tabLabel.style.cursor = "pointer";
+                            tabLabel.style.display = "inline-block";
+                            tabLabel.style.border = "solid";
+                            tabLabel.style.borderWidth = "1px 1px 0 1px";
+                            tabLabel.style.margin = "0 4px 0 4px";
+                            tabLabel.style.padding = "4px 12px 0 12px";
+                            tabLabel.style.borderRadius = "4px 4px 0 0";
+
+                            tabLabel.style.fontSize = "12px";
+
+                            if(tab.shown){
+                                tabLabel.style.backgroundColor = "white";
+                            } else {
+                                tabLabel.style.backgroundColor = "grey";
+                            }
+
+
+                            tabLabel.onclick = function(event){
+                                var tabContentList = Array.from(document.getElementsByClassName("tab-content"));
+                                tabContentList.forEach(function(tabContent){
+                                    if(tabContent.id===tab.id+"-tab-content"){
+                                        tabContent.style.display = "block";
+                                    } else {
+                                        tabContent.style.display = "none";
+                                    }
+                                });
+                                var tabLabelList = Array.from(document.getElementsByClassName("tab-label"));
+                                tabLabelList.forEach(function(tabLabel){
+                                    if(tabLabel.id===tab.id+"-tab-label"){
+                                        tabLabel.style.backgroundColor = "white";
+                                    } else {
+                                        tabLabel.style.backgroundColor = "grey";
+                                    }
+                                });
+                            }
+
+
+                            proxTabLabels.appendChild(tabLabel);
+                        });
+
+                        return proxTabLabels;
+                    }
+
+                    function createProxTabContent(tabs){
+                        var proxTabContent = document.createElement("div");
+
+                        proxTabContent.style.height = "432px";
+                        proxTabContent.style.width = "446px";
+                        proxTabContent.style.margin = "10px";
+
+                        tabs.forEach(function(tab){
+                            var tabContent = document.createElement("div");
+
+                            tabContent.id = tab.id+"-tab-content";
+                            tabContent.style.height = "432px";
+                            tabContent.style.width = "446px";
+                            tabContent.style.display = tab.shown?"block":"none";
+
+                            tabContent.classList.add("tab-content");
+
+                            proxTabContent.appendChild(tabContent);
+                        });
+
+                        return proxTabContent;
+                    }
+
                 }
 
             }
@@ -721,7 +824,6 @@
 
                 }
 
-
                 function createProxFilter(inputList, outputList, filterType){
                     var _checkList = document.createElement("div");
 
@@ -779,23 +881,23 @@
         }
 
         function proxIconListener(){
-            var proxModal = document.getElementById("prox-modal");
-            if(proxModal.classList.contains("show")){
-                addSetupTask = false;
-                proxModal.classList.remove("show");
-            } else {
-                proxModal.classList.add("show");
-                fetchGeocodes(getLocationAddress(), function(dataList){
-                    getNearestActiveSetups(dataList, function(dataList){
-                        generateProxContent(dataList);
-                        fixDivision(dataList);
-                    });
-                });
+            setTimeout(function(){
+                var proxModal = document.getElementById("prox-modal");
 
-                setTimeout(function(){
-                    window.addEventListener('click', clickToDismiss);
-                }, 100);
-            }
+                if(proxModal.classList.contains("show")){
+                    addSetupTask = false;
+                    proxModal.classList.remove("show");
+                } else {
+                    proxModal.classList.add("show");
+                    fetchGeocodes(getLocationAddress(), function(dataList){
+                        getNearestActiveSetups(dataList, function(dataList){
+                            generateProxContent(dataList);
+                            fixDivision(dataList);
+                        });
+                    });
+
+                }
+            }, 0);
 
             function fixDivision(dataList){
                 if(urlContains(["location/add.asp", "location/edit.asp"])){
@@ -817,15 +919,6 @@
                         divisionLabel.classList.add("scorpinated");
                     }
                 }
-            }
-
-            function clickToDismiss(e){
-                var element = e.target;
-
-                if(checkElementAncestry(element, proxModal)) return;
-
-                proxModal.classList.remove("show");
-                window.removeEventListener('click', clickToDismiss);
             }
 
         }
@@ -933,6 +1026,114 @@
         }
 
         function generateProxContent(data){
+            generateProxList(data);
+            generateProxMap(data);
+        }
+
+        function generateProxMap(data){
+            var mapTabContent = document.getElementById("map-tab-content");
+            mapTabContent.innerHTML = "";
+            mapTabContent.style.height = "100%";
+            mapTabContent.style.width = "100%";
+
+            mapTabContent.appendChild(createProxMap());
+
+            initMap(data);
+
+            function createProxMap(){
+
+                var proxMap = document.createElement("div");
+                proxMap.id = "prox-map";
+                proxMap.style.position = "absolute";
+                proxMap.style.height = "336px";
+                proxMap.style.width = "444px";
+                proxMap.style.border = "1px solid #999";
+                proxMap.style.zIndex = "0";
+
+                return proxMap;
+            }
+
+            function initMap(data) {
+
+                var _latitude = parseFloat(sessionStorage.getItem("latitude"));
+
+                var _longitude = parseFloat(sessionStorage.getItem("longitude"));
+
+                var myLatLng = {lat: _latitude, lng: _longitude};
+
+                var map = new google.maps.Map(document.getElementById("prox-map"), {
+                    center: myLatLng,
+                    zoom: 15
+                });
+
+                var imageIcons = {
+                    "1MON": "http://maps.google.com/mapfiles/kml/paddle/blu-circle.png",
+                    "2MON": "http://maps.google.com/mapfiles/kml/paddle/blu-diamond.png",
+                    "3MON": "http://maps.google.com/mapfiles/kml/paddle/blu-square.png",
+                    "4MON": "http://maps.google.com/mapfiles/kml/paddle/blu-stars.png",
+
+                    "1TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-circle.png",
+                    "2TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-diamond.png",
+                    "3TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-square.png",
+                    "4TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-stars.png",
+
+                    "1WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png",
+                    "2WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-diamond.png",
+                    "3WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-square.png",
+                    "4WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-stars.png",
+
+                    "1THU": "http://maps.google.com/mapfiles/kml/paddle/orange-circle.png",
+                    "2THU": "http://maps.google.com/mapfiles/kml/paddle/orange-diamond.png",
+                    "3THU": "http://maps.google.com/mapfiles/kml/paddle/orange-square.png",
+                    "4THU": "http://maps.google.com/mapfiles/kml/paddle/orange-stars.png",
+
+                    "1FRI": "http://maps.google.com/mapfiles/kml/paddle/red-circle.png",
+                    "2FRI": "http://maps.google.com/mapfiles/kml/paddle/red-diamond.png",
+                    "3FRI": "http://maps.google.com/mapfiles/kml/paddle/red-square.png",
+                    "4FRI": "http://maps.google.com/mapfiles/kml/paddle/red-stars.png"
+                };
+
+
+                data.forEach(function(activeSetup){
+
+                    var imageString = activeSetup.schedule.substring(0,4);
+
+                    var imageUrl = imageIcons[imageString];
+
+                    var image = {
+                        url: imageUrl
+                        // This marker is 20 pixels wide by 32 pixels high.
+                      //  size: new google.maps.Size(20, 32),
+                        // The origin for this image is (0, 0).
+                      //  origin: new google.maps.Point(0, 0),
+                        // The anchor for this image is the base of the flagpole at (0, 32).
+                      //  anchor: new google.maps.Point(0, 32)
+                    };
+
+
+
+                    var marker = new google.maps.Marker({
+                        map: map,
+                        icon: image,
+                        position: {lat: activeSetup.latitude, lng: activeSetup.longitude},
+                        title: activeSetup.schedule
+                    });
+
+                    marker.addListener("click", function(){
+                        console.log(activeSetup);
+                    });
+                });
+
+                var marker = new google.maps.Marker({
+                    map: map,
+                    position: myLatLng,
+                    title: "_lat: "+_latitude+"_lng"+_longitude
+                });
+            }
+
+        }
+
+        function generateProxList(data){
 
             var colorScale = [
                 {amount: 450, color: "rgb(0,0,255)"},
@@ -958,13 +1159,15 @@
                 {amount: 1450, color: "rgb(255,0,255)"}
             ];
 
-            var _proxContent = document.getElementById("prox-content");
-            _proxContent.innerHTML = "";
+            var listTabContent = document.getElementById("list-tab-content");
+            listTabContent.innerHTML = "";
+            listTabContent.style.height = "100%";
+            listTabContent.style.width = "100%";
 
-            _proxContent.appendChild(createProxTable(data));
-            _proxContent.appendChild(createGeocodesLabel());
-            _proxContent.appendChild(createRetrieveLink());
-            _proxContent.appendChild(createProxLegend());
+            listTabContent.appendChild(createProxTable(data));
+            listTabContent.appendChild(createGeocodesLabel());
+            listTabContent.appendChild(createRetrieveLink());
+            listTabContent.appendChild(createProxLegend());
 
             function createProxTable(data){
                 var proxTable = document.createElement("table");
@@ -1172,6 +1375,25 @@
 
             }
         }
+
+        function clickToDismiss(e){
+            var element = e.target;
+
+            var proxModal = document.getElementById("prox-modal");
+
+            if(!proxModal) return;
+
+            if(proxModal.classList.contains("show")){
+
+                if(checkElementAncestry(element, proxModal)) return;
+
+                proxModal.classList.remove("show");
+
+                console.log(e);
+
+            }
+
+        }
     }
 
     function autoTaskinator(){
@@ -1197,7 +1419,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","RE-START","ROACH","TICKS"]
+                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","RE-START","ROACH","TICKS","WDO TERMITE"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -1252,23 +1474,27 @@
                         taskTypeSelect.value = "12";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
+                        taskForSelect.value = "2915";
                         break;
                     case "FREE ESTIMATE":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
                         taskName = "Check to see what estimate was";
                         break;
                     case "FREE ESTIMATE C":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
                         taskName = "Check to see what estimate was";
                         break;
                     case "IN":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2915";
                         addSetupTask = true;
                         taskName = getSetupPrice(serviceOrder.instructions);
                         taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
@@ -1278,6 +1504,7 @@
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2915";
                         addSetupTask = true;
                         taskName = getSetupPrice(serviceOrder.instructions);
                         taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
@@ -1287,6 +1514,7 @@
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
                         addSetupTask = true;
                         taskName = getSetupPrice(serviceOrder.instructions);
                         taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date+"\nCOMMERCIAL";
@@ -1296,6 +1524,7 @@
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2915";
                         addSetupTask = true;
                         taskName = getSetupPrice(serviceOrder.instructions);
                         taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
@@ -1313,6 +1542,13 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
                         break;
+                    case "WDO TERMITE":
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "12";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskName = "Add termite warranty";
+                        taskForSelect.value = "2719";
+                        break;
                     default:
                         console.log("TODO: Don't know what to do with this.");
                 }
@@ -1321,30 +1557,46 @@
 
                 descriptionInput.value = taskDescription;
 
-                taskForSelect.value = "2915"
-
                 function getSetupPrice(data){
                     var setupName = "";
 
                     var setupNotes = [
                         { input: "40mo", output: "$40M" },
+                        { input: "40 mo", output: "$40M" },
+                        { input: "mo $40", output: "$40M" },
                         { input: "mo @ $40", output: "$40M" },
-                        { input: "40 monthly", output: "$40M" },
+                        { input: "monthly @ $40", output: "$40M" },
+
                         { input: "45mo", output: "$45M" },
+                        { input: "45 mo", output: "$45M" },
+                        { input: "mo $45", output: "$45M" },
                         { input: "mo @ $45", output: "$45M" },
-                        { input: "45 monthly", output: "$45M" },
+                        { input: "monthly @ $45", output: "$45M" },
+
                         { input: "49mo", output: "$49M" },
+                        { input: "49 mo", output: "$49M" },
+                        { input: "mo $49", output: "$49M" },
                         { input: "mo @ $49", output: "$49M" },
-                        { input: "49 monthly", output: "$49M" },
+                        { input: "monthly @ $49", output: "$49M" },
+
                         { input: "55mo", output: "$55M" },
+                        { input: "55 mo", output: "$55M" },
+                        { input: "mo $55", output: "$55M" },
                         { input: "mo @ $55", output: "$55M" },
-                        { input: "55 monthly", output: "$55M" },
+                        { input: "monthly @ $55", output: "$55M" },
+
                         { input: "60mo", output: "$60M" },
+                        { input: "60 mo", output: "$60M" },
+                        { input: "mo $60", output: "$60M" },
                         { input: "mo @ $60", output: "$60M" },
-                        { input: "60 monthly", output: "$60M" },
+                        { input: "monthly @ $60", output: "$60M" },
+
                         { input: "65mo", output: "$65M" },
+                        { input: "65 mo", output: "$65M" },
+                        { input: "mo $65", output: "$65M" },
                         { input: "mo @ $65", output: "$65M" },
-                        { input: "65 monthly", output: "$65M" },
+                        { input: "monthly @ $65", output: "$65M" },
+
                         { input: "55eom", output: "$55B" },
                         { input: "55 bimonthly", output: "$55B" },
                         { input: "60eom", output: "$60B" },
@@ -1366,7 +1618,7 @@
                     ];
 
                     for(var i = 1; i < setupNotes.length; i++){
-                        if(data.indexOf(setupNotes[i].input) > -1){
+                        if(data.toLowerCase().indexOf(setupNotes[i].input) > -1){
                             setupName = "New "+setupNotes[i].output;
                             break;
                         }
@@ -1869,8 +2121,7 @@
 		if(mapMessage.innerHTML === "Address not found; position is approximate"){
 
 			var address = addressInput.value.replaceAll(" ", "+")+"+"+stateInput.value;
-			var requestString = "https://maps.googleapis.com/maps/api/geocode/json?address="+address+",&key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI";
-
+			
 			var longitudeInput = document.getElementById("Longitude");
 			var latitudeInput = document.getElementById("Latitude");
 
