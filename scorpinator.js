@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.400
+// @version      1.500
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -9,7 +9,7 @@
 // @match        https://app.pestpac.com/*
 // @match        reporting.pestpac.com/reports/serviceSetups/reportRemote.asp
 // @match        *app.heymarket.com/*
-// @match        https://email24.godaddy.com/webmail.php
+// @match        *email24.godaddy.com/webmail.php*
 // @require      https://unpkg.com/github-api/dist/GitHub.bundle.js
 // @grant        window.open
 // @grant        GM_setValue
@@ -38,12 +38,62 @@
 
     var excludedTechs = [];
 
-    var WEEKDAYS = ["MON","TUE","WED","THU","FRI"];
+    var PROXMAP;
 
-    var WEEKS = ["1","2","3","4"];
+    var PROXMAPMARKERS = [];
 
-    var TECHNICIANS = ["BRYANJ", "CONNOR", "CRAIG L", "DANIEL A", "DENZIL", "DEVIN", "EMANUEL", "FRANKR", "GARRETT", "JEFF H", "JORDAN", "JOSE",
-                       "JOSEPH A", "KODY", "LANDON", "MICHAELM", "MICHAEL R", "MIGUEL", "MITCHELL", "RAYBROWN", "RHETT", "SHAWN", "TREVORP", "WESTON"];
+    var PROXLISTSIZE = 50;
+
+    var GROUPBY = "DAILYTOTAL";
+
+    var WEEKDAYS = {
+        "MON": { name: "Monday", excluded: false },
+        "TUE": { name: "Tuesday", excluded: false },
+        "WED": { name: "Wednesday", excluded: false },
+        "THU": { name: "Thursday", excluded: false },
+        "FRI": { name: "Friday!", excluded: false }
+    };
+
+    var WEEKS = {
+        "1": { name: "Week 1", excluded: false },
+        "2": { name: "Week 2", excluded: false },
+        "3": { name: "Week 3", excluded: false },
+        "4": { name: "Week 4", excluded: false }
+    };
+
+    var DAILYTOTALS = {
+        "450": {name: "450", excluded: false },
+        "500": {name: "500", excluded: false },
+        "550": {name: "550", excluded: false },
+        "600": {name: "600", excluded: false },
+        "650": {name: "650", excluded: false },
+        "700": {name: "700", excluded: false },
+        "750": {name: "750", excluded: false },
+        "800": {name: "800", excluded: false },
+        "850": {name: "850", excluded: false },
+        "900": {name: "900", excluded: false },
+        "950": {name: "950", excluded: false },
+        "1000": {name: "1000", excluded: false },
+        "1050": {name: "1050", excluded: false },
+        "1100": {name: "1100", excluded: false },
+        "1150": {name: "1150", excluded: false },
+        "1200": {name: "1200", excluded: false },
+        "1250": {name: "1250", excluded: false },
+        "1300": {name: "1300", excluded: false },
+        "1350": {name: "1350", excluded: false },
+        "1400": {name: "1400", excluded: false },
+        "1450": {name: "1450", excluded: false },
+        "1500": {name: "1500", excluded: false },
+        "1550": {name: "1550", excluded: false },
+        "1600": {name: "1600", excluded: false }
+    };
+
+    var TECHNICIANS = {};
+
+    var SCHEDULES = ["1MON","1TUE","1WED","1THU","1FRI", "2MON","2TUE","2WED","2THU","2FRI","3MON","3TUE","3WED","3THU","3FRI","4MON","4TUE","4WED","4THU","4FRI"];
+
+  //  var DAILYTOTALS = ["450","500","550","600", "650","700","750","800", "850","900","950","1000", "1050","1100","1150","1200", "1250","1300","1350","1400", "1450","1500","1550","1600"];
+
     var ROUTELIST = [];
 
   //  var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
@@ -74,6 +124,7 @@
     class technician {
         constructor(name){
             this.name = name;
+            this.excluded = false;
             this.dailyTotals = {
                 "1MON": 0, "1TUE": 0, "1WED": 0, "1THU": 0, "1FRI": 0,
                 "2MON": 0, "2TUE": 0, "2WED": 0, "2THU": 0, "2FRI": 0,
@@ -533,7 +584,6 @@
             proxModal.style.zIndex = 9000;
 
             proxModal.appendChild(createProxContainer());
-            proxModal.appendChild(createProxFilter());
             proxModal.appendChild(createCaretDivBorder());
             proxModal.appendChild(createCaretDiv());
 
@@ -559,10 +609,20 @@
                 var proxContainer = document.createElement("div");
                 proxContainer.id = "prox-container";
                 proxContainer.style.zIndex = 10000;
-                proxContainer.style.boxSizing = "border-box";
+                proxContainer.style.display = "block";
+
+                var spacerDiv = document.createElement("div");
+                spacerDiv.style.height = "20px";
 
                 proxContainer.appendChild(createProxHeader());
-                proxContainer.appendChild(createProxTabs());
+                proxContainer.appendChild(createProxTabs([
+                    {id: "list", title: "List", shown: true},
+                    {id: "map", title: "Map", shown: false}
+                ], 300, 466));
+
+                proxContainer.appendChild(spacerDiv);
+
+                proxContainer.appendChild(createProxLegend());
 
                 return proxContainer;
 
@@ -601,7 +661,6 @@
                     function createProxTitle(){
                         var proxTitle = document.createElement("span");
                         proxTitle.id = "prox-title";
-                        proxTitle.style.boxSizing = "border-box";
                         proxTitle.innerHTML = "Scorpinator";
 
                         return proxTitle;
@@ -609,273 +668,109 @@
 
                 }
 
-                function createProxTabs(){
-                    var proxTabContainer = document.createElement("div");
-                    proxTabContainer.id = "prox-tab-container";
-                    proxTabContainer.style.height = "452px";
-                    proxTabContainer.style.width = "466px";
-                    proxTabContainer.style.position = "absolute";
-                    proxTabContainer.style.boxSizing = "border-box";
+            }
 
-                    var tabList = [
-                        {id: "list", title: "List", shown: true},
-                        {id: "map", title: "Map", shown: false}
-                    ];
+        }
 
-                    proxTabContainer.appendChild(createProxTabLabels(tabList));
-                    proxTabContainer.appendChild(createProxTabContent(tabList));
+        function createProxTabs(tabList, height, width, containerID){
+            var proxTabContainer = document.createElement("div");
+            proxTabContainer.id = "prox-tab-container";
+            proxTabContainer.style.height = height+"px";
+            proxTabContainer.style.width = width+"px";
+            proxTabContainer.style.boxSizing = "border-box";
 
-                    return proxTabContainer;
+            proxTabContainer.appendChild(createProxTabLabels(tabList));
+            proxTabContainer.appendChild(createProxTabContent(tabList));
 
-                    function createProxTabLabels(tabs){
-                        var proxTabLabels = document.createElement("div");
-                        proxTabLabels.style.height = "20px";
-                        proxTabLabels.style.width = "100%";
-                        proxTabLabels.style.position = "absolute";
-                        proxTabLabels.style.marginTop = "-20px";
-                        proxTabLabels.style.borderBottom = "solid 1px";
-                        proxTabLabels.style.boxSizing = "border-box";
+            return proxTabContainer;
 
-                        tabs.forEach(function(tab){
-                            var tabLabel = document.createElement("div");
-                            tabLabel.innerHTML = tab.title;
-                            tabLabel.id = tab.id+"-tab-label";
-                            tabLabel.classList.add("tab-label");
-                            tabLabel.style.cursor = "pointer";
-                            tabLabel.style.display = "inline-block";
-                            tabLabel.style.border = "solid";
-                            tabLabel.style.borderWidth = "1px 1px 0 1px";
-                            tabLabel.style.margin = "0 4px 0 4px";
-                            tabLabel.style.padding = "4px 12px 0 12px";
-                            tabLabel.style.borderRadius = "4px 4px 0 0";
+            function createProxTabLabels(tabs){
+                var proxTabLabels = document.createElement("div");
+                proxTabLabels.style.height = "20px";
+                proxTabLabels.style.width = "100%";
+                proxTabLabels.style.position = "absolute";
+                proxTabLabels.style.marginTop = "-20px";
+              //  proxTabLabels.style.marginleft = "-10px";
+                proxTabLabels.style.borderBottom = "solid 1px";
+                proxTabLabels.style.boxSizing = "border-box";
 
-                            tabLabel.style.fontSize = "12px";
+                tabs.forEach(function(tab){
+                    var tabLabel = document.createElement("div");
+                    tabLabel.innerHTML = tab.title;
+                    tabLabel.id = tab.id+"-tab-label";
+                    tabLabel.classList.add(containerID+"-tab-label");
+                    tabLabel.style.cursor = "pointer";
+                    tabLabel.style.display = "inline-block";
+                    tabLabel.style.border = "solid";
+                    tabLabel.style.borderWidth = "1px 1px 0 1px";
+                    tabLabel.style.margin = "0 4px 0 4px";
+                    tabLabel.style.padding = "4px 12px 0 12px";
+                    tabLabel.style.borderRadius = "4px 4px 0 0";
 
-                            if(tab.shown){
+                    tabLabel.style.fontSize = "12px";
+
+                    if(tab.shown){
+                        tabLabel.style.backgroundColor = "white";
+                    } else {
+                        tabLabel.style.backgroundColor = "grey";
+                    }
+
+
+                    tabLabel.onclick = function(event){
+                        var tabContentList = Array.from(document.getElementsByClassName(containerID+"-tab-content"));
+                        tabContentList.forEach(function(tabContent){
+                            if(tabContent.id===tab.id+"-tab-content"){
+                                tabContent.style.display = "block";
+                            } else {
+                                tabContent.style.display = "none";
+                            }
+                        });
+                        var tabLabelList = Array.from(document.getElementsByClassName(containerID+"-tab-label"));
+                        tabLabelList.forEach(function(tabLabel){
+                            if(tabLabel.id===tab.id+"-tab-label"){
                                 tabLabel.style.backgroundColor = "white";
                             } else {
                                 tabLabel.style.backgroundColor = "grey";
                             }
-
-
-                            tabLabel.onclick = function(event){
-                                var tabContentList = Array.from(document.getElementsByClassName("tab-content"));
-                                tabContentList.forEach(function(tabContent){
-                                    if(tabContent.id===tab.id+"-tab-content"){
-                                        tabContent.style.display = "block";
-                                    } else {
-                                        tabContent.style.display = "none";
-                                    }
-                                });
-                                var tabLabelList = Array.from(document.getElementsByClassName("tab-label"));
-                                tabLabelList.forEach(function(tabLabel){
-                                    if(tabLabel.id===tab.id+"-tab-label"){
-                                        tabLabel.style.backgroundColor = "white";
-                                    } else {
-                                        tabLabel.style.backgroundColor = "grey";
-                                    }
-                                });
-                            }
-
-
-                            proxTabLabels.appendChild(tabLabel);
                         });
-
-                        return proxTabLabels;
                     }
 
-                    function createProxTabContent(tabs){
-                        var proxTabContent = document.createElement("div");
 
-                        proxTabContent.style.height = "432px";
-                        proxTabContent.style.width = "446px";
-                        proxTabContent.style.margin = "10px";
+                    proxTabLabels.appendChild(tabLabel);
+                });
 
-                        tabs.forEach(function(tab){
-                            var tabContent = document.createElement("div");
-
-                            tabContent.id = tab.id+"-tab-content";
-                            tabContent.style.height = "432px";
-                            tabContent.style.width = "446px";
-                            tabContent.style.display = tab.shown?"block":"none";
-
-                            tabContent.classList.add("tab-content");
-
-                            proxTabContent.appendChild(tabContent);
-                        });
-
-                        return proxTabContent;
-                    }
-
-                }
-
+                return proxTabLabels;
             }
 
-            function createProxFilter(){
-                var proxFilter = document.createElement("div");
-                proxFilter.id = "prox-tab";
+            function createProxTabContent(tabs){
+                var proxTabContent = document.createElement("div");
 
-                proxFilter.appendChild(createProxFilterLabel());
-                proxFilter.appendChild(createProxFilterContent());
+                proxTabContent.style.height = "90%";
+                proxTabContent.style.width = "90%";
 
-                return proxFilter;
+                proxTabContent.style.height = height-20+"px";
+                proxTabContent.style.width = width-20+"px";
+                proxTabContent.style.padding = "10px";
 
-                function createProxFilterLabel(){
-                    var proxFilterLabel = document.createElement("div");
-                    proxFilterLabel.id = "prox-tab-label";
-                    proxFilterLabel.style.fontSize = "14pt";
-                    proxFilterLabel.style.cursor = "pointer";
+                tabs.forEach(function(tab){
+                    var tabContent = document.createElement("div");
 
-                    proxFilterLabel.innerHTML = "Filter Results By:";
-                    proxFilterLabel.classList.add("scorpinated");
-                    proxFilterLabel.onclick = proxFilterResize;
+                    tabContent.id = tab.id+"-tab-content";
 
-                    return proxFilterLabel;
+                    tabContent.style.height = height-20+"px";
+                    tabContent.style.height = height-20+"px";
+                    tabContent.style.display = tab.shown?"block":"none";
 
-                    function proxFilterResize(){
-                        if(proxFilter.classList.contains("expanded")){
-                            proxFilter.classList.remove("expanded");
-                            proxFilter.style.left = "-15px";
-                        } else {
-                            proxFilter.classList.add("expanded");
-                            proxFilter.style.left = "-224px";
-                        }
+                    tabContent.classList.add(containerID+"-tab-content");
+
+                    if(tab.content){
+                        tabContent.appendChild(tab.content);
                     }
 
-                }
+                    proxTabContent.appendChild(tabContent);
+                });
 
-                function createProxFilterContent(){
-                    var proxFilterContent = document.createElement("div");
-                    proxFilterContent.id = "prox-tab-content";
-                    proxFilterContent.style.padding = "5px";
-
-                    var weekDayExclude = document.createElement("input");
-                    weekDayExclude.type = "checkbox";
-                    weekDayExclude.name = "weekDayExcludeBox";
-
-                    var weekDayInclude = document.createElement("input");
-                    weekDayInclude.type = "checkbox";
-                    weekDayInclude.name = "weekDayIncludeBox";
-
-                    proxFilterContent.appendChild(createProxFilterHeader("WeekDay", WEEKDAYS, excludedWeekDays));
-                    proxFilterContent.appendChild(createProxFilter(WEEKDAYS, excludedWeekDays, "WeekDay"));
-                    proxFilterContent.appendChild(document.createElement("hr"));
-
-                    proxFilterContent.appendChild(createProxFilterHeader("Week", WEEKS, excludedWeeks));
-                    proxFilterContent.appendChild(createProxFilter(WEEKS, excludedWeeks, "Week"));
-                    proxFilterContent.appendChild(document.createElement("hr"));
-
-                    proxFilterContent.appendChild(createProxFilterHeader("Technician", TECHNICIANS, excludedTechs));
-                    proxFilterContent.appendChild(createProxFilter(TECHNICIANS, excludedTechs, "Technician"));
-
-                    return proxFilterContent;
-                }
-
-                function createProxFilterHeader(filterName, inputList, outputList){
-                    var _filterTitle = document.createElement("div");
-                    _filterTitle.innerHTML = filterName;
-                    _filterTitle.style.fontSize = "10pt";
-                    _filterTitle.style.fontWeight = "bold";
-
-                    var _selectAllBox = document.createElement("input");
-                    _selectAllBox.type = "checkbox";
-                    _selectAllBox.name = filterName+"SelectAllBox";
-                    _selectAllBox.id = filterName+"SelectAllBox";
-                    _selectAllBox.onclick = selectAll;
-
-                    var _selectAllLabel = document.createElement("label");
-                    _selectAllLabel.innerHTML = "&nbsp;Select All&nbsp;";
-                    _selectAllLabel.htmlFor = filterName+"SelectAllBox";
-                    _selectAllLabel.style.cursor = "pointer";
-                    _selectAllLabel.style.fontWeight = "bold";
-
-                    var _headerDiv = document.createElement("div");
-                    _headerDiv.appendChild(_filterTitle);
-                    _headerDiv.appendChild(_selectAllBox);
-                    _headerDiv.appendChild(_selectAllLabel);
-
-                    return _headerDiv;
-
-                    function selectAll(event){
-                        var checkBoxes = Array.from(document.getElementsByClassName(filterName+"Box"))
-
-                        if(event.target.checked){
-                            inputList.forEach(function(item){
-                                if(outputList.indexOf(item) > -1) return;
-                                outputList.push(item);
-                                checkBoxes.forEach(function(checkBox){
-                                    checkBox.checked = true;
-                                });
-                            });
-
-                        } else {
-                            outputList.length = 0;
-                            checkBoxes.forEach(function(checkBox){
-                                checkBox.checked = false;
-                            });
-                        }
-
-                        fetchGeocodes(getLocationAddress(), function(data){
-                            getNearestActiveSetups(data, function(data){
-                                generateProxContent(data);
-                            });
-                        });
-                    }
-
-                }
-
-                function createProxFilter(inputList, outputList, filterType){
-                    var _checkList = document.createElement("div");
-
-                    inputList.forEach(function(filter){
-                        var _checkBox = document.createElement("input");
-                        _checkBox.type = "checkbox";
-                        _checkBox.name = filter+"Box";
-                        _checkBox.checked = outputList.indexOf(filter) > -1;
-                        _checkBox.id = filter+"Box";
-                        _checkBox.style.cursor = "pointer";
-                        _checkBox.classList.add(filterType+"Box");
-
-                        var _spacer = document.createElement("span");
-                        _spacer.innerHTML = "<br/>";
-
-                        var _label = document.createElement("label");
-                        _label.innerHTML = filter+"&nbsp;&nbsp;";
-                        _label.htmlFor = filter+"Box";
-                        _label.style.cursor = "pointer";
-
-                        _checkList.appendChild(_checkBox);
-                        _checkList.appendChild(_label);
-                        _checkList.appendChild(_spacer);
-
-                        _checkBox.onclick = function(event){
-                            var checkBoxData = event.target.id.replace("Box", "");
-                            var selectAllBox = document.getElementById(filterType+"SelectAllBox")
-
-                            if(event.target.checked){
-                                outputList.push(checkBoxData);
-                            } else {
-                                var index = outputList.indexOf(checkBoxData);
-                                outputList.splice(index, 1);
-                            }
-
-                            if(inputList.length === outputList.length){
-                                selectAllBox.checked = true;
-                            } else {
-                                selectAllBox.checked = false;
-                            }
-
-                            fetchGeocodes(getLocationAddress(), function(data){
-                                getNearestActiveSetups(data, function(data){
-                                    generateProxContent(data);
-                                });
-                            });
-                        };
-                    });
-
-                    return _checkList;
-                }
-
+                return proxTabContent;
             }
 
         }
@@ -891,6 +786,7 @@
                     proxModal.classList.add("show");
                     fetchGeocodes(getLocationAddress(), function(dataList){
                         getNearestActiveSetups(dataList, function(dataList){
+                            sessionStorage.removeItem("mapState");
                             generateProxContent(dataList);
                             fixDivision(dataList);
                         });
@@ -945,6 +841,73 @@
             return address.replace(/#[1-9]+,/g, "");
         }
 
+        function refreshTechnicianList(){
+            for(var key in TECHNICIANS){
+                var _tech = TECHNICIANS[key];
+                for(var key in _tech.dailyTotals){
+                    _tech.dailyTotals[key] = 0;
+                }
+                for(var key in _tech.dailyStops){
+                    _tech.dailyStops[key] = 0;
+                }
+            }
+        }
+
+        function updateTechnicianList(setup){
+            var addTech = true;
+
+            for(var key in TECHNICIANS){
+                var _tech = TECHNICIANS[key];
+                if(setup.tech && setup.tech === _tech.name){
+                    addTech = false;
+                    var multiplier;
+                    if(setup.schedule[4] === "M"){
+                        multiplier = 1;
+                    } else if(setup.schedule[4] === "B"){
+                        multiplier = 0.5;
+                    } else if(setup.schedule[4] === "Q"){
+                        multiplier = 0.33;
+                    }
+
+                    if(setup.schedule){
+                        _tech.dailyTotals[setup.schedule.substring(0,4)] += Math.ceil(parseInt(setup.total) * multiplier);
+                        _tech.dailyStops[setup.schedule.substring(0,4)] += multiplier;
+                    } else {
+                        console.error("No setup.schedule", setup);
+                    }
+                }
+            }
+
+            if(addTech && setup.tech){
+                TECHNICIANS[setup.tech] = new technician(setup.tech);
+            }
+
+        }
+
+        function alphabetizeTechnicianList(){
+            var _techArray = [];
+
+            var _technicians = {};
+
+            for(var key in TECHNICIANS){
+                _techArray.push(TECHNICIANS[key])
+            }
+
+            _techArray.sort(function(a, b){
+                if (a.name < b.name)
+                    return -1;
+                if (a.name > b.name)
+                    return 1;
+                return 0;
+            });
+
+            _techArray.forEach(function(tech){
+                _technicians[tech.name] = tech;
+            });
+
+            TECHNICIANS = _technicians;
+        }
+
         function getNearestActiveSetups(data, callback){
             var al = activeSetups.length;
             var lowest = 10000;
@@ -953,43 +916,30 @@
             var _long = parseFloat(data.longitude);
             var _lat = parseFloat(data.latitude);
 
-            ROUTELIST.length = 0;
+            refreshTechnicianList();
 
             for(var i = 1; i < al; i++){
                 var setup = activeSetups[i];
                 if(!setup.id){
-                    console.log("ummmm");
+                    console.error("No setup.id", setup);
                 }
 
-                var addTech = true;
-                if(ROUTELIST.length)
-                for(var ii = 0; ii < ROUTELIST.length; ii++){
-                    var _tech = ROUTELIST[ii];
-                    if(activeSetups[i].tech && activeSetups[i].tech === _tech.name){
-                        addTech = false;
-                        var multiplier;
-                        if(activeSetups[i].schedule[4] === "M"){
-                            multiplier = 1;
-                        } else if(activeSetups[i].schedule[4] === "B"){
-                            multiplier = 0.5;
-                        } else if(activeSetups[i].schedule[4] === "Q"){
-                            multiplier = 0.33;
-                        }
+                updateTechnicianList(activeSetups[i]);
 
-                        if(activeSetups[i].schedule){
-                            _tech.dailyTotals[activeSetups[i].schedule.substring(0,4)] += Math.ceil(parseInt(activeSetups[i].total) * multiplier);
-                            _tech.dailyStops[activeSetups[i].schedule.substring(0,4)] += multiplier;
-                        } else {
-                            console.log("NO SCHEDULE 1: "+activeSetups[i]);
-                        }
-                    }
-                }
+                var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+                dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
 
-                if(addTech && activeSetups[i].tech){
-                    ROUTELIST.push(new technician(activeSetups[i].tech));
-                }
+                if(DAILYTOTALS[dailyTotal])
+                if(!DAILYTOTALS[dailyTotal].excluded)
 
-                if(excludedWeekDays.indexOf(setup.weekDay) < 0 && excludedWeeks.indexOf(setup.week) < 0 && excludedTechs.indexOf(setup.tech) < 0)
+                if(WEEKDAYS[setup.weekDay])
+                if(!WEEKDAYS[setup.weekDay].excluded)
+
+                if(WEEKS[setup.week])
+                if(!WEEKS[setup.week].excluded)
+
+                if(TECHNICIANS[setup.tech])
+                if(!TECHNICIANS[setup.tech].excluded)
 
                 if(nearestList.length < 20){
                     setup.hyp = setup.getDist(_long, _lat).toFixed(3);
@@ -1000,18 +950,21 @@
                         if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
                             setup.hyp = setup.getDist(_long, _lat).toFixed(3);
                             nearestList.splice(ij, 0, setup);
-                            nearestList = nearestList.slice(0, 20);
+                            nearestList = nearestList.slice(0, PROXLISTSIZE);
                             break;
                         }
                     }
                 }
+
             }
+
+            alphabetizeTechnicianList();
 
             if(nearestList.length > 1){
                 for(var j = 0; j < nearestList.length; j++){
                     var _nearest = nearestList[j];
-                    for(var ji = 0; ji < ROUTELIST.length; ji++){
-                        var _tech = ROUTELIST[ji];
+                    for(var key in TECHNICIANS){
+                        var _tech = TECHNICIANS[key];
                         if(_tech.name === _nearest.tech){
                             if(_nearest.schedule){
                                 _nearest.dailyTotal = _tech.dailyTotals[_nearest.schedule.substring(0,4)];
@@ -1027,166 +980,79 @@
 
         function generateProxContent(data){
             generateProxList(data);
-            generateProxMap(data);
-        }
 
-        function generateProxMap(data){
-            var mapTabContent = document.getElementById("map-tab-content");
-            mapTabContent.innerHTML = "";
-            mapTabContent.style.height = "100%";
-            mapTabContent.style.width = "100%";
+            generateProxLegend(data);
 
-            mapTabContent.appendChild(createProxMap());
-
-            initMap(data);
-
-            function createProxMap(){
-
-                var proxMap = document.createElement("div");
-                proxMap.id = "prox-map";
-                proxMap.style.position = "absolute";
-                proxMap.style.height = "336px";
-                proxMap.style.width = "444px";
-                proxMap.style.border = "1px solid #999";
-                proxMap.style.zIndex = "0";
-
-                return proxMap;
+            if(!PROXMAP){
+                generateProxMap(data);
+            } else {
+                updateProxMap(data);
             }
-
-            function initMap(data) {
-
-                var _latitude = parseFloat(sessionStorage.getItem("latitude"));
-
-                var _longitude = parseFloat(sessionStorage.getItem("longitude"));
-
-                var myLatLng = {lat: _latitude, lng: _longitude};
-
-                var map = new google.maps.Map(document.getElementById("prox-map"), {
-                    center: myLatLng,
-                    zoom: 15
-                });
-
-                var imageIcons = {
-                    "1MON": "http://maps.google.com/mapfiles/kml/paddle/blu-circle.png",
-                    "2MON": "http://maps.google.com/mapfiles/kml/paddle/blu-diamond.png",
-                    "3MON": "http://maps.google.com/mapfiles/kml/paddle/blu-square.png",
-                    "4MON": "http://maps.google.com/mapfiles/kml/paddle/blu-stars.png",
-
-                    "1TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-circle.png",
-                    "2TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-diamond.png",
-                    "3TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-square.png",
-                    "4TUE": "http://maps.google.com/mapfiles/kml/paddle/grn-stars.png",
-
-                    "1WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-circle.png",
-                    "2WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-diamond.png",
-                    "3WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-square.png",
-                    "4WED": "http://maps.google.com/mapfiles/kml/paddle/ylw-stars.png",
-
-                    "1THU": "http://maps.google.com/mapfiles/kml/paddle/orange-circle.png",
-                    "2THU": "http://maps.google.com/mapfiles/kml/paddle/orange-diamond.png",
-                    "3THU": "http://maps.google.com/mapfiles/kml/paddle/orange-square.png",
-                    "4THU": "http://maps.google.com/mapfiles/kml/paddle/orange-stars.png",
-
-                    "1FRI": "http://maps.google.com/mapfiles/kml/paddle/red-circle.png",
-                    "2FRI": "http://maps.google.com/mapfiles/kml/paddle/red-diamond.png",
-                    "3FRI": "http://maps.google.com/mapfiles/kml/paddle/red-square.png",
-                    "4FRI": "http://maps.google.com/mapfiles/kml/paddle/red-stars.png"
-                };
-
-
-                data.forEach(function(activeSetup){
-
-                    var imageString = activeSetup.schedule.substring(0,4);
-
-                    var imageUrl = imageIcons[imageString];
-
-                    var image = {
-                        url: imageUrl
-                        // This marker is 20 pixels wide by 32 pixels high.
-                      //  size: new google.maps.Size(20, 32),
-                        // The origin for this image is (0, 0).
-                      //  origin: new google.maps.Point(0, 0),
-                        // The anchor for this image is the base of the flagpole at (0, 32).
-                      //  anchor: new google.maps.Point(0, 32)
-                    };
-
-
-
-                    var marker = new google.maps.Marker({
-                        map: map,
-                        icon: image,
-                        position: {lat: activeSetup.latitude, lng: activeSetup.longitude},
-                        title: activeSetup.schedule
-                    });
-
-                    marker.addListener("click", function(){
-                        console.log(activeSetup);
-                    });
-                });
-
-                var marker = new google.maps.Marker({
-                    map: map,
-                    position: myLatLng,
-                    title: "_lat: "+_latitude+"_lng"+_longitude
-                });
-            }
-
         }
 
         function generateProxList(data){
-
-            var colorScale = [
-                {amount: 450, color: "rgb(0,0,255)"},
-                {amount: 500, color: "rgb(0,63,255)"},
-                {amount: 550, color: "rgb(0,127,255)"},
-                {amount: 600, color: "rgb(0,191,255)"},
-                {amount: 650, color: "rgb(0,255,255)"},
-                {amount: 700, color: "rgb(0,255,191)"},
-                {amount: 750, color: "rgb(0,255,127)"},
-                {amount: 800, color: "rgb(0,255,63)"},
-                {amount: 850, color: "rgb(0,255,0)"},
-                {amount: 900, color: "rgb(63,255,0)"},
-                {amount: 950, color: "rgb(127,255,0)"},
-                {amount: 1000, color: "rgb(191,255,0)"},
-                {amount: 1050, color: "rgb(255,255,0)"},
-                {amount: 1100, color: "rgb(255,191,0)"},
-                {amount: 1150, color: "rgb(255,127,0)"},
-                {amount: 1200, color: "rgb(255,63,0)"},
-                {amount: 1250, color: "rgb(255,0,0)"},
-                {amount: 1300, color: "rgb(255,0,63)"},
-                {amount: 1350, color: "rgb(255,0,127)"},
-                {amount: 1400, color: "rgb(255,0,191)"},
-                {amount: 1450, color: "rgb(255,0,255)"}
-            ];
 
             var listTabContent = document.getElementById("list-tab-content");
             listTabContent.innerHTML = "";
             listTabContent.style.height = "100%";
             listTabContent.style.width = "100%";
 
+            listTabContent.appendChild(createProxTableHeader(data));
             listTabContent.appendChild(createProxTable(data));
-            listTabContent.appendChild(createGeocodesLabel());
-            listTabContent.appendChild(createRetrieveLink());
-            listTabContent.appendChild(createProxLegend());
+          //  listTabContent.appendChild(createGeocodesLabel());
+          //  listTabContent.appendChild(createRetrieveLink());
+
+            function createProxTableHeader(){
+                var _table = document.createElement("table");
+                _table.border = 1;
+                _table.style.width = "430px";
+                _table.style.height = "6%";
+
+                var _headerRow = _table.insertRow(0);
+
+                _headerRow.style.fontWeight = "bold";
+
+                var headerList = [
+                    {text: "Account", width: "14%"},
+                    {text: "Zip", width: "12%"},
+                    {text: "Schedule", width: "16%"},
+                    {text: "Tech/Division", width: "30%"},
+                    {text: "Distance *", width: "18%"},
+                    {text: "Stops", width: "10%"}
+                ];
+
+                headerList.forEach(function(header){
+                    var newCell = _headerRow.insertCell();
+                    newCell.innerHTML = header.text;
+                    newCell.style.width = header.width;
+                });
+
+                return _table;
+
+            }
 
             function createProxTable(data){
                 var proxTable = document.createElement("table");
                 proxTable.border = 1;
-                proxTable.style.right = "10px";
+
                 if(data.length > 1){
                     for(var i = 0; i < data.length; i++){
                         createTableRow(data[i]);
                     }
                 }
-                createTableHeader();
 
-                return proxTable;
+                var scrollDiv = document.createElement("div");
+                scrollDiv.style.height = "94%";
+                scrollDiv.style.width = "100%";
+                scrollDiv.style.overflowY = "scroll";
+                scrollDiv.style.border = "1px solid grey";
+
+                scrollDiv.appendChild(proxTable);
+
+                return scrollDiv;
 
                 function createTableRow(rowData){
-                    if(!rowData.zipCode){
-                        console.log(rowData);
-                    }
-
+                    
                     var _goToAnchor = document.createElement("a");
                     _goToAnchor.innerHTML = rowData.id;
                     _goToAnchor.style.textDecoration = "none";
@@ -1198,12 +1064,40 @@
                     _techAnchor.style.color = "#000";
 
                     var _tr = proxTable.insertRow();
-                    _tr.insertCell().appendChild(_goToAnchor);
-                    _tr.insertCell().innerHTML = rowData.zipCode.substring(0,5);
-                    _tr.insertCell().innerHTML = rowData.schedule;
-                    _tr.insertCell().appendChild(_techAnchor);
-                    _tr.insertCell().innerHTML = rowData.hyp+" km";
-                    _tr.insertCell().innerHTML = Math.ceil(rowData.dailyStops);
+
+                    var cell_1 = _tr.insertCell();
+                    cell_1.appendChild(_goToAnchor);
+                    cell_1.style.width = "14%";
+
+                    var cell_2 = _tr.insertCell();
+                    cell_2.innerHTML = rowData.zipCode.substring(0,5);
+                    cell_2.style.width = "12%";
+
+                    var cell_3 = _tr.insertCell();
+                    cell_3.innerHTML = rowData.schedule;
+                    cell_3.style.width = "16%";
+
+                    var cell_4 = _tr.insertCell();
+                    cell_4.appendChild(_techAnchor);
+                    cell_4.style.width = "30%";
+
+                    var cell_5 = _tr.insertCell();
+                    cell_5.innerHTML = rowData.hyp+" km";
+                    cell_5.style.width = "18%";
+
+                    var cell_6 = _tr.insertCell();
+                    cell_6.innerHTML = Math.ceil(rowData.dailyStops);
+                    cell_6.style.width = "10%";
+
+                    if(urlContains(["serviceSetup/detail.asp"])){
+                        _tr.classList.add("add-setup-task");
+                        _tr.dataSetup = rowData;
+                        _tr.addEventListener("click", function(e) {
+                            GM_setValue("serviceSetup", this.dataSetup);
+
+                            document.getElementById("prox-modal").classList.remove("show");
+                        });
+                    }
 
                     if(addSetupTask){
                         _tr.classList.add("add-setup-task");
@@ -1226,19 +1120,15 @@
                         });
                     }
 
-                    for(var ii = 0; ii < colorScale.length; ii++){
-                        if(rowData.dailyTotal < colorScale[ii].amount){
-                            _tr.style.textShadow = "1px 1px 0 "+colorScale[ii].color;
-                            break;
-                        }
-                        _tr.style.textShadow = "1px 1px 0 rgb(255,0,255)";
-                    }
+                    _tr.style.textShadow = "1px 1px 0 "+getColor(rowData);
 
                     function createTechSchedule(tech){
                         var schedule = "";
 
-                        ROUTELIST.forEach(
-                            function(route){
+                        Object.keys(TECHNICIANS).forEach(
+                            function(key){
+                                var route = TECHNICIANS[key];
+
                                 if(route.name === tech){
                                     schedule = "Daily Stops/Totals for "+route.name+"\n        MON              TUE               WED               THU                FRI\n";
 
@@ -1247,10 +1137,7 @@
 
                                         dayString = dayString+Math.ceil(route.dailyStops[day])+"/"+Math.ceil(route.dailyTotals[day]);
 
-                                        console.log(dayString.length);
-
                                         for(var i = dayString.length; i < 7; i++){
-                                            console.log(i);
                                             dayString = " "+dayString+" ";
                                         }
 
@@ -1271,113 +1158,461 @@
                                 }
                             });
 
+
+
                         return schedule;
                     }
 
                 }
 
-                function createTableHeader(){
-                    var _header = proxTable.createTHead();
-
-                    var _headerRow = _header.insertRow(0);
-
-                    _headerRow.insertCell().innerHTML = "Account#";
-                    _headerRow.insertCell().innerHTML = "Zip Code";
-                    _headerRow.insertCell().innerHTML = "Schedule";
-                    _headerRow.insertCell().innerHTML = "Tech/Division";
-                    _headerRow.insertCell().innerHTML = "Distance *";
-                    _headerRow.insertCell().innerHTML = "Stops";
-                    _headerRow.style.fontWeight = "bold";
-                }
-
             }
-
 
             function createGeocodesLabel(){
                 var geocodesLabel = document.createElement("span");
-                geocodesLabel.id = "geocodesLabel";
+              //  geocodesLabel.id = "geocodesLabel";
                 geocodesLabel.innerHTML = "Latitude: "+sessionStorage.getItem("latitude")+" Longitude: "+sessionStorage.getItem("longitude");
 
                 return geocodesLabel;
             }
 
-            function createRetrieveLink(){
-                var retrieveLink = document.createElement("a");
-                retrieveLink.innerHTML = "Retrieve Account Data";
-                retrieveLink.style.position = "absolute";
-                retrieveLink.style.paddingTop = "2px";
-                retrieveLink.style.right = "10px";
-                retrieveLink.style.cursor = "pointer";
-
-                retrieveLink.onclick = function(){
-                    GM_setValue("retrieveAccountData", "residential");
-
-                    var retrieveURL = "http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
-
-                    window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
-
-                  //  window.open("http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12");
-                }
-
-                return retrieveLink;
-            }
-
-            function createProxLegend(){
-
-                var proxLegend = document.createElement("div");
-
-                proxLegend.appendChild(createLegendHeader());
-
-                for(var j = 0; j < colorScale.length; j++){
-                    var _div = document.createElement("div");
-                    _div.innerHTML = "$"+colorScale[j].amount;
-                    _div.style.textShadow = "1px 1px 0 "+colorScale[j].color;
-                    _div.style.transform = "rotate(300deg)";
-                    _div.style.display = "inline-block";
-                    _div.style.marginTop = "12px";
-                    _div.style.marginBottom = "16px";
-                    _div.style.width = "21px";
-                    proxLegend.appendChild(_div);
-                }
-
-                var fineText = document.createElement("div");
-                fineText.innerHTML = "*As the crow flies, not as the technician drives.";
-                fineText.style.textAlign = "right";
-
-                proxLegend.appendChild(fineText);
-
-                return proxLegend;
-
-                function createLegendHeader(){
-                    var legendHeader = document.createElement("div");
-                    if(addSetupTask){
-                        legendHeader.innerHTML = "Select an active setup to assign technician and schedule.<h3>Average Daily Total:</h3>";
-                    } else {
-                        legendHeader.innerHTML = "<h3>Average Daily Total:</h3>";
-                    }
-                    return legendHeader;
-                }
-
-            }
-
-            function addSetupTaskDetails(activeSetup){
-                var taskNameInput = document.getElementById("subject");
-                var descriptionInput = document.getElementById("description");
-                var dueDateInput = document.getElementById("dueDate");
-
-                var _frequency = taskNameInput.value.slice(-1);
-                var _startDate = dueDateInput.value;
-                var _schedule = activeSetup.schedule.substring(0,1) + capitalizeFirstLetter(activeSetup.schedule.substring(1,4));
-                var _tech = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
-                var _nextDate = getNextServiceDate(_startDate, _schedule, _frequency);
-                taskNameInput.value = taskNameInput.value.concat(" "+_schedule+" "+_tech);
-                descriptionInput.value = descriptionInput.value.concat("\nNextDate: "+_nextDate);
-
-            }
+            
+            
         }
 
-        function clickToDismiss(e){
-            var element = e.target;
+        function generateProxMap(data){
+            var mapTabContent = document.getElementById("map-tab-content");
+            mapTabContent.innerHTML = "";
+            mapTabContent.style.height = "100%";
+            mapTabContent.style.width = "100%";
+
+            mapTabContent.appendChild(createProxMap());
+
+            initMap(data);
+
+            function createProxMap(){
+
+                var proxMap = document.createElement("div");
+                proxMap.id = "prox-map";
+                proxMap.style.height = "100%";
+                proxMap.style.width = "100%";
+                proxMap.style.border = "1px solid #999";
+                proxMap.style.zIndex = "0";
+
+                return proxMap;
+            }
+
+            function initMap(data) {
+
+                var _latitude = parseFloat(sessionStorage.getItem("latitude"));
+
+                var _longitude = parseFloat(sessionStorage.getItem("longitude"));
+
+                var myLatLng = {lat: _latitude, lng: _longitude};
+
+                PROXMAP = new google.maps.Map(document.getElementById("prox-map"), {
+                    center: myLatLng,
+                    zoom: 13
+                });
+
+                PROXMAPMARKERS = [];
+
+                data.forEach(function(activeSetup){
+
+                    var imageUrl = getMarker(activeSetup, GROUPBY);
+
+                    var image = {
+                        url: imageUrl,
+                        size: new google.maps.Size(32, 32),
+                        scaledSize: new google.maps.Size(32, 32),
+                        origin: new google.maps.Point(0, 0),
+                        anchor: new google.maps.Point(15, 31)
+                    };
+
+                    var marker = new google.maps.Marker({
+                        map: PROXMAP,
+                        icon: image,
+                        position: {lat: activeSetup.latitude, lng: activeSetup.longitude},
+                        title: createMarkerTitle(activeSetup)
+                    });
+
+                    PROXMAPMARKERS.push(marker);
+
+                    marker.addListener("click", function(e){
+                        if(addSetupTask){
+                            addSetupTaskDetails(activeSetup);
+                            addSetupTask = false;
+                            document.getElementById("prox-modal").classList.remove("show");
+                        } else {
+                            goToAccount(activeSetup.id, true);
+                        }
+                    });
+
+
+                });
+
+                var marker = new google.maps.Marker({
+                    map: PROXMAP,
+                    position: myLatLng,
+                    title: "_lat: "+_latitude+"_lng"+_longitude
+                });
+
+                google.maps.event.addListener(PROXMAP, 'tilesloaded', tilesLoaded);
+
+                loadMapState();
+
+              //  PROXMAP.controls[google.maps.ControlPosition.BOTTOM].push(createProxLegend());
+
+                function tilesLoaded(){
+                    google.maps.event.clearListeners(PROXMAP, 'tilesloaded');
+                    google.maps.event.addListener(PROXMAP, 'zoom_changed', saveMapState);
+                    google.maps.event.addListener(PROXMAP, 'dragend', saveMapState);
+                }
+
+                function saveMapState(){
+                    var mapZoom = PROXMAP.getZoom();
+                    var mapCenter = PROXMAP.getCenter();
+                    var mapLat = mapCenter.lat();
+                    var mapLng = mapCenter.lng();
+                    var mapString = mapLat + "_" + mapLng + "_" + mapZoom;
+                    sessionStorage.setItem("mapState", mapString);
+                    console.log(mapString);
+                }
+
+                function loadMapState(){
+                    var mapString = sessionStorage.getItem("mapState");
+                    if(!mapString) return;
+                    var mapArray = mapString.split("_");
+                    var savedMapLat = parseFloat(mapArray[0]);
+                    var savedMapLng = parseFloat(mapArray[1]);
+                    var savedMapZoom = parseFloat(mapArray[2]);
+                    if ((!isNaN(savedMapLat)) && (!isNaN(savedMapLng)) && (!isNaN(savedMapZoom))) {
+                        PROXMAP.setCenter(new google.maps.LatLng(savedMapLat,savedMapLng));
+                        PROXMAP.setZoom(savedMapZoom);
+                    }
+
+                }
+
+            }
+
+        }
+
+        function generateProxLegend(data){
+            var proxLegend = document.getElementById("prox-legend");
+            var legendContent = document.getElementById("legend-content");
+
+            if(!legendContent){
+                proxLegend.appendChild(createLegendContent());
+
+                addProxTabListeners();
+            }
+
+            function createLegendContent(){
+                var legendContent = document.createElement("div");
+                legendContent.id = "legend-content";
+
+                legendContent.appendChild(createProxTabs([
+                    {id: "general", title: "General", shown: true, content: createGeneralTab()},
+                    {id: "dailyTotal", title: "DailyTotal", shown: false, content: createDailyTotalTab()},
+                    {id: "week", title: "Week", shown: false, content: createWeekTab()},
+                    {id: "weekDay", title: "WeekDay", shown: false, content: createWeekDayTab()},
+                    {id: "technician", title: "Technician", shown: false, content: createTechnicianTab()}
+                ], 132, 468, "proxLegendTabs"));
+
+                return legendContent;
+
+                function createGeneralTab(){
+                    var generalTab = document.createElement("div");
+
+                    var setupsReturned = document.createElement("span");
+                    setupsReturned.style.fontSize = "10pt";
+                    setupsReturned.style.fontWeight = "bold";
+                    setupsReturned.innerHTML = "Setups: ";
+
+                    generalTab.appendChild(setupsReturned);
+
+                    generalTab.appendChild(createLegendSelect([50, 100, 250, 500, 1000, 10000], PROXLISTSIZE, function(event){
+                        PROXLISTSIZE = event.target.value;
+                        fetchGeocodes(getLocationAddress(), function(data){
+                            getNearestActiveSetups(data, function(data){
+                                generateProxContent(data);
+                            });
+                        });
+                    }));
+
+                    generalTab.appendChild(createRetrieveLink());
+
+                    return generalTab;
+                }
+
+                function createDailyTotalTab(){
+                    var dailyTotalTab = document.createElement("div");
+                    dailyTotalTab.appendChild(createLegendHeader("DailyTotal", DAILYTOTALS));
+                    dailyTotalTab.appendChild(createLegendList("DailyTotal", DAILYTOTALS));
+
+                    return dailyTotalTab;
+                }
+
+                function createWeekTab(){
+                    var weekTab = document.createElement("div");
+                    weekTab.appendChild(createLegendHeader("Week", WEEKS));
+                    weekTab.appendChild(createLegendList("Week", WEEKS));
+
+                    return weekTab
+                }
+
+                function createWeekDayTab(){
+                    var weekDayTab = document.createElement("div");
+                    weekDayTab.appendChild(createLegendHeader("WeekDay", WEEKDAYS));
+                    weekDayTab.appendChild(createLegendList("WeekDay", WEEKDAYS));
+
+                    return weekDayTab;
+                }
+
+                function createTechnicianTab(){
+                    var technicianTab = document.createElement("div");
+                    technicianTab.appendChild(createLegendHeader("Technician", TECHNICIANS));
+                    technicianTab.appendChild(createLegendList("Technician", TECHNICIANS));
+
+                    return technicianTab;
+                }
+
+            }
+
+            function createLegendSelect(options, dataModel, onchange){
+                var _select = document.createElement("select");
+                _select.style.display = "inline-block";
+                _select.value = dataModel;
+                _select.onchange = onchange;
+
+                options.forEach(function(option){
+                    _select.options.add(new Option(option));
+                });
+
+                return _select;
+            }
+
+            function createLegendHeader(listType, dataModel){
+                var _filterTitle = document.createElement("span");
+                _filterTitle.innerHTML = listType+"  ";
+                _filterTitle.style.fontSize = "10pt";
+                _filterTitle.style.fontWeight = "bold";
+
+                var _header = document.createElement("span");
+                _header.appendChild(_filterTitle);
+                _header.appendChild(createSelectAll());
+
+                return _header;
+
+                function createSelectAll(){
+                    var _selectAllBox = document.createElement("input");
+                    _selectAllBox.type = "checkbox";
+                    _selectAllBox.name = listType+"SelectAllBox";
+                    _selectAllBox.id = listType+"SelectAllBox";
+                    _selectAllBox.onclick = selectAll;
+
+                    var _selectAllLabel = document.createElement("label");
+                    _selectAllLabel.innerHTML = "&nbsp;Select All&nbsp;";
+                    _selectAllLabel.htmlFor = listType+"SelectAllBox";
+                    _selectAllLabel.style.cursor = "pointer";
+                    _selectAllLabel.style.fontWeight = "bold";
+
+                    var _selectAllSpan = document.createElement("span");
+                    _selectAllSpan.appendChild(_selectAllBox);
+                    _selectAllSpan.appendChild(_selectAllLabel);
+
+                    return _selectAllSpan;
+
+                    function selectAll(){
+                        console.log("select all: "+listType);
+
+                        var checkBoxes = Array.from(document.getElementsByClassName(listType+"Box"))
+
+                        checkBoxes.forEach(function(checkBox){
+                            checkBox.checked = event.target.checked;
+                            dataModel[checkBox.id.replace("Box", "")].excluded = event.target.checked;
+                        });
+
+                        fetchGeocodes(getLocationAddress(), function(data){
+                            getNearestActiveSetups(data, function(data){
+                                generateProxContent(data);
+                            });
+                        });
+                    }
+                }
+            }
+
+            function createLegendList(listType, dataModel){
+
+                var _checkList = document.createElement("ul");
+                _checkList.style.listStyle = "none";
+                _checkList.style.padding = "5px";
+
+                var colorScale = getColorScale(dataModel);
+
+                var listLength = Object.keys(dataModel).length
+
+                var width = Math.round(400/listLength);
+
+                for (var key in dataModel){
+
+                    var _checkBox = document.createElement("input");
+                    _checkBox.id = key+"Box";
+                    _checkBox.type = "checkbox";
+                    _checkBox.name = dataModel[key].name+"Box";
+                    _checkBox.checked = dataModel[key].excluded;
+                    _checkBox.style.cursor = "pointer";
+                    _checkBox.classList.add(listType+"Box");
+
+                    var _label = document.createElement("label");
+                    _label.id = key+"Label";
+                    _label.htmlFor = key+"Box";
+                    _label.style.cursor = "pointer";
+                    _label.innerHTML = dataModel[key].name+"&nbsp;&nbsp;"
+                    _label.classList.add("legendLabel");
+                    _label.classList.add(listType+"Label");
+                    _label.style.textShadow = "1px 1px 0 "+colorScale[key];
+
+                    var _listItem = document.createElement("li");
+                    _listItem.style.transform = "rotate("+Math.round(listLength*2.5)+"deg)";
+                    _listItem.style.display = "inline-block";
+                    
+                    _listItem.style.width = width+"px";
+                    _listItem.style.whiteSpace = "nowrap";
+
+                    var _wrapperDiv = document.createElement("div");
+                    _wrapperDiv.style.textAlign = "left";
+                    _wrapperDiv.style.width = "100%";
+
+                    _wrapperDiv.appendChild(_checkBox);
+                    _wrapperDiv.appendChild(_label);
+
+                    _listItem.appendChild(_wrapperDiv);
+
+                    _checkList.appendChild(_listItem);
+
+                    _checkBox.onclick = function(event){
+
+                        var checkBoxData = event.target.id.replace("Box", "");
+                        dataModel[checkBoxData].excluded = event.target.checked;
+
+                        var checkBoxes = Array.from(document.getElementsByClassName(listType+"Box"));
+                        var selectAll = true;
+                        checkBoxes.forEach(function(checkBox){
+                            if(!checkBox.checked){
+                                selectAll = false;
+                            }
+                        });
+                        document.getElementById(listType+"SelectAllBox").checked = selectAll;
+
+                        fetchGeocodes(getLocationAddress(), function(data){
+                            getNearestActiveSetups(data, function(data){
+                                generateProxContent(data);
+                            });
+                        });
+
+                    };
+
+                }
+
+                return _checkList;
+            }
+
+            function addProxTabListeners(){
+                var dailyTotalTabLabel = document.getElementById("dailyTotal-tab-label");
+                var weekTabLabel = document.getElementById("week-tab-label");
+                var weekDayTabLabel = document.getElementById("weekDay-tab-label");
+                var technicianTabLabel = document.getElementById("technician-tab-label");
+
+                dailyTotalTabLabel.addEventListener("click", tabClick);
+                weekTabLabel.addEventListener("click", tabClick);
+                weekDayTabLabel.addEventListener("click", tabClick);
+                technicianTabLabel.addEventListener("click", tabClick);
+
+                function tabClick(event){
+                    GROUPBY = event.target.id.replace("-tab-label", "").toUpperCase();
+
+                    var checkBoxes = Array.from(document.getElementsByClassName("groupByBox"));
+
+                    checkBoxes.forEach(function(checkBox){
+                        checkBox.checked = checkBox.id.replace("GroupByBox","").toUpperCase() === GROUPBY;
+                    });
+
+                    fetchGeocodes(getLocationAddress(), function(data){
+                        getNearestActiveSetups(data, function(data){
+                            generateProxContent(data);
+                        });
+                    });
+                }
+
+            }
+
+        }
+
+        function updateProxMap(data){
+
+            PROXMAPMARKERS.forEach(function(marker){
+                marker.setMap(null);
+            })
+
+            PROXMAPMARKERS = [];
+
+            data.forEach(function(activeSetup){
+
+                var imageUrl = getMarker(activeSetup, GROUPBY);
+
+                var image = {
+                    url: imageUrl,
+                    size: new google.maps.Size(64, 64),
+                    scaledSize: new google.maps.Size(32, 32),
+                    origin: new google.maps.Point(0, 0),
+                    anchor: new google.maps.Point(15, 31)
+                };
+
+                var marker = new google.maps.Marker({
+                    map: PROXMAP,
+                    icon: image,
+                    position: {lat: activeSetup.latitude, lng: activeSetup.longitude},
+                    title: createMarkerTitle(activeSetup)
+                });
+
+                PROXMAPMARKERS.push(marker);
+
+                marker.addListener("click", function(e){
+                    if(addSetupTask){
+                        addSetupTaskDetails(activeSetup);
+                        addSetupTask = false;
+                        document.getElementById("prox-modal").classList.remove("show");
+                    } else {
+                        goToAccount(activeSetup.id, true);
+                    }
+                });
+
+            });
+
+        }
+
+        function createMarkerTitle(setup){
+            var title = setup.schedule
+                +"\n  Location: "+setup.id
+                +"\n  Division: "+setup.division
+                +"\n  Service: "+setup.service
+                +"\n  Tech: "+setup.tech
+                +"\n  Total: "+setup.total;
+            return title;
+        }
+
+        function createProxLegend(){
+            
+            var proxLegend = document.createElement("div");
+            proxLegend.id = "prox-legend";
+            proxLegend.style.border = "1px solid";
+            proxLegend.style.backgroundColor = "white";
+
+            return proxLegend;
+        }
+
+        function clickToDismiss(event){
+            var element = event.target;
 
             var proxModal = document.getElementById("prox-modal");
 
@@ -1389,11 +1624,165 @@
 
                 proxModal.classList.remove("show");
 
-                console.log(e);
-
             }
 
         }
+
+        function addSetupTaskDetails(activeSetup){
+            var taskNameInput = document.getElementById("subject");
+            var descriptionInput = document.getElementById("description");
+            var dueDateInput = document.getElementById("dueDate");
+
+            var _frequency = taskNameInput.value.slice(-1);
+            var _startDate = dueDateInput.value;
+            var _schedule = activeSetup.schedule.substring(0,1) + capitalizeFirstLetter(activeSetup.schedule.substring(1,4));
+            var _tech = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
+            var _nextDate = getNextServiceDate(_startDate, _schedule, _frequency);
+            taskNameInput.value = taskNameInput.value.concat(" "+_schedule+" "+_tech);
+            descriptionInput.value = descriptionInput.value.concat("\nNextDate: "+_nextDate);
+        }
+    }
+
+    function getColor(setup){;
+
+        if(GROUPBY === "WEEK"){
+            return getColorScale(WEEKS)[setup.schedule.substring(0,1)];
+        } else if(GROUPBY === "WEEKDAY"){
+            return getColorScale(WEEKDAYS)[setup.schedule.substring(1,4)];
+        } else if(GROUPBY === "DAILYTOTAL"){
+            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+            dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
+            return getColorScale(DAILYTOTALS)[dailyTotal.toString()];
+        } else if(GROUPBY === "TECHNICIAN"){
+            return getColorScale(TECHNICIANS)[setup.tech];
+        }
+
+    }
+
+    function getColorScale(dataModel){
+
+        var colorScale = {};
+
+        var keyList;
+
+        var colorList = [
+            "0,0,255",
+            "0,63,255",
+            "0,127,255",
+            "0,191,255",
+            "0,255,255",
+            "0,255,191",
+            "0,255,127",
+            "0,255,63",
+            "0,255,0",
+            "63,255,0",
+            "127,255,0",
+            "191,255,0",
+            "255,255,0",
+            "255,191,0",
+            "255,127,0",
+            "255,63,0",
+            "255,0,0",
+            "255,0,63",
+            "255,0,127",
+            "255,0,191",
+            "255,0,255",
+            "191,0,255",
+            "127,0,255",
+            "63,0,255"
+        ];
+
+        if(!dataModel){
+
+            if(GROUPBY === "WEEK"){
+                keyList = Object.keys(WEEKS);
+            } else if(GROUPBY === "WEEKDAY"){
+                keyList = Object.keys(WEEKDAYS);
+            } else if(GROUPBY === "DAILYTOTAL"){
+                keyList = Object.keys(DAILYTOTALS);
+            } else if(GROUPBY === "TECHNICIAN"){
+                keyList = Object.keys(TECHNICIANS);
+            }
+        } else {
+            keyList = Object.keys(dataModel);
+        }
+
+        var conversionRate = colorList.length/keyList.length;
+
+        keyList.forEach(function(key, index){
+
+            var newIndex = Math.round(conversionRate * index);
+
+            colorScale[key] = "rgb("+colorList[newIndex]+")";
+
+        });
+
+        return colorScale;
+    }
+
+    function getMarker(setup){
+        if(GROUPBY === "WEEK"){
+            return getMarkerScale(WEEKS)[setup.schedule.substring(0,1)];
+        } else if(GROUPBY === "WEEKDAY"){
+            return getMarkerScale(WEEKDAYS)[setup.schedule.substring(1,4)];
+        } else if(GROUPBY === "DAILYTOTAL"){
+            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+            dailyTotal = dailyTotal > 449 ? dailyTotal : 450;
+            return getMarkerScale(DAILYTOTALS)[dailyTotal];
+        } else if(GROUPBY === "TECHNICIAN"){
+            return getMarkerScale(TECHNICIANS)[setup.tech];
+        } else if(GROUPBY === "SCHEDULE"){
+            return getMarkerScale(SCHEDULES)[setup.schedule.substring(1,4)];
+        } else {
+            console.error("groupBy not recognized", GROUPBY);
+        }
+
+    }
+
+    function getMarkerScale(dataModel){
+
+        var markerScale = {};
+
+        var markerList = [
+            "0_0_255",
+            "0_63_255",
+            "0_127_255",
+            "0_191_255",
+            "0_255_255",
+            "0_255_191",
+            "0_255_127",
+            "0_255_63",
+            "0_255_0",
+            "63_255_0",
+            "127_255_0",
+            "191_255_0",
+            "255_255_0",
+            "255_191_0",
+            "255_127_0",
+            "255_63_0",
+            "255_0_0",
+            "255_0_63",
+            "255_0_127",
+            "255_0_191",
+            "255_0_255",
+            "191_0_255",
+            "127_0_255",
+            "63_0_255"
+        ];
+
+        var keyList = Object.keys(dataModel);
+
+        var conversionRate = markerList.length/keyList.length;
+
+        keyList.forEach(function(key, index){
+
+            var newIndex = Math.round(conversionRate * index);
+
+            markerScale[key] = "https://rjhuffaker.github.io/markers/"+markerList[newIndex]+".png";
+
+        });
+
+        return markerScale;
     }
 
     function autoTaskinator(){
@@ -1563,36 +1952,42 @@
                     var setupNotes = [
                         { input: "40mo", output: "$40M" },
                         { input: "40 mo", output: "$40M" },
+                        { input: "mo$40", output: "$40M" },
                         { input: "mo $40", output: "$40M" },
                         { input: "mo @ $40", output: "$40M" },
                         { input: "monthly @ $40", output: "$40M" },
 
                         { input: "45mo", output: "$45M" },
                         { input: "45 mo", output: "$45M" },
+                        { input: "mo$45", output: "$45M" },
                         { input: "mo $45", output: "$45M" },
                         { input: "mo @ $45", output: "$45M" },
                         { input: "monthly @ $45", output: "$45M" },
 
                         { input: "49mo", output: "$49M" },
                         { input: "49 mo", output: "$49M" },
+                        { input: "mo$49", output: "$49M" },
                         { input: "mo $49", output: "$49M" },
                         { input: "mo @ $49", output: "$49M" },
                         { input: "monthly @ $49", output: "$49M" },
 
                         { input: "55mo", output: "$55M" },
                         { input: "55 mo", output: "$55M" },
+                        { input: "mo$55", output: "$55M" },
                         { input: "mo $55", output: "$55M" },
                         { input: "mo @ $55", output: "$55M" },
                         { input: "monthly @ $55", output: "$55M" },
 
                         { input: "60mo", output: "$60M" },
                         { input: "60 mo", output: "$60M" },
+                        { input: "mo$60", output: "$60M" },
                         { input: "mo $60", output: "$60M" },
                         { input: "mo @ $60", output: "$60M" },
                         { input: "monthly @ $60", output: "$60M" },
 
                         { input: "65mo", output: "$65M" },
                         { input: "65 mo", output: "$65M" },
+                        { input: "mo$65", output: "$65M" },
                         { input: "mo $65", output: "$65M" },
                         { input: "mo @ $65", output: "$65M" },
                         { input: "monthly @ $65", output: "$65M" },
@@ -1925,6 +2320,10 @@
 
             sessionStorage.setItem("welcomeLetter", welcomeLetter);
 
+            document.getElementById("status").value = "C";
+
+            document.getElementById("butSave").click();
+
             var newUrl = window.location.href.replace("location","letters").replace("detail","default");
 
             window.location.href = newUrl;
@@ -1936,6 +2335,10 @@
             var taskSubject = document.getElementById('subject').value;
 
             var taskDescription = document.getElementById('description').value;
+
+            var assignee = document.getElementById("Division").value;
+
+            console.log(assignee);
 
             var startDate, nextDate;
 
@@ -1961,11 +2364,9 @@
                 var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
                     ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!";
 
-                GM_setValue('autoText', textNumber+"|"+getContactInfo()+"|"+messageBody+"|"+Date.now());
+                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"|"+assignee+"|"+Date.now());
 
                 document.getElementById("status").value = "C";
-
-                document.getElementById("butSave").click();
 
             }
         }
@@ -1978,43 +2379,84 @@
 
             if(serviceSetup){
 
-                var serviceCodeInput = document.getElementById("ServiceCode1");
-                var unitPriceInput = document.getElementById("UnitPrice1");
-                var scheduleInput = document.getElementById("Schedule");
-                var workTimeInput = document.getElementById("WorkTime");
-                var startDateInput = document.getElementById("StartDate");
-                var targetInput = document.getElementById("TargetPest");
-                var techInput = document.getElementById("Tech1");
-
-                serviceCodeInput.focus();
-                serviceCodeInput.value = serviceSetup.frequency;
-                serviceCodeInput.blur();
-
-                unitPriceInput.focus();
-                unitPriceInput.value = serviceSetup.price;
-                unitPriceInput.blur();
-
-                workTimeInput.focus();
-                workTimeInput.value = getCurrentReadableTime();
-                workTimeInput.blur();
-
-                startDateInput.focus();
-                startDateInput.value = serviceSetup.startDate;
-                startDateInput.blur();
-
-                targetInput.focus();
-                targetInput.value = serviceSetup.target;
-                targetInput.blur();
-
-                techInput.focus();
-                techInput.value = serviceSetup.tech;
-                techInput.blur();
-
-                scheduleInput.focus();
-                scheduleInput.value = parseSchedule(serviceSetup);
-                scheduleInput.blur();
+                addSetupDetails(serviceSetup);
 
             }
+
+            GM_addValueChangeListener('serviceSetup', function(name, old_value, new_value, remote){
+                console.log("trigger");
+
+                var serviceSetup = new_value;
+
+                console.log(serviceSetup);
+
+                if(serviceSetup){
+
+                    var serviceCodeInput = document.getElementById("ServiceCode1");
+                    serviceCodeInput.focus();
+                    serviceCodeInput.value = serviceSetup.service;
+                    serviceCodeInput.blur();
+
+                    var scheduleInput = document.getElementById("Schedule");
+                    scheduleInput.focus();
+                    scheduleInput.value = serviceSetup.schedule;
+                    scheduleInput.blur();
+
+                    var workTimeInput = document.getElementById("WorkTime");
+                    workTimeInput.focus();
+                    workTimeInput.value = getCurrentReadableTime();
+                    workTimeInput.blur();
+
+                    var techInput = document.getElementById("Tech1");
+                    techInput.focus();
+                    techInput.value = serviceSetup.tech;
+                    techInput.blur();
+
+                    GM_deleteValue("serviceSetup");
+
+                }
+
+
+            });
+
+        }
+
+        function addSetupDetails(serviceSetup){
+            var serviceCodeInput = document.getElementById("ServiceCode1");
+            var unitPriceInput = document.getElementById("UnitPrice1");
+            var scheduleInput = document.getElementById("Schedule");
+            var workTimeInput = document.getElementById("WorkTime");
+            var startDateInput = document.getElementById("StartDate");
+            var targetInput = document.getElementById("TargetPest");
+            var techInput = document.getElementById("Tech1");
+
+            serviceCodeInput.focus();
+            serviceCodeInput.value = serviceSetup.frequency;
+            serviceCodeInput.blur();
+
+            unitPriceInput.focus();
+            unitPriceInput.value = serviceSetup.price;
+            unitPriceInput.blur();
+
+            workTimeInput.focus();
+            workTimeInput.value = getCurrentReadableTime();
+            workTimeInput.blur();
+
+            startDateInput.focus();
+            startDateInput.value = serviceSetup.startDate;
+            startDateInput.blur();
+
+            targetInput.focus();
+            targetInput.value = serviceSetup.target;
+            targetInput.blur();
+
+            techInput.focus();
+            techInput.value = serviceSetup.tech;
+            techInput.blur();
+
+            scheduleInput.focus();
+            scheduleInput.value = parseSchedule(serviceSetup);
+            scheduleInput.blur();
         }
 
         function getCurrentReadableTime(){
@@ -2300,6 +2742,8 @@
                 var _callData = new_value.split("|");
                 var phoneNumber = _callData[0];
 
+                if(!phoneNumber) return;
+
                 $.ajax({
                     type: "POST",
                     url:  'https://188107.voiceforpest.com:8443/WebProxy/api/sessions/' + window.localStorage.getItem("AltigenSessionID") + '/calls',
@@ -2323,21 +2767,24 @@
         } else if(urlContains(["godaddy.com/webmail.php"])){
             watchWebmail();
 
-        } else if(urlContains(['/app.heymarket.com/'])){
+        } else if(urlContains(['app.heymarket.com'])){
+            console.log("hello");
+
             addPestPacIcon();
 
-            GM_addValueChangeListener('autoText', function(name, old_value, new_value, remote){
+            GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
                 var _textData = new_value.split("|");
                 var _textNumber = _textData[0];
                 var _textAccount = _textData[1];
                 var _textName = _textData[2];
                 var _textBody = _textData[3];
+                var _assignee = _textData[4];
 
                 window.focus();
 
                 goToContact(_textNumber, function(){
                     prepareMessage(_textBody);
-                    updateContact(_textAccount, _textName);
+                    updateContact(_textAccount, _textName, _assignee);
                 });
 
             });
@@ -2398,9 +2845,11 @@
             }, 500);
         }
 
-        function updateContact(account, name){
-            console.log("updateContact: "+account+" "+name);
+        function updateContact(account, name, assignee){
+            console.log("updateContact: "+account+" "+name+" "+assignee);
+
             var nameDiv = document.getElementsByClassName("name")[0];
+
             if(nameDiv && nameDiv.innerHTML.includes(account)){
                 console.log("Do nothing "+account+" "+nameDiv.innerHTML);
             } else {
@@ -2413,6 +2862,7 @@
                 setTimeout(function(){
                     var optionsDot = document.getElementsByClassName("options-dot")[0];
                     if(optionsDot) optionsDot.click();
+
                 }, 100);
 
                 setTimeout(function(){
@@ -2422,7 +2872,36 @@
 
                     var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
                     nameInput.value = account+" "+name;
-                }, 100);
+                }, 200);
+
+                setTimeout(function(){
+
+                    var assigneeDiv = document.getElementsByClassName("assignee")[0];
+                    if(assigneeDiv) assigneeDiv.click();
+
+                }, 300);
+
+                setTimeout(function(){
+                    var assigneeList = document.getElementById("assignee-list").children[0];
+
+                    Array.from(assigneeList.children).forEach(function(element){
+                        var _button = element.children[0];
+
+                        if(!_button) return;
+
+                        var _name = _button.innerHTML.toUpperCase();
+
+                        if(_name.includes(assignee)){
+                            console.log(_name);
+
+                            _button.click();
+
+                        }
+
+
+                    });
+
+                }, 400);
 
             }
         }
@@ -2472,7 +2951,8 @@
                 var textIcon = createTextIcon();
                 link.appendChild(textIcon);
                 link.addEventListener("click", function(){
-                    GM_setValue('autoText', phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"||"+Date.now());
+                    GM_setValue("autoText", phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"|||"+Date.now());
+                    console.log(GM_getValue("autoText"))
                     spinButton(textIcon, 20);
                 });
 
@@ -3060,6 +3540,27 @@
 
             }
         }
+    }
+
+    function createRetrieveLink(){
+        var retrieveLink = document.createElement("a");
+        retrieveLink.innerHTML = "Retrieve Account Data";
+        retrieveLink.style.position = "absolute";
+        retrieveLink.style.paddingTop = "2px";
+        retrieveLink.style.right = "10px";
+        retrieveLink.style.cursor = "pointer";
+
+        retrieveLink.onclick = function(){
+            GM_setValue("retrieveAccountData", "residential");
+
+            var retrieveURL = "http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
+
+            window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
+
+            //  window.open("http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12");
+        }
+
+        return retrieveLink;
     }
 
     function accountListExtractinator(){
