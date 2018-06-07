@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.500
+// @version      1.501
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -1262,6 +1262,30 @@
 
               //  PROXMAP.controls[google.maps.ControlPosition.BOTTOM].push(createProxLegend());
 
+                google.maps.event.addListener(PROXMAP, "bounds_changed", onBoundsChanged);
+
+                var fullScreenLegend = document.createElement("div");
+                fullScreenLegend.style.border = "1px solid";
+                fullScreenLegend.style.backgroundColor = "white";
+
+
+                PROXMAP.controls[google.maps.ControlPosition.BOTTOM].push(fullScreenLegend);
+
+                function onBoundsChanged(){
+                    var proxMapHeight = $(PROXMAP.getDiv()).children().eq(0).height();
+                    var proxMapWidth = $(PROXMAP.getDiv()).children().eq(0).width();
+
+                    if(proxMapHeight === window.innerHeight && proxMapWidth === window.innerWidth){
+
+                        fullScreenLegend.appendChild(document.getElementById("legend-content"));
+
+                    } else {
+                        console.log ('NOT FULL SCREEN');
+                        document.getElementById("prox-legend").appendChild(document.getElementById("legend-content"))
+                    }
+                }
+
+
                 function tilesLoaded(){
                     google.maps.event.clearListeners(PROXMAP, 'tilesloaded');
                     google.maps.event.addListener(PROXMAP, 'zoom_changed', saveMapState);
@@ -1808,7 +1832,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","RE-START","ROACH","TICKS","WDO TERMITE"]
+                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","ONE","RE-START","ROACH","TICKS","WDO TERMITE"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -1908,6 +1932,12 @@
                         taskName = getSetupPrice(serviceOrder.instructions);
                         taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date+"\nCOMMERCIAL";
                         document.getElementById("prox-icon").click();
+                        break;
+                    case "ONE":
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "16";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskName = "Check one-time for ongoing";
                         break;
                     case "RE-START":
                         prioritySelect.value = "3";
@@ -2262,10 +2292,12 @@
 
 
             function getTechnician(name){
-                if(name==="Daniel"){
-                    return "DANIEL A";
+                if(name==="Brian"){
+                    return "BRIAN B";
                 } else if(name==="Craig" || name==="Kody"){
                     return "CRAIG L";
+                } else if(name==="Daniel"){
+                    return "DANIEL A";
                 } else if(name==="Jeff"){
                     return "JEFF H";
                 } else if(name==="Joseph"){
