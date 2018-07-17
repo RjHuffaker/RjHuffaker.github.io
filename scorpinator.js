@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.501
+// @version      1.510
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -155,6 +155,7 @@
     function initializeScorpinator(){
         if(!urlContains(["blank", "iframe"])){
             retrieveCSS();
+            retrieveGoogleMaps();
             focusListener();
             retrieveActiveSetups();
             autoTaskinator();
@@ -164,6 +165,9 @@
             autoSetupinator();
             autoWelcomator();
             autoContactinator();
+
+            paymentNotificator();
+
             serviceOrderDuplicator();
             accountListExtractinator();
             goDaddyAddressGrabber();
@@ -182,15 +186,18 @@
         link.type = 'text/css';
         link.href = 'https://RjHuffaker.github.io/scorpinator.css';
         document.getElementsByTagName("HEAD")[0].appendChild(link);
+    }
 
-        var maps = window.document.createElement('link');
-        maps.rel = 'stylesheet';
-        maps.type = 'text/css';
-        maps.href = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI&callback=initMap';
-        document.getElementsByTagName("HEAD")[0].appendChild(link);
-
-
-
+    function retrieveGoogleMaps(){
+        if(typeof google === 'object' && typeof google.maps === 'object'){
+            console.log("maps api loaded");
+        } else {
+            var maps = window.document.createElement('script');
+            maps.language = "javascript";
+            maps.type = "text/javascript";
+            maps.src = 'https://maps.googleapis.com/maps/api/js';
+            document.getElementsByTagName("HEAD")[0].appendChild(maps);
+        }
     }
 
     function retrieveActiveSetups(){
@@ -500,6 +507,33 @@
         }, 100);
     }
 
+    function goToNotes(accountId){
+        var quickSearchField = document.getElementById("quicksearchfield");
+        quickSearchField.value = accountId;
+
+        var keyUpEvent = document.createEvent("Event");
+        keyUpEvent.initEvent('keyup');
+        quickSearchField.dispatchEvent(keyUpEvent);
+
+        var i = 0;
+        var clickInterval = setInterval(function(){
+            i++;
+            var searchResults = document.getElementsByClassName("quick-search-result");
+            if(searchResults.length > 0){
+                clearInterval(clickInterval);
+
+                var pattern = new RegExp(/'(.*?)'/g);
+                var onclickText = searchResults[0].getAttribute('onclick');
+                var newURL = pattern.exec(onclickText)[0].replaceAll("'", "").replace("location/detail.asp","notes/default.asp");
+
+                window.location.href="http://app.pestpac.com"+newURL;
+
+            }
+
+            if(i > 10) clearInterval(clickInterval);
+        }, 100);
+    }
+
     function fetchGeocodes(address, callback){
         address = address.replaceAll(", ", "+");
         address = address.replaceAll(" ", "+");
@@ -629,6 +663,7 @@
                 function createProxHeader(){
                     var proxHeader = document.createElement("div");
                     proxHeader.id = "prox-header";
+                    proxHeader.style.borderBottom = "1px solid";
 
                     proxHeader.appendChild(createProxHeaderImage());
                     proxHeader.appendChild(createProxTitle());
@@ -690,9 +725,6 @@
                 proxTabLabels.style.width = "100%";
                 proxTabLabels.style.position = "absolute";
                 proxTabLabels.style.marginTop = "-20px";
-              //  proxTabLabels.style.marginleft = "-10px";
-                proxTabLabels.style.borderBottom = "solid 1px";
-                proxTabLabels.style.boxSizing = "border-box";
 
                 tabs.forEach(function(tab){
                     var tabLabel = document.createElement("div");
@@ -701,20 +733,25 @@
                     tabLabel.classList.add(containerID+"-tab-label");
                     tabLabel.style.cursor = "pointer";
                     tabLabel.style.display = "inline-block";
+                    tabLabel.style.height = "20px";
+                    tabLabel.style.boxSizing = "border-box";
+
                     tabLabel.style.border = "solid";
                     tabLabel.style.borderWidth = "1px 1px 0 1px";
                     tabLabel.style.margin = "0 4px 0 4px";
-                    tabLabel.style.padding = "4px 12px 0 12px";
+                    tabLabel.style.padding = "4px 8px 0 8px";
                     tabLabel.style.borderRadius = "4px 4px 0 0";
-
                     tabLabel.style.fontSize = "12px";
 
                     if(tab.shown){
                         tabLabel.style.backgroundColor = "white";
+                        tabLabel.style.borderBottom = "none";
                     } else {
                         tabLabel.style.backgroundColor = "grey";
+                        tabLabel.style.borderBottom = "1px solid";
                     }
 
+                    proxTabLabels.appendChild(tabLabel);
 
                     tabLabel.onclick = function(event){
                         var tabContentList = Array.from(document.getElementsByClassName(containerID+"-tab-content"));
@@ -729,14 +766,14 @@
                         tabLabelList.forEach(function(tabLabel){
                             if(tabLabel.id===tab.id+"-tab-label"){
                                 tabLabel.style.backgroundColor = "white";
+                                tabLabel.style.borderBottom = "none";
                             } else {
                                 tabLabel.style.backgroundColor = "grey";
+                                tabLabel.style.borderBottom = "1px solid";
                             }
                         });
                     }
 
-
-                    proxTabLabels.appendChild(tabLabel);
                 });
 
                 return proxTabLabels;
@@ -825,11 +862,10 @@
             if(addressTable){
                 var addressTableRows = addressTable.children[0].children;
                 for(var i = 0; i < addressTableRows.length; i++){
-                    if(!addressTableRows[i].getAttribute("name")){
-                        if(!addressTableRows[i].children[0].children[0]){
-                            if(address) address = address.concat(", ");
-                            address = address.concat(addressTableRows[i].children[0].innerHTML);
-                        }
+                    if(!addressTableRows[i].children[0].children[0]){
+                        var rowText = addressTableRows[i].children[0].innerHTML.replace(/\#([^#]+)/, "");  // Filters out lines starting with "#"
+                        if(address && rowText) address = address.concat(", ");
+                        address = address.concat(rowText);
                     }
                 }
             } else {
@@ -910,11 +946,11 @@
 
         function getNearestActiveSetups(data, callback){
             var al = activeSetups.length;
-            var lowest = 10000;
-            var nearest = {};
             var nearestList = [];
             var _long = parseFloat(data.longitude);
             var _lat = parseFloat(data.latitude);
+
+            var accountId = getContactInfo().split("|")[0];
 
             refreshTechnicianList();
 
@@ -929,6 +965,8 @@
                 var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
                 dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
 
+                if(setup.id !== accountId)
+
                 if(DAILYTOTALS[dailyTotal])
                 if(!DAILYTOTALS[dailyTotal].excluded)
 
@@ -941,13 +979,15 @@
                 if(TECHNICIANS[setup.tech])
                 if(!TECHNICIANS[setup.tech].excluded)
 
-                if(nearestList.length < 20){
+                if(nearestList.length < PROXLISTSIZE){
                     setup.hyp = setup.getDist(_long, _lat).toFixed(3);
                     nearestList.push(setup);
                 } else {
                     for(var ij = 0; ij < nearestList.length; ij++){
                         var nearSetup = nearestList[ij];
+
                         if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+
                             setup.hyp = setup.getDist(_long, _lat).toFixed(3);
                             nearestList.splice(ij, 0, setup);
                             nearestList = nearestList.slice(0, PROXLISTSIZE);
@@ -1250,8 +1290,17 @@
 
                 });
 
+
+
                 var marker = new google.maps.Marker({
                     map: PROXMAP,
+                    icon: {
+                        url: "http://maps.google.com/mapfiles/kml/paddle/wht-circle.png",
+                        size: new google.maps.Size(40, 40),
+                        scaledSize: new google.maps.Size(40, 40),
+                        origin: new google.maps.Point(0, 0),
+                        anchor: new google.maps.Point(20, 40)
+                    },
                     position: myLatLng,
                     title: "_lat: "+_latitude+"_lng"+_longitude
                 });
@@ -1260,14 +1309,11 @@
 
                 loadMapState();
 
-              //  PROXMAP.controls[google.maps.ControlPosition.BOTTOM].push(createProxLegend());
-
                 google.maps.event.addListener(PROXMAP, "bounds_changed", onBoundsChanged);
 
                 var fullScreenLegend = document.createElement("div");
                 fullScreenLegend.style.border = "1px solid";
                 fullScreenLegend.style.backgroundColor = "white";
-
 
                 PROXMAP.controls[google.maps.ControlPosition.BOTTOM].push(fullScreenLegend);
 
@@ -1276,11 +1322,8 @@
                     var proxMapWidth = $(PROXMAP.getDiv()).children().eq(0).width();
 
                     if(proxMapHeight === window.innerHeight && proxMapWidth === window.innerWidth){
-
                         fullScreenLegend.appendChild(document.getElementById("legend-content"));
-
                     } else {
-                        console.log ('NOT FULL SCREEN');
                         document.getElementById("prox-legend").appendChild(document.getElementById("legend-content"))
                     }
                 }
@@ -1894,14 +1937,20 @@
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
-                        taskName = "Check to see what estimate was";
+                        addSetupTask = true;
+                        taskName = "Check estimate - $??M";
+                        taskDescription = "Target: \nStartDate: "+serviceOrder.date;
+                        document.getElementById("prox-icon").click();
                         break;
                     case "FREE ESTIMATE C":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
-                        taskName = "Check to see what estimate was";
+                        addSetupTask = true;
+                        taskName = "Check estimate - $??M";
+                        taskDescription = "COMMERCIAL\nTarget: \nStartDate: "+serviceOrder.date;
+                        document.getElementById("prox-icon").click();
                         break;
                     case "IN":
                         prioritySelect.value = "3";
@@ -2129,7 +2178,7 @@
 
                 var taskName = document.getElementById("subject").value;
 
-                if(taskName.includes("Follow up")){
+                if(taskName.toLowerCase().includes("follow up")){
                     otherButtonsContainer.appendChild(createTaskSendFollowUpButton());
                 } else if(taskName.includes("New")){
                     otherButtonsContainer.appendChild(createTaskFollowUpButton());
@@ -2388,7 +2437,7 @@
                 nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
             }
 
-            if(taskSubject.includes('Follow up')){
+            if(taskSubject.toLowerCase().includes('follow up')){
                 var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
 
                 if(!locationPhoneNumberLink) return;
@@ -3453,6 +3502,62 @@
         }
     }
 
+    function paymentNotificator(){
+        
+        if(urlContains(["app.pestpac.com/reports/payment/report.asp"])){
+            var rowList = document.getElementsByTagName('tr');
+
+            for(var i= 0; i < rowList.length; ++i){
+                var _row = rowList[i];
+                if(_row.children.length === 9 && _row.children[0].innerHTML !== "Date"){
+
+                    var _payment = {};
+                    _payment.date = _row.children[0].children[0].innerHTML.replace(/&nbsp;/g,"");
+                    _payment.id = _row.children[1].children[0].children[0].innerHTML;
+                    _payment.amount = _row.children[3].children[0].innerHTML.replace(/&nbsp;/g,"");
+
+                    var _dateLink = document.createElement("a");
+                    _dateLink.innerHTML = _payment.date;
+                    _dateLink.href = "#"+_payment.id;
+                    _dateLink.dataPayment = _payment;
+                    _dateLink.onclick = function(event){
+                        var _payment = event.target.dataPayment;
+                        sessionStorage.setItem("paymentNote", JSON.stringify(_payment))
+                        window.open("/search/default.asp");
+                    }
+
+                    var _td = _row.children[0];
+                    _td.children[0].innerHTML = "";
+                    _td.children[0].appendChild(_dateLink);
+
+                }
+            }
+        } else if(urlContains(["app.pestpac.com/search/default.asp"])){
+            var _payment = sessionStorage.getItem("paymentNote");
+            if(_payment){
+                _payment = JSON.parse(_payment);
+                goToNotes(_payment.id);
+            }
+        } else if(urlContains(["app.pestpac.com/notes/default.asp"])){
+            var _payment = sessionStorage.getItem("paymentNote");
+            if(_payment){
+                sessionStorage.removeItem("paymentNote");
+                _payment = JSON.parse(_payment);
+                var butAdd = document.getElementById("butAdd");
+                var noteCode = document.getElementById("NoteCode");
+                var noteText = document.getElementById("Note");
+
+
+                butAdd.click();
+                noteCode.value = "BILLING";
+                noteText.value = _payment.date+" Released web payment of $"+_payment.amount;
+
+
+            }
+        }
+
+    }
+
     function serviceOrderDuplicator(){
         if(urlContains(["location/detail.asp"])){
             if(sessionStorage.getItem("duplicateOrder")){
@@ -3587,9 +3692,9 @@
 
             var retrieveURL = "http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
 
-            window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
+          //  window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
 
-            //  window.open("http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12");
+            window.open("http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12");
         }
 
         return retrieveLink;
@@ -3646,7 +3751,7 @@
 
                 GM_setValue("residential", accountString);
 
-                window.close();
+            //    window.close();
 
             }
         }
@@ -3672,7 +3777,7 @@
 
             var accountString = formatSchedule(data);
 
-            if(accountString.includes("WEEKLY") || accountString.includes("BIWEEKLY") || accountString.includes("Report Totals") || accountString.includes("28 DAYS") || accountString.includes("3 WEEKS") || accountString.includes("6 WEEKS")){
+            if(accountString.includes("WEEKLY") || accountString.includes("BIWEEKLY") || accountString.includes("Report Totals") || accountString.includes("28 DAYS") || accountString.includes("3 WEEKS") || accountString.includes("6 WEEKS") || accountString.includes("TMSJ")){
                 return false;
             } else if(accountString.split("\t").length !== 14){
                 return false;
