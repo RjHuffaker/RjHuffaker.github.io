@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.510
+// @version      1.515
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -88,6 +88,31 @@
         "1600": {name: "1600", excluded: false }
     };
 
+    var AGES = {
+        "< 1 Month": {name: "< 1 Month", excluded: false },
+        "1 Month": {name: "1 Month", excluded: false },
+        "2 Months": {name: "2 Months", excluded: false },
+        "3 Months": {name: "3 Months", excluded: false },
+        "4 Months": {name: "4 Months", excluded: false },
+        "5 Months": {name: "5 Months", excluded: false },
+        "6 Months": {name: "6 Months", excluded: false },
+        "7 Months": {name: "7 Months", excluded: false },
+        "8 Months": {name: "8 Months", excluded: false },
+        "9 Months": {name: "9 Months", excluded: false },
+        "10 Months": {name: "10 Months", excluded: false },
+        "11 Months": {name: "11 Months", excluded: false },
+        "1 Year": {name: "1 Year", excluded: false },
+        "2 Years": {name: "2 Years", excluded: false },
+        "3 Years": {name: "3 Years", excluded: false },
+        "4 Years": {name: "4 Years", excluded: false },
+        "5 Years": {name: "5 Years", excluded: false },
+        "6 Years": {name: "6 Years", excluded: false },
+        "7 Years": {name: "7 Years", excluded: false },
+        "8 Years": {name: "8 Years", excluded: false },
+        "9 Years": {name: "9 Years", excluded: false },
+        "> 10 Years": {name: "> 10 Years", excluded: false }
+    };
+
     var TECHNICIANS = {};
 
     var SCHEDULES = ["1MON","1TUE","1WED","1THU","1FRI", "2MON","2TUE","2WED","2THU","2FRI","3MON","3TUE","3WED","3THU","3FRI","4MON","4TUE","4WED","4THU","4FRI"];
@@ -117,7 +142,8 @@
             this.weekDay = setupArray[10];
             this.schedule = setupArray[11];
             this.tech = setupArray[12];
-            this.total = setupArray[13];
+            this.age = setupArray[13];
+            this.total = setupArray[14];
         }
     }
 
@@ -153,7 +179,7 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        if(!urlContains(["blank", "iframe"])){
+        if(!urlContains(["blank", "iframe", "invoice", "serviceOrder"])){
             retrieveCSS();
             retrieveGoogleMaps();
             focusListener();
@@ -165,12 +191,18 @@
             autoSetupinator();
             autoWelcomator();
             autoContactinator();
-
             paymentNotificator();
-
             serviceOrderDuplicator();
             accountListExtractinator();
             goDaddyAddressGrabber();
+        }
+
+        if(urlContains(["iframe/billHist.asp"])){
+        //    monitorHistory();
+        }
+
+        if(urlContains(["invoice/detail.asp"])){
+        //    monitorInvoice();
         }
     }
 
@@ -195,7 +227,7 @@
             var maps = window.document.createElement('script');
             maps.language = "javascript";
             maps.type = "text/javascript";
-            maps.src = 'https://maps.googleapis.com/maps/api/js';
+            maps.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI';
             document.getElementsByTagName("HEAD")[0].appendChild(maps);
         }
     }
@@ -315,6 +347,24 @@
         var yy = newDate.getFullYear().toString().substring(2,4);
 
         return mm+"/"+dd+"/"+yy;
+    }
+
+    function getCurrentReadableTime(){
+        var hours = new Date().getHours();
+        hours = hours<13?hours:hours-12;
+
+        var minutes = new Date().getMinutes();
+        minutes = minutes>10?minutes:"0"+minutes;
+
+        return hours+":"+minutes
+    }
+
+    function convertMinutesToHours(mins){
+        let h = Math.floor(mins / 60);
+        let m = mins % 60;
+        h = h < 10 ? "0" + h : h;
+        m = m < 10 ? "0" + m : m;
+        return h+":"+m;
     }
 
     function removeLeadingZeroes(dateString){
@@ -979,6 +1029,9 @@
                 if(TECHNICIANS[setup.tech])
                 if(!TECHNICIANS[setup.tech].excluded)
 
+                if(AGES[setup.age])
+                if(!AGES[setup.age].excluded)
+
                 if(nearestList.length < PROXLISTSIZE){
                     setup.hyp = setup.getDist(_long, _lat).toFixed(3);
                     nearestList.push(setup);
@@ -1382,7 +1435,8 @@
                     {id: "dailyTotal", title: "DailyTotal", shown: false, content: createDailyTotalTab()},
                     {id: "week", title: "Week", shown: false, content: createWeekTab()},
                     {id: "weekDay", title: "WeekDay", shown: false, content: createWeekDayTab()},
-                    {id: "technician", title: "Technician", shown: false, content: createTechnicianTab()}
+                    {id: "technician", title: "Technician", shown: false, content: createTechnicianTab()},
+                    {id: "age", title: "Age", shown: false, content: createAgeTab()}
                 ], 132, 468, "proxLegendTabs"));
 
                 return legendContent;
@@ -1441,6 +1495,14 @@
                     technicianTab.appendChild(createLegendList("Technician", TECHNICIANS));
 
                     return technicianTab;
+                }
+
+                function createAgeTab(){
+                    var ageTab = document.createElement("div");
+                    ageTab.appendChild(createLegendHeader("Age", AGES));
+                    ageTab.appendChild(createLegendList("Age", AGES));
+
+                    return ageTab;
                 }
 
             }
@@ -1589,11 +1651,13 @@
                 var weekTabLabel = document.getElementById("week-tab-label");
                 var weekDayTabLabel = document.getElementById("weekDay-tab-label");
                 var technicianTabLabel = document.getElementById("technician-tab-label");
+                var ageTabLabel = document.getElementById("age-tab-label");
 
                 dailyTotalTabLabel.addEventListener("click", tabClick);
                 weekTabLabel.addEventListener("click", tabClick);
                 weekDayTabLabel.addEventListener("click", tabClick);
                 technicianTabLabel.addEventListener("click", tabClick);
+                ageTabLabel.addEventListener("click", tabClick);
 
                 function tabClick(event){
                     GROUPBY = event.target.id.replace("-tab-label", "").toUpperCase();
@@ -1664,6 +1728,7 @@
                 +"\n  Division: "+setup.division
                 +"\n  Service: "+setup.service
                 +"\n  Tech: "+setup.tech
+                +"\n  Age: "+setup.age
                 +"\n  Total: "+setup.total;
             return title;
         }
@@ -1722,6 +1787,8 @@
             return getColorScale(DAILYTOTALS)[dailyTotal.toString()];
         } else if(GROUPBY === "TECHNICIAN"){
             return getColorScale(TECHNICIANS)[setup.tech];
+        } else if(GROUPBY === "AGE"){
+            return getColorScale(AGES)[setup.age];
         }
 
     }
@@ -1769,6 +1836,8 @@
                 keyList = Object.keys(DAILYTOTALS);
             } else if(GROUPBY === "TECHNICIAN"){
                 keyList = Object.keys(TECHNICIANS);
+            } else if(GROUPBY === "AGE"){
+                keyList = Object.keys(AGES);
             }
         } else {
             keyList = Object.keys(dataModel);
@@ -1800,6 +1869,8 @@
             return getMarkerScale(TECHNICIANS)[setup.tech];
         } else if(GROUPBY === "SCHEDULE"){
             return getMarkerScale(SCHEDULES)[setup.schedule.substring(1,4)];
+        } else if(GROUPBY === "AGE"){
+            return getMarkerScale(AGES)[setup.age];
         } else {
             console.error("groupBy not recognized", GROUPBY);
         }
@@ -1854,7 +1925,43 @@
 
     function autoTaskinator(){
         if(urlContains(["/task"])){
-            document.getElementById("taskFilter").click(); //Makes task page a little easier to use
+
+            fixLinks();
+
+            var observer = new MutationObserver(function(mutations){
+
+                mutations.forEach(function(mutation){
+
+                    if (!mutation.addedNodes) return
+
+                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+
+                        var node = mutation.addedNodes[i];
+
+                        if(node.children)
+                        if(node.children[0])
+                        if(node.children[0].id === "managerTasksTable") fixLinks();
+
+                    }
+
+                });
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+
+            function fixLinks(){
+                var _linkList = document.getElementsByClassName("location-link");
+
+                for(var i = 0; i < _linkList.length; i++){
+                    var _link = _linkList[i];
+                    _link.target = "_blank";
+                }
+            }
+
+
         } else if(urlContains(["location/detail.asp"])){
             addCreateTaskLink();
             addTaskButtons();
@@ -1920,6 +2027,8 @@
 
                 var target = getSetupTarget(document.getElementById("tblDirections").value);
 
+                var setupPrice = "";
+
                 var taskName = "";
 
                 var taskDescription = "";
@@ -1939,7 +2048,7 @@
                         taskForSelect.value = "2719";
                         addSetupTask = true;
                         taskName = "Check estimate - $??M";
-                        taskDescription = "Target: \nStartDate: "+serviceOrder.date;
+                        taskDescription = "Target: \nDuration: \nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "FREE ESTIMATE C":
@@ -1948,8 +2057,8 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         addSetupTask = true;
-                        taskName = "Check estimate - $??M";
-                        taskDescription = "COMMERCIAL\nTarget: \nStartDate: "+serviceOrder.date;
+                        taskName = "Check estimate - $??COMM";
+                        taskDescription = "Target: \nDuration: \nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "IN":
@@ -1958,8 +2067,9 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2915";
                         addSetupTask = true;
-                        taskName = getSetupPrice(serviceOrder.instructions);
-                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
+                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        taskName = "New "+setupPrice;
+                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "IN.2":
@@ -1968,8 +2078,9 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2915";
                         addSetupTask = true;
-                        taskName = getSetupPrice(serviceOrder.instructions);
-                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
+                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        taskName = "New "+setupPrice;
+                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "COM-IN":
@@ -1978,8 +2089,9 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         addSetupTask = true;
-                        taskName = getSetupPrice(serviceOrder.instructions);
-                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date+"\nCOMMERCIAL";
+                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        taskName = "New "+setupPrice.replace("M", "COMM");
+                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "ONE":
@@ -1994,8 +2106,9 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2915";
                         addSetupTask = true;
-                        taskName = getSetupPrice(serviceOrder.instructions);
-                        taskDescription = "Target: "+target+"\nStartDate: "+serviceOrder.date;
+                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        taskName = "New "+setupPrice;
+                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "ROACH":
@@ -2026,7 +2139,7 @@
                 descriptionInput.value = taskDescription;
 
                 function getSetupPrice(data){
-                    var setupName = "";
+                    var setupPrice = "???";
 
                     var setupNotes = [
                         { input: "40mo", output: "$40M" },
@@ -2093,13 +2206,11 @@
 
                     for(var i = 1; i < setupNotes.length; i++){
                         if(data.toLowerCase().indexOf(setupNotes[i].input) > -1){
-                            setupName = "New "+setupNotes[i].output;
-                            break;
+                            setupPrice = setupNotes[i].output;
                         }
-                        setupName = "New ???";
                     }
 
-                    return setupName;
+                    return setupPrice;
                 }
 
                 function getSetupTarget(data){
@@ -2120,6 +2231,12 @@
                         return "";
                     }
                 }
+
+                function getSetupDuration(data){
+                    var price = parseInt(data.replace("M","").replace("$",""));
+                    return convertMinutesToHours(Math.ceil(price/10)*5);
+                }
+
             }
         }
 
@@ -2140,9 +2257,9 @@
                         tasksForm.classList.add("buttonated");
 
                         var expandedRowButtonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
-                        expandedRowButtonsContainer.style.justifyContent = "space-between";
-                        expandedRowButtonsContainer.style.position = "static";
-                        expandedRowButtonsContainer.style.padding = "0px 32px";
+                      //  expandedRowButtonsContainer.style.justifyContent = "space-between";
+                      //  expandedRowButtonsContainer.style.position = "static";
+                      //  expandedRowButtonsContainer.style.padding = "0px 32px";
 
                         var allNotesContainer = document.getElementById("allNotesContainer");
                         allNotesContainer.style.minHeight = "18px";
@@ -2312,21 +2429,37 @@
 
             var taskArray = taskNameInput.value.split(" ");
 
-            var startDate, nextDate;
+            var price, frequency, schedule, duration, startDate, nextDate;
+
+            price = taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
+            frequency = taskArray[1].replaceAll(/[^a-zA-Z]+/, '').replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
+            schedule = taskArray[2]+taskArray[1].replaceAll(/[^a-zA-Z]+/, '');
+
 
             if(description.includes("StartDate: ")){
                 startDate = description.match(/StartDate: (.*)/g)[0].split(" ")[1];
-                nextDate = description.match(/NextDate: (.*)/g)[0].split(" ")[1];
             } else {
                 startDate = dueDate;
             }
 
+            if(description.includes("NextDate: ")){
+                nextDate = description.match(/NextDate: (.*)/g)[0].split(" ")[1];
+            }
+
+            if(description.includes("Duration: ")){
+                duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
+            } else {
+                var cost = parseInt(price.replace("M","").replace("$",""));
+                duration = convertMinutesToHours(Math.ceil(cost/10)*5);
+            }
+
             var serviceSetup = {};
 
-            serviceSetup.price = taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
-            serviceSetup.frequency = taskArray[1].replaceAll(/[^a-zA-Z]+/, '').replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
-            serviceSetup.schedule = taskArray[2]+taskArray[1].replaceAll(/[^a-zA-Z]+/, '');
+            serviceSetup.price = price;
+            serviceSetup.frequency = frequency;
+            serviceSetup.schedule = schedule;
             serviceSetup.tech = getTechnician(taskArray[3]);
+            serviceSetup.duration = duration;
             serviceSetup.startDate = startDate;
             serviceSetup.nextDate = nextDate;
             serviceSetup.target = getSetupTarget(directions);
@@ -2338,7 +2471,6 @@
             var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
 
             window.location.href = newUrl;
-
 
             function getTechnician(name){
                 if(name==="Brian"){
@@ -2353,8 +2485,10 @@
                     return "JOSEPH A";
                 } else if(name==="Michael"){
                     return "MICHAEL R";
-                } else {
+                } else if(name){
                     return name;
+                } else {
+                    return "";
                 }
             }
 
@@ -2419,8 +2553,6 @@
 
             var assignee = document.getElementById("Division").value;
 
-            console.log(assignee);
-
             var startDate, nextDate;
 
             if(taskDescription.includes("StartDate:")){
@@ -2429,7 +2561,11 @@
                 startDate = getFutureDate(document.getElementById("dueDate").value, -14);
             }
 
+            var serviceSetup = getServiceSetup(1);
+
             var nextService = getServiceOrder(1);
+
+            console.log(serviceSetup);
 
             if(nextService.date){
                 nextDate = nextService.date;
@@ -2456,15 +2592,14 @@
     function autoSetupinator(){
         if(urlContains(["serviceSetup/detail.asp"])){
             var serviceSetup = JSON.parse(sessionStorage.getItem("serviceSetup"));
-            sessionStorage.removeItem("serviceSetup");
-
+            
             if(serviceSetup){
 
                 addSetupDetails(serviceSetup);
 
             }
 
-            GM_addValueChangeListener('serviceSetup', function(name, old_value, new_value, remote){
+            GM_addValueChangeListener("serviceSetup", function(name, old_value, new_value, remote){
                 console.log("trigger");
 
                 var serviceSetup = new_value;
@@ -2473,42 +2608,24 @@
 
                 if(serviceSetup){
 
-                    var serviceCodeInput = document.getElementById("ServiceCode1");
-                    serviceCodeInput.focus();
-                    serviceCodeInput.value = serviceSetup.service;
-                    serviceCodeInput.blur();
-
-                    var scheduleInput = document.getElementById("Schedule");
-                    scheduleInput.focus();
-                    scheduleInput.value = serviceSetup.schedule;
-                    scheduleInput.blur();
-
-                    var workTimeInput = document.getElementById("WorkTime");
-                    workTimeInput.focus();
-                    workTimeInput.value = getCurrentReadableTime();
-                    workTimeInput.blur();
-
-                    var techInput = document.getElementById("Tech1");
-                    techInput.focus();
-                    techInput.value = serviceSetup.tech;
-                    techInput.blur();
-
-                    GM_deleteValue("serviceSetup");
+                    addSetupDetails(serviceSetup);
 
                 }
-
 
             });
 
         }
 
         function addSetupDetails(serviceSetup){
+            console.log(serviceSetup);
+
             var serviceCodeInput = document.getElementById("ServiceCode1");
             var unitPriceInput = document.getElementById("UnitPrice1");
             var scheduleInput = document.getElementById("Schedule");
             var workTimeInput = document.getElementById("WorkTime");
             var startDateInput = document.getElementById("StartDate");
             var targetInput = document.getElementById("TargetPest");
+            var durationInput = document.getElementById("Duration");
             var techInput = document.getElementById("Tech1");
 
             serviceCodeInput.focus();
@@ -2531,6 +2648,10 @@
             targetInput.value = serviceSetup.target;
             targetInput.blur();
 
+            durationInput.focus();
+            durationInput.value = serviceSetup.duration;
+            durationInput.blur();
+
             techInput.focus();
             techInput.value = serviceSetup.tech;
             techInput.blur();
@@ -2538,16 +2659,8 @@
             scheduleInput.focus();
             scheduleInput.value = parseSchedule(serviceSetup);
             scheduleInput.blur();
-        }
 
-        function getCurrentReadableTime(){
-            var hours = new Date().getHours();
-            hours = hours<13?hours:hours-12;
-
-            var minutes = new Date().getMinutes();
-            minutes = minutes>10?minutes:"0"+minutes;
-
-            return hours+":"+minutes
+            GM_deleteValue("serviceSetup");
         }
 
         function parseSchedule(setup){
@@ -2807,6 +2920,96 @@
 
             }
         }
+    }
+
+    function monitorHistory(){
+        console.log("monitorHistory");
+
+        var body = document.getElementsByTagName("body")[0];
+
+        var iframe = document.createElement("IFRAME");
+
+        iframe.style.display = "none";
+
+        body.appendChild(iframe);
+
+        var invoiceLinks = [];
+
+        Array.from(document.getElementsByTagName("a")).forEach(
+            function(element, index, array){
+                var href = element.href.match(/'(.*?)'/)[1];
+
+                if(href.includes("invoice")){
+
+                    invoiceLinks.push("http://app.pestpac.com"+href);
+
+                }
+
+            });
+
+        localStorage.setItem("invoiceLinks", invoiceLinks.toString());
+
+        localStorage.setItem("invoiceDetails", "[]");
+
+        iframe.contentWindow.location.href = invoiceLinks[0];
+
+    }
+
+    function monitorInvoice(){
+        var invoiceLinks = localStorage.getItem("invoiceLinks").split(",");
+
+        var invoiceDetails = JSON.parse(localStorage.getItem("invoiceDetails"));
+
+        if(invoiceLinks.length < 1){ console.log("no list: "+invoiceLinks); }
+
+        invoiceLinks.forEach(function(element, index, array){
+
+            if(element === window.location.href){
+
+                var invoice = {};
+
+                var serviceCode1 = document.getElementById("ServiceCode1");
+
+                if(serviceCode1){
+
+                    invoice.serviceCode1 = serviceCode1.value;
+
+                    if(invoice.serviceCode1 === "IN"){
+
+                        var directions = document.getElementsByName("Directions")[0];
+
+                        var fieldComment = document.getElementById("FieldComment");
+
+                        if(directions) invoice.locationInstructions = directions.value;
+
+                        if(fieldComment) invoice.techComment = fieldComment.value;
+
+                        invoiceDetails.push(invoice);
+
+                        localStorage.setItem("invoiceDetails", JSON.stringify(invoiceDetails));
+
+                    }
+
+                }
+
+                invoiceLinks.splice(index, 1);
+
+                localStorage.setItem("invoiceLinks", invoiceLinks.toString());
+
+                if(invoiceLinks[0]){
+
+                    window.location.href = invoiceLinks[0];
+
+                } else {
+
+                    console.log(invoiceDetails);
+
+                }
+
+            }
+
+        });
+
     }
 
     function autoContactinator(){
@@ -3169,6 +3372,7 @@
     function goDaddyAddressGrabber(){
         if(urlContains(["godaddy.com/webmail.php"])){
             var observer = new MutationObserver(function(mutations){
+
                 mutations.forEach(function(mutation){
                     if (!mutation.addedNodes) return
 
@@ -3532,6 +3736,7 @@
 
                 }
             }
+
         } else if(urlContains(["app.pestpac.com/search/default.asp"])){
             var _payment = sessionStorage.getItem("paymentNote");
             if(_payment){
@@ -3746,8 +3951,10 @@
                     ])
                          )
                     .then(function() {
-                    console.log('Files committed!');
-                });
+                        console.log('Files committed!');
+                    });
+
+                console.log(accountString);
 
                 GM_setValue("residential", accountString);
 
@@ -3765,7 +3972,11 @@
                         if(element.children[0].children[0]){
                             data += element.children[0].children[0].innerHTML.replace("&nbsp;", "");
                         } else {
-                            data += element.children[0].innerHTML.replace("&nbsp;", "").replace("&nbsp;", "");
+                            if(index === 11){
+                                data += getAccountAge(element.children[0].innerHTML.replace("&nbsp;", "").replace("&nbsp;", ""));
+                            } else {
+                                data += element.children[0].innerHTML.replace("&nbsp;", "").replace("&nbsp;", "");
+                            }
                         }
                     }
 
@@ -3779,7 +3990,7 @@
 
             if(accountString.includes("WEEKLY") || accountString.includes("BIWEEKLY") || accountString.includes("Report Totals") || accountString.includes("28 DAYS") || accountString.includes("3 WEEKS") || accountString.includes("6 WEEKS") || accountString.includes("TMSJ")){
                 return false;
-            } else if(accountString.split("\t").length !== 14){
+            } else if(accountString.split("\t").length !== 15){
                 return false;
             } else if(["","CRISSANNA","DN","GABBY","JULIA","MYLISSA","RENAE","SKYE"].indexOf(accountString.split("\t")[12]) > -1){
                 return false;
@@ -3787,8 +3998,8 @@
                 return accountString;
             }
 
-            function formatSchedule(schedule){
-                var _schedule = schedule;
+            function formatSchedule(account){
+                var _account = account;
                 var scheduleList = [
                     {input: "1MON", output: "1\tMON\t1MON"},
                     {input: "1TUE", output: "1\tTUE\t1TUE"},
@@ -3813,11 +4024,37 @@
                 ];
 
                 for(var i = 0; i < scheduleList.length; i++){
-                    _schedule = _schedule.replace(scheduleList[i].input, scheduleList[i].output);
+                    _account = _account.replace(scheduleList[i].input, scheduleList[i].output);
                 }
 
-                return _schedule;
+                return _account;
             }
+
+            function getAccountAge(monthDayYear){
+                var oneDay = 24*60*60*1000;
+                var _currentDate = new Date();
+                var _accountDate = new Date(monthDayYear.split("/")[0]+"/"+monthDayYear.split("/")[1]+"/20"+monthDayYear.split("/")[2]);
+                var _accountAge = Math.floor(Math.abs((_currentDate.getTime() - _accountDate.getTime())/(oneDay)));
+
+                if(_accountAge < 30){
+                     return "< 1 Month";
+                } else if(_accountAge < 330){
+                    if(_accountAge < 45){
+                        return "1 Month";
+                    } else {
+                        return Math.round(_accountAge/30)+" Months";
+                    }
+                } else if(_accountAge < 3653){
+                    if(_accountAge < 547){
+                        return "1 Year";
+                    } else {
+                        return Math.round(_accountAge/365)+" Years";
+                    }
+                } else {
+                    return "> 10 years";
+                }
+            }
+
         }
 
     }
