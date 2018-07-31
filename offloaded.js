@@ -7,6 +7,4 @@
 
 	console.log("The script has changed again.");
 
-	export { offloadedFunction };
-
 })();
