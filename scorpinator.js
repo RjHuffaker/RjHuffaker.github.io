@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.515
+// @version      1.520
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -198,11 +198,11 @@
         }
 
         if(urlContains(["iframe/billHist.asp"])){
-        //    monitorHistory();
+            monitorHistory();
         }
 
         if(urlContains(["invoice/detail.asp"])){
-        //    monitorInvoice();
+            monitorInvoice();
         }
     }
 
@@ -230,6 +230,7 @@
             maps.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI';
             document.getElementsByTagName("HEAD")[0].appendChild(maps);
         }
+
     }
 
     function retrieveActiveSetups(){
@@ -333,7 +334,12 @@
     }
 
     function getFutureDate(startDate, daysOut){
-        var newDate = new Date(startDate);
+        var newDate = new Date();
+
+        if(startDate){
+            newDate = new Date(startDate);
+        }
+
         newDate.setDate(newDate.getDate() + daysOut);
 
         if(newDate.getDay() === 0){ //Sunday
@@ -356,7 +362,25 @@
         var minutes = new Date().getMinutes();
         minutes = minutes>10?minutes:"0"+minutes;
 
-        return hours+":"+minutes
+        return hours+":"+minutes;
+    }
+
+    function getCurrentReadableDate(withZeroes){
+        var today = new Date();
+        var dd = today.getDate();
+        var mm = today.getMonth()+1;
+        var yy = today.getFullYear().toString().substring(2);
+
+
+        if(dd<10 && withZeroes) {
+            dd = '0'+dd;
+        }
+
+        if(mm<10 && withZeroes) {
+            mm = '0'+mm;
+        }
+
+        return mm+'/'+dd+'/'+yy;
     }
 
     function convertMinutesToHours(mins){
@@ -397,11 +421,12 @@
 
         if(addressBlock && locationHeaderDetailLink){
             accountId = locationHeaderDetailLink.children[0].innerHTML;
-            accountName = addressBlock.children[0].children[1].children[0].children[0].innerHTML;
+            accountName = addressBlock.children[0].children[1].children[0].children[0].innerHTML.replace(" &amp; ","&");
         } else {
             accountId = "";
             accountName = "";
         }
+
         return accountId+"|"+accountName;
     }
 
@@ -1765,13 +1790,17 @@
             var descriptionInput = document.getElementById("description");
             var dueDateInput = document.getElementById("dueDate");
 
-            var _frequency = taskNameInput.value.slice(-1);
-            var _startDate = dueDateInput.value;
+            var _service = descriptionInput.value.match(/Service: (.*)/g)[0].split(" ")[1];
+
             var _schedule = activeSetup.schedule.substring(0,1) + capitalizeFirstLetter(activeSetup.schedule.substring(1,4));
-            var _tech = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
-            var _nextDate = getNextServiceDate(_startDate, _schedule, _frequency);
-            taskNameInput.value = taskNameInput.value.concat(" "+_schedule+" "+_tech);
-            descriptionInput.value = descriptionInput.value.concat("\nNextDate: "+_nextDate);
+            var _technician = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
+            var _nextDate = getNextServiceDate(dueDateInput.value, _schedule, _service.slice(-1));
+
+            descriptionInput.value = descriptionInput.value
+                                        .replace("Schedule: ", "Schedule: "+_schedule)
+                                        .replace("Technician: ", "Technician: "+_technician)
+                                        .concat("\nNextDate: "+_nextDate);
+
         }
     }
 
@@ -2047,8 +2076,8 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         addSetupTask = true;
-                        taskName = "Check estimate - $??M";
-                        taskDescription = "Target: \nDuration: \nStartDate: "+serviceOrder.date;
+                        taskName = "Check Estimate";
+                        taskDescription = "Service: $??\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: \nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "FREE ESTIMATE C":
@@ -2057,8 +2086,8 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         addSetupTask = true;
-                        taskName = "Check estimate - $??COMM";
-                        taskDescription = "Target: \nDuration: \nStartDate: "+serviceOrder.date;
+                        taskName = "Check estimate";
+                        taskDescription = "Service: $??COMM\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: \nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "IN":
@@ -2068,8 +2097,8 @@
                         taskForSelect.value = "2915";
                         addSetupTask = true;
                         setupPrice = getSetupPrice(serviceOrder.instructions);
-                        taskName = "New "+setupPrice;
-                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
+                        taskName = "Create New Setup";
+                        taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "IN.2":
@@ -2079,8 +2108,8 @@
                         taskForSelect.value = "2915";
                         addSetupTask = true;
                         setupPrice = getSetupPrice(serviceOrder.instructions);
-                        taskName = "New "+setupPrice;
-                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
+                        taskName = "Create New Setup";
+                        taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "COM-IN":
@@ -2090,8 +2119,8 @@
                         taskForSelect.value = "2719";
                         addSetupTask = true;
                         setupPrice = getSetupPrice(serviceOrder.instructions);
-                        taskName = "New "+setupPrice.replace("M", "COMM");
-                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
+                        taskName = "Create New Setup (Commercial)";
+                        taskDescription = "Service: "+setupPrice.replace("M", "COMM")+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "ONE":
@@ -2099,6 +2128,7 @@
                         taskTypeSelect.value = "16";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskName = "Check one-time for ongoing";
+                        taskDescription = "Service: \nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: \nStartDate: "+serviceOrder.date;
                         break;
                     case "RE-START":
                         prioritySelect.value = "3";
@@ -2107,8 +2137,8 @@
                         taskForSelect.value = "2915";
                         addSetupTask = true;
                         setupPrice = getSetupPrice(serviceOrder.instructions);
-                        taskName = "New "+setupPrice;
-                        taskDescription = "Target: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
+                        taskName = "Create New Setup";
+                        taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "ROACH":
@@ -2233,8 +2263,15 @@
                 }
 
                 function getSetupDuration(data){
-                    var price = parseInt(data.replace("M","").replace("$",""));
-                    return convertMinutesToHours(Math.ceil(price/10)*5);
+                    var duration = "00:25";
+
+                    if(data){
+                        var price = parseInt(data.replace("M","").replace("$",""));
+
+                        duration = convertMinutesToHours(Math.ceil(price/10)*5);
+                    }
+
+                    return duration;
                 }
 
             }
@@ -2247,6 +2284,7 @@
             locationRowSection.addEventListener('click', taskFormClickWatcher, true);
 
             function taskFormClickWatcher(event){
+
                 setTimeout(function(){
 
                     var tasksForm = document.getElementById("tasksForm");
@@ -2257,9 +2295,9 @@
                         tasksForm.classList.add("buttonated");
 
                         var expandedRowButtonsContainer = document.getElementsByClassName("expanded-row-buttons-container")[0];
-                      //  expandedRowButtonsContainer.style.justifyContent = "space-between";
-                      //  expandedRowButtonsContainer.style.position = "static";
-                      //  expandedRowButtonsContainer.style.padding = "0px 32px";
+                        expandedRowButtonsContainer.style.justifyContent = "space-between";
+                        expandedRowButtonsContainer.style.position = "static";
+                        expandedRowButtonsContainer.style.padding = "0px 32px";
 
                         var allNotesContainer = document.getElementById("allNotesContainer");
                         allNotesContainer.style.minHeight = "18px";
@@ -2293,16 +2331,28 @@
                 otherButtonsContainer.id = "otherTaskButtons";
                 otherButtonsContainer.style.display = "flex";
 
-                var taskName = document.getElementById("subject").value;
+                var taskName = document.getElementById("subject").value.toLowerCase();
 
-                if(taskName.toLowerCase().includes("follow up")){
+                var taskDescription = document.getElementById("description").value;
+
+                var schedule = taskDescription.match(/Schedule: (.*)/g);
+
+                if(taskName.includes("follow up")){
+
                     otherButtonsContainer.appendChild(createTaskSendFollowUpButton());
-                } else if(taskName.includes("New")){
-                    otherButtonsContainer.appendChild(createTaskFollowUpButton());
+
+                } else if(taskName.includes("create new") && schedule[0].split(" ")[1]){
+
                     otherButtonsContainer.appendChild(createTaskSetupButton());
+                    otherButtonsContainer.appendChild(createMissedButton());
+                    otherButtonsContainer.appendChild(createBalanceButton());
+                    otherButtonsContainer.appendChild(createUndecidedButton());
+
+                } else if(taskName.includes("new $")){
+                        reformatTaskListener();
+                    //    otherButtonsContainer.appendChild(createTaskReformatButton());
+                } else if(taskName.includes("send welcome")){
                     otherButtonsContainer.appendChild(createTaskWelcomeButton());
-                } else {
-                    otherButtonsContainer.appendChild(createTaskFollowUpButton());
                 }
 
                 if(taskName){
@@ -2310,6 +2360,123 @@
                 }
 
                 return otherButtonsContainer;
+
+                function createMissedButton(){
+                    var missedButton = document.createElement("button");
+                    missedButton.classList.add("scorpinated");
+                    missedButton.innerHTML = "Missed";
+                    missedButton.onclick = missedListener;
+
+                    return missedButton;
+
+                    function missedListener(event){
+                        event.preventDefault();
+
+                        var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+                        if(locationPhoneNumberLink){
+                            var taskDescription = document.getElementById("description").value;
+
+                            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+                            var textNumber = locationPhoneNumberLink.value;
+
+                            var messageBody = "Hi, Responsible Pest Control here. It looks like we were scheduled to come by on "+startDate+" but it didn't work out. Please reply or give us a call @ 480-924-4111 to reschedule. Thank you!";
+
+                            GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+
+                            document.getElementById("subject").value = "Send Text to Reschedule Initial";
+
+                            document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Reschedule)";
+
+                            document.getElementById("status").value = "C";
+                        }
+                    }
+
+                }
+
+                function createBalanceButton(){
+                    var balanceButton = document.createElement("button");
+                    balanceButton.classList.add("scorpinated");
+                    balanceButton.innerHTML = "Balance";
+                    balanceButton.onclick = balanceListener;
+
+                    return balanceButton;
+
+                    function balanceListener(event){
+                        event.preventDefault();
+
+                        var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+                        if(locationPhoneNumberLink){
+                            var taskDescription = document.getElementById("description").value;
+
+                            var dueDateInput = document.getElementById("dueDate");
+
+                            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+                            var textNumber = locationPhoneNumberLink.value;
+
+                            var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
+                                ". We'd like to schedule your regular service but we're still seeing a balance on your account. Please give us a call @ 480-924-4111 so we can get this resolved. Thanks!";
+
+                            GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+
+                            document.getElementById("subject").value = "Create New Setup - Balance";
+
+                            document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Balance)";
+
+                            dueDateInput.value = getFutureDate(false, 7);
+
+                        }
+                    }
+                }
+
+                function createUndecidedButton(){
+                    var undecidedButton = document.createElement("button");
+                    undecidedButton.classList.add("scorpinated");
+                    undecidedButton.innerHTML = "Undecided";
+                    undecidedButton.onclick = undecidedListener;
+
+                    return undecidedButton;
+
+                    function undecidedListener(event){
+                        event.preventDefault();
+
+                        var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+                        if(locationPhoneNumberLink){
+                            var taskDescription = document.getElementById("description").value;
+
+                            var dueDateInput = document.getElementById("dueDate");
+
+                            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+                            var textNumber = locationPhoneNumberLink.value;
+
+                            var messageBody = "Hi, I was going thru my records saw that we treated your home on "+startDate+
+                                ", but didn't settle on an ongoing service. To review, no contract but we do give warranty. We can do monthly @$49, every-other-month @$69, or quarterly @$95. Thank you! - Responsible Pest Control";
+
+                            GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+
+                            document.getElementById("subject").value = "Create New Setup - Undecided";
+
+                            document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Undecided)";
+
+                            dueDateInput.value = getFutureDate(false, 7);
+
+                        }
+                    }
+                }
+
+                function createTaskReformatButton(){
+                    var taskReformatButton = document.createElement("button");
+                    taskReformatButton.classList.add("scorpinated");
+                    taskReformatButton.innerHTML = "Reformat Task";
+                    taskReformatButton.onclick = reformatTaskListener;
+
+                    return taskReformatButton;
+                }
 
                 function createTaskSendFollowUpButton(){
                     var taskSendFollowUpButton = document.createElement("button");
@@ -2362,6 +2529,52 @@
 
             }
         }
+
+        function reformatTaskListener(event){
+            if(event) event.preventDefault();
+
+            var taskNameInput = document.getElementById("subject")
+            var taskDescriptionInput = document.getElementById("description");
+
+            var taskName = taskNameInput.value;
+            var taskDescription = taskDescriptionInput.value;
+
+            if(taskName.includes("New $")){
+                var _taskArray = taskNameInput.value.split(" ");
+
+                var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+                var nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
+
+                taskDescription = "Service: "+_taskArray[1]+"\nSchedule: "+_taskArray[2]+"\nTechnician: "+_taskArray[3]+"\nTarget: "+getSetupTarget()+"\nDuration: 00:25\nStartDate: "+startDate+"\nNextDate: "+nextDate;
+
+                taskDescriptionInput.value = taskDescription;
+
+                taskNameInput.value = "Create New Setup";
+            }
+
+            function getSetupTarget(){
+                var data = document.getElementById("tblDirections").value.toLowerCase();
+                if(data.includes("scorpion")){
+                    return "SCORPIONS";
+                } else if(data.includes("spider")){
+                    return "SPIDERS, E";
+                } else if(data.includes("roach")){
+                    return "ROACHES";
+                } else if(data.includes("cricket")){
+                    return "CRICKETS,";
+                } else if(data.includes("ticks")){
+                    return "TICKS";
+                } else if(data.includes("ants")){
+                    return "ANTS";
+                } else {
+                    return "";
+                }
+            }
+
+
+        }
+
 
         function followUpListener(event){
             event.preventDefault();
@@ -2421,20 +2634,44 @@
         function createSetupListener(event){
             event.preventDefault();
 
+            var invoiceDetails = JSON.parse(localStorage.getItem("invoiceDetails"));
+
+            console.log(invoiceDetails);
+
+            var invoiceText = "SERVICE HISTORY: \n";
+
+            invoiceDetails.forEach(function(invoice){
+                invoiceText = invoiceText + invoice.workDate+" --- "+invoice.serviceCode1+" --- $"+invoice.unitPrice1+" --- "+invoice.description1+"\nLocation: "+invoice.locationInstructions+"\nTech Notes:"+invoice.techComment+"\n-------------------------------------\n";
+            });
+
+            if(!confirm(invoiceText)) return;
+
             var taskNameInput = document.getElementById("subject");
             var dueDate = document.getElementById("dueDate").value;
             var taskType = document.getElementById("taskType").value;
             var description = document.getElementById("description").value;
             var directions = document.getElementById("tblDirections").value;
 
-            var taskArray = taskNameInput.value.split(" ");
+            var serviceCode, price, schedule, tech, duration, startDate, nextDate;
 
-            var price, frequency, schedule, duration, startDate, nextDate;
+            if(description.includes("Service: ")){
+                var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
 
-            price = taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
-            frequency = taskArray[1].replaceAll(/[^a-zA-Z]+/, '').replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
-            schedule = taskArray[2]+taskArray[1].replaceAll(/[^a-zA-Z]+/, '');
+                serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
 
+                price = _service.replaceAll(/[^0-9]+/, '')+".00";
+
+                schedule = description.match(/Schedule: (.*)/g)[0].split(" ")[1]+serviceCode[0];
+
+                tech = getTechnician(description.match(/Technician: (.*)/g)[0].split(" ")[1]);
+
+            } else { // Needed for Backwards Compatability
+                var _taskArray = taskNameInput.value.split(" ");
+                serviceCode = _taskArray[1].replaceAll(/[^a-zA-Z]+/, "").replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
+                price = _taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
+                schedule = _taskArray[2]+serviceCode[0];
+                tech = getTechnician(_taskArray[3]);
+            }
 
             if(description.includes("StartDate: ")){
                 startDate = description.match(/StartDate: (.*)/g)[0].split(" ")[1];
@@ -2450,19 +2687,24 @@
                 duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
             } else {
                 var cost = parseInt(price.replace("M","").replace("$",""));
-                duration = convertMinutesToHours(Math.ceil(cost/10)*5);
+
+                duration = convertMinutesToHours(Math.ceil(cost/9)*5);
             }
 
             var serviceSetup = {};
 
+            serviceSetup.serviceCode = serviceCode;
             serviceSetup.price = price;
-            serviceSetup.frequency = frequency;
             serviceSetup.schedule = schedule;
-            serviceSetup.tech = getTechnician(taskArray[3]);
+            serviceSetup.tech = tech;
             serviceSetup.duration = duration;
             serviceSetup.startDate = startDate;
             serviceSetup.nextDate = nextDate;
             serviceSetup.target = getSetupTarget(directions);
+
+            taskNameInput.value = "Send Welcome Letter";
+
+            document.getElementById("butSave").click();
 
             serviceSetup = JSON.stringify(serviceSetup);
 
@@ -2515,6 +2757,12 @@
         function welcomeListener(event){
             event.preventDefault();
 
+            var taskNameInput = document.getElementById("subject");
+
+            var dueDateInput = document.getElementById("dueDate");
+
+            var prioritySelect = document.getElementById("priority");
+
             var taskDescription = document.getElementById('description').value;
 
             var serviceSetup = getServiceSetup(1);
@@ -2524,6 +2772,8 @@
             welcomeLetter.division = document.getElementById("Division").value;
 
             welcomeLetter.schedule = getServiceSchedule(serviceSetup.schedule);
+
+            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
 
             if(taskDescription.includes("NextDate:")){
                 welcomeLetter.nextService = getServiceDate(taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1]);
@@ -2535,7 +2785,11 @@
 
             sessionStorage.setItem("welcomeLetter", welcomeLetter);
 
-            document.getElementById("status").value = "C";
+            taskNameInput.value = "Follow up for Initial";
+
+            dueDateInput.value = getFutureDate(startDate, 14);
+
+            prioritySelect.value = "2";
 
             document.getElementById("butSave").click();
 
@@ -2629,7 +2883,7 @@
             var techInput = document.getElementById("Tech1");
 
             serviceCodeInput.focus();
-            serviceCodeInput.value = serviceSetup.frequency;
+            serviceCodeInput.value = serviceSetup.serviceCode;
             serviceCodeInput.blur();
 
             unitPriceInput.focus();
@@ -2648,9 +2902,11 @@
             targetInput.value = serviceSetup.target;
             targetInput.blur();
 
-            durationInput.focus();
-            durationInput.value = serviceSetup.duration;
-            durationInput.blur();
+            if(serviceSetup.duration){
+                durationInput.focus();
+                durationInput.value = serviceSetup.duration;
+                durationInput.blur();
+            }
 
             techInput.focus();
             techInput.value = serviceSetup.tech;
@@ -2673,13 +2929,13 @@
                 month = parseInt(setup.startDate.split("/")[0]);
             }
 
-            if(setup.frequency === "BIMONTHLY"){
+            if(setup.serviceCode === "BIMONTHLY"){
                 if(month % 2){
                     schedule = setup.schedule+"J";
                 } else {
                     schedule = setup.schedule+"F";
                 }
-            } else if(serviceSetup.frequency === "QUARTERLY"){
+            } else if(serviceSetup.serviceCode === "QUARTERLY"){
                 if(month===1 || month===4 || month===7 || month===10){
                     schedule = setup.schedule+"J";
                 } else if(month===2 || month===5 || month===8 || month===11){
@@ -2956,6 +3212,8 @@
     }
 
     function monitorInvoice(){
+        console.log("monitorInvoice");
+
         var invoiceLinks = localStorage.getItem("invoiceLinks").split(",");
 
         var invoiceDetails = JSON.parse(localStorage.getItem("invoiceDetails"));
@@ -2974,11 +3232,23 @@
 
                     invoice.serviceCode1 = serviceCode1.value;
 
-                    if(invoice.serviceCode1 === "IN"){
+                //    if(["CANCELLED","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","RE-START","TICKS","ROACH"].indexOf(invoice.serviceCode1) > -1){
+
+                        var description1 = document.getElementById("Description1");
+
+                        var unitPrice1 = document.getElementById("UnitPrice1");
+
+                        var workDate  = document.getElementById("WorkDate");
 
                         var directions = document.getElementsByName("Directions")[0];
 
                         var fieldComment = document.getElementById("FieldComment");
+
+                        if(description1) invoice.description1 = description1.value;
+
+                        if(unitPrice1) invoice.unitPrice1 = unitPrice1.value;
+
+                        if(workDate) invoice.workDate = workDate.value;
 
                         if(directions) invoice.locationInstructions = directions.value;
 
@@ -2988,7 +3258,7 @@
 
                         localStorage.setItem("invoiceDetails", JSON.stringify(invoiceDetails));
 
-                    }
+                //    }
 
                 }
 
@@ -3002,7 +3272,7 @@
 
                 } else {
 
-                    console.log(invoiceDetails);
+                    console.log(invoiceDetails[0]);
 
                 }
 
@@ -3140,7 +3410,7 @@
                 console.log("Update Contact Info");
                 var nameList = name.split(" ");
                 if(nameList.length = 2){
-                    name = name.split(" ")[1]+", "+name.split(" ")[0];
+                    name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ");
                 }
 
                 setTimeout(function(){
