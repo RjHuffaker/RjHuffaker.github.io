@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.520
+// @version      1.600
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -10,6 +10,7 @@
 // @match        reporting.pestpac.com/reports/serviceSetups/reportRemote.asp
 // @match        *app.heymarket.com/*
 // @match        *email24.godaddy.com/webmail.php*
+// @match        http://www.fruitlandidrealestate.com/*
 // @require      https://unpkg.com/github-api/dist/GitHub.bundle.js
 // @grant        window.open
 // @grant        GM_setValue
@@ -133,7 +134,7 @@
             this.address = setupArray[1];
             this.city = setupArray[2];
             this.state = setupArray[3];
-            this.zipCode = setupArray[4];
+            this.zipcode = setupArray[4];
             this.latitude = parseFloat(setupArray[5]);
             this.longitude = parseFloat(setupArray[6]);
             this.division = setupArray[7];
@@ -179,17 +180,17 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        if(!urlContains(["blank", "iframe", "invoice", "serviceOrder"])){
+        if(!urlContains(["blank", "iframe", "invoice"])){
             retrieveCSS();
             retrieveGoogleMaps();
             focusListener();
             retrieveActiveSetups();
-            autoTaskinator();
-            autoGeocodinator();
-            autoDataFixinator();
             traversinator();
+            autoTaskinator();
+            autoDataFixinator();
             autoSetupinator();
             autoWelcomator();
+            autoGenerator();
             autoContactinator();
             paymentNotificator();
             serviceOrderDuplicator();
@@ -197,12 +198,20 @@
             goDaddyAddressGrabber();
         }
 
-        if(urlContains(["iframe/billHist.asp"])){
+        if(urlContains(["location/add.asp", "location/edit.asp"])){
+            monitorAddress();
+        }
+
+        if(urlContains(["iframe/billHist.asp"]) && urlContains(["scorpinator=0"])){
             monitorHistory();
         }
 
-        if(urlContains(["invoice/detail.asp"])){
+        if(urlContains(["invoice/detail.asp"]) && urlContains(["scorpinator=0"])){
             monitorInvoice();
+        }
+
+        if(urlContains(["/testpage/"])){
+            monitorZillow();
         }
     }
 
@@ -230,7 +239,6 @@
             maps.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyBi54ehlrrs28I7qEeU1jA6mJKB0If9KkI';
             document.getElementsByTagName("HEAD")[0].appendChild(maps);
         }
-
     }
 
     function retrieveActiveSetups(){
@@ -314,6 +322,50 @@
                 currentElement = currentElement.parentNode;
             }
         }
+    }
+
+    function debugGMStorage(){
+        var GMText = "DEBUG - GM_Storage variables:";
+
+        GMText = GMText+"\n   PestPacFocus: "+GM_getValue("PestPacFocus");
+        GMText = GMText+"\n   serviceSetup: "+GM_getValue("serviceSetup");
+        GMText = GMText+"\n   autoText: "+GM_getValue("autoText");
+        GMText = GMText+"\n   autoCall: "+GM_getValue("autoCall");
+        GMText = GMText+"\n   findAccount: "+GM_getValue("findAccount");
+        GMText = GMText+"\n   contactInfo: "+GM_getValue("contactInfo");
+        GMText = GMText+"\n   retrieveAccountData: "+GM_getValue("retrieveAccountData");
+        GMText = GMText+"\n   zillowData: "+GM_getValue("zillowData");
+
+        GMText = GMText+"\n   InvoiceList: "+GM_getValue("InvoiceList");
+        GMText = GMText+"\n   InvoiceLinks: "+GM_getValue("InvoiceLinks");
+        GMText = GMText+"\n   InvoiceDetails: "+GM_getValue("InvoiceDetails");
+
+        console.log(GMText);
+    }
+
+    function debugLocalStorage(){
+        var localText = "DEBUG - localStorage variables:";
+
+        localText = localText+"\n   AltigenSessionState: "+localStorage.getItem("AltigenSessionState");
+
+        console.log(localText);
+    }
+
+    function debugSessionStorage(){
+        var sessionText = "DEBUG - sessionStorage variables:";
+
+        
+
+        sessionText = sessionText+"\n   serviceSetup: "+sessionStorage.getItem("serviceSetup");
+        sessionText = sessionText+"\n   welcomeLetter: "+sessionStorage.getItem("welcomeLetter");
+        sessionText = sessionText+"\n   generateService: "+sessionStorage.getItem("generateService");
+        sessionText = sessionText+"\n   paymentNote: "+sessionStorage.getItem("paymentNote");
+        sessionText = sessionText+"\n   duplicateOrder: "+sessionStorage.getItem("duplicateOrder");
+        sessionText = sessionText+"\n   longitude: "+sessionStorage.getItem("longitude");
+        sessionText = sessionText+"\n   latitude: "+sessionStorage.getItem("latitude");
+        sessionText = sessionText+"\n   mapState: "+sessionStorage.getItem("mapState");
+
+        console.log(sessionText);
     }
 
     function spinButton(elem, size){
@@ -430,6 +482,47 @@
         return accountId+"|"+accountName;
     }
 
+    function getLocationAddress(){
+        var address = {};
+
+        var addressTable = document.getElementById("location-address-block");
+        var addressList = [];
+        if(addressTable){
+            var addressTableRows = addressTable.children[0].children;
+            for(var i = 0; i < addressTableRows.length; i++){
+                var addressRow = addressTableRows[i];
+                if(!addressRow.children[0].children[0]){
+                    var rowText = addressRow.children[0].innerHTML.replace(/\#([^#]+)/, "");  // Filters out lines starting with "#"
+                    addressList.push(rowText);
+                }
+            }
+            if(addressList.length === 2){
+                address.street = addressList[0];
+                address.city = addressList[1].split(", ")[0];
+                address.state = addressList[1].split(" ")[1];
+                address.zipcode = addressList[1].split(" ")[2];
+            } else if(addressList.length === 3){
+                address.street = addressList[0];
+                address.suite = addressList[1];
+                address.city = addressList[2].split(", ")[0];
+                address.state = addressList[2].split(" ")[1];
+                address.zipcode = addressList[2].split(" ")[2];
+            }
+
+        } else {
+            address.street = document.getElementById("Address").value.trim();
+            address.suite = document.getElementById("Address2").value.trim();
+            address.city = document.getElementById("City").value.trim();
+            address.state = document.getElementById("State").value.trim();
+            address.zipcode = document.getElementById("Zip").value.trim();
+        }
+
+        address.timestamp = Date.now();
+
+        return address;
+    }
+
+
     function getServiceDate(input){
         console.log(input);
         var month = input.split("/")[0];
@@ -472,6 +565,8 @@
         day = schedule.substring(1,4),
         week = parseInt(schedule.substring(0,1));
         var newDate = new Date(startDate);
+
+        frequency = frequency.toUpperCase();
 
         if(day=="Sun") day = 0;
         if(day=="Mon") day = 1;
@@ -550,6 +645,215 @@
         }
     }
 
+    function monitorAddress(){
+
+        var addressInput = document.getElementById("Address");
+        var cityInput = document.getElementById("City");
+        var stateInput = document.getElementById("State");
+        var zipInput = document.getElementById("Zip");
+
+        var mapMessage = document.getElementById("map_message");
+
+        addressInput.addEventListener("blur", checkAddress);
+
+        cityInput.addEventListener("blur", checkAddress);
+
+        stateInput.addEventListener("blur", checkAddress);
+
+        zipInput.addEventListener("blur", checkAddress);
+
+        if(mapMessage.innerHTML === "Address not found; position is approximate"){
+
+            checkAddress();
+
+        }
+
+        function checkAddress(){
+
+            var address = addressInput.value.trim();
+            var city = cityInput.value.trim();
+            var state = stateInput.value.trim();
+            var zip = zipInput.value.trim();
+
+            if(address && city && state && zip){
+
+                var butSave = document.getElementById("butSave");
+                var butAdd = document.getElementById("butAdd");
+                var mapMessage = document.getElementById("map_message");
+
+                fetchGeocodes(function(data){
+                    document.getElementById("Longitude").value = data.longitude;
+                    document.getElementById("Latitude").value = data.latitude;
+                    document.getElementById("ExclBatchGeoCode").click();
+
+                    mapMessage.innerHTML = "Correct GeoCode Found.";
+                    mapMessage.classList.add("scorpinated");
+                    mapMessage.style.color = "black";
+
+                    if(butSave){
+                        butSave.style.fontSize = "14px";
+                        butSave.classList.add("scorpinated");
+                        butSave.innerHTML = "Save";
+                    } else if(butAdd){
+                        butAdd.style.fontSize = "14px";
+                        butAdd.classList.add("scorpinated");
+                        butAdd.innerHTML = "Save";
+                    }
+
+                    getNearestActiveSetups(data, function(dataList){
+                        setDivision(dataList);
+                    });
+
+                });
+
+            }
+
+        }
+
+    }
+
+    function monitorZillow(){
+        var zillowData = document.getElementById("zillowData");
+        if(zillowData.innerHTML === "null"){
+            console.log("No Zillow Data: "+window.location.href);
+        } else {
+            zillowData = JSON.parse(zillowData.innerHTML)
+            zillowData.date = new Date();
+            GM_setValue("zillowData", JSON.stringify(zillowData));
+        }
+    }
+
+    function monitorHistory(){
+        console.log("monitorHistory");
+
+        var body = document.getElementsByTagName("body")[0];
+
+        var iframe = document.createElement("IFRAME");
+
+        iframe.style.display = "none";
+
+        body.appendChild(iframe);
+
+        var invoiceLinks = [];
+
+        Array.from(document.getElementsByTagName("a")).forEach(
+            function(element, index, array){
+                var href = element.href.match(/'(.*?)'/)[1];
+
+                if(href.includes("invoice")){
+
+                    invoiceLinks.push("http://app.pestpac.com"+href+"scorpinator=0");
+
+                }
+
+            });
+
+        GM_setValue("InvoiceLinks", invoiceLinks.toString());
+
+        GM_setValue("InvoiceDetails", "[]");
+
+        iframe.contentWindow.location.href = invoiceLinks[0];
+
+    }
+
+    function monitorInvoice(){
+        console.log("monitorInvoice");
+
+        var invoiceLinks = GM_getValue("InvoiceLinks");
+        if(invoiceLinks) invoiceLinks = GM_getValue("InvoiceLinks").split(",");
+
+        var invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
+        if(invoiceDetails) invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
+
+        sessionStorage.removeItem("InvoiceLinks");
+
+        sessionStorage.removeItem("InvoiceDetails");
+
+        if(invoiceLinks.length < 1){ console.log("no list: "+invoiceLinks); }
+
+        invoiceLinks.forEach(function(element, index, array){
+
+            if(element === window.location.href){
+
+                var invoice = {};
+
+                var serviceCode1 = document.getElementById("ServiceCode1");
+
+                if(serviceCode1){
+
+                    invoice.serviceCode1 = serviceCode1.value;
+
+                    var description1 = document.getElementById("Description1");
+
+                    var unitPrice1 = document.getElementById("UnitPrice1");
+
+                    var workDate  = document.getElementById("WorkDate");
+
+                    var tech1 = document.getElementById("Tech1");
+
+                    var directions = document.getElementsByName("Directions")[0];
+
+                    var fieldComment = document.getElementById("FieldComment");
+
+                    if(description1) invoice.description1 = description1.value;
+
+                    if(unitPrice1) invoice.unitPrice1 = unitPrice1.value;
+
+                    if(workDate) invoice.workDate = workDate.value;
+
+                    if(tech1) invoice.technician = tech1.value;
+
+                    if(directions) invoice.locationInstructions = directions.value;
+
+                    if(fieldComment) invoice.techComment = fieldComment.value;
+
+                    invoiceDetails.push(invoice);
+
+                    GM_setValue("InvoiceDetails", JSON.stringify(invoiceDetails));
+
+                }
+
+                GM_setValue("InvoiceLinks", invoiceLinks.toString());
+
+                index++;
+
+                if(index < 5 && invoiceLinks[index]){
+
+                    window.location.href = invoiceLinks[index];
+
+                } else {
+
+                    console.log(invoiceDetails);
+
+                }
+
+            }
+
+        });
+
+    }
+
+    function showHistoryConfirm(){
+        var invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
+
+        var invoiceText = "SERVICE HISTORY: \n";
+
+        invoiceDetails.forEach(function(invoice){
+            invoiceText = invoiceText
+                +invoice.workDate+" --- "+invoice.serviceCode1+" --- $"+invoice.unitPrice1+" --- "+invoice.description1
+                +"\nLocation: "+invoice.locationInstructions
+                +"\nTech Notes ("+invoice.technician+"): "+invoice.techComment
+                +"\n-------------------------------------\n";
+        });
+
+        var historyConfirm = confirm(invoiceText);
+
+        if(historyConfirm) GM_deleteValue("InvoiceDetails");
+
+        return historyConfirm;
+
+    }
+
     function goToAccount(accountId, openWindow){
         var quickSearchField = document.getElementById("quicksearchfield");
         quickSearchField.value = accountId;
@@ -609,7 +913,41 @@
         }, 100);
     }
 
-    function fetchGeocodes(address, callback){
+    function focusListener(){
+        if(urlContains(["app.pestpac.com"]) && !urlContains(["appointment"])){
+
+            recordFocus();
+
+            window.addEventListener("focus", function(event){
+                recordFocus();
+            }, false);
+
+            function recordFocus(){
+                window.name = Date.now();
+                GM_setValue("PestPacFocus", window.name);
+
+            }
+
+        } else if(urlContains(["app.heymarket.com"])){
+            return;
+        }
+    }
+
+    function checkLastFocus(){
+        var lastFocus = GM_getValue("PestPacFocus");
+
+        if(lastFocus === window.name){
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function fetchGeocodes(callback){
+        var addressObject = getLocationAddress();
+
+        var address = addressObject.street+"+"+addressObject.zipcode;
+
         address = address.replaceAll(", ", "+");
         address = address.replaceAll(" ", "+");
 
@@ -629,33 +967,297 @@
         });
     }
 
-    function focusListener(){
-        if(urlContains(["app.pestpac.com"])){
+    function getColor(setup){;
 
-            recordFocus();
-
-            window.addEventListener("focus", function(event){
-                recordFocus();
-            }, false);
-
-            function recordFocus(){
-                window.name = Date.now();
-                GM_setValue("PestPacFocus", window.name);
-            }
-
-        } else if(urlContains(["app.heymarket.com"])){
-            return;
+        if(GROUPBY === "WEEK"){
+            return getColorScale(WEEKS)[setup.schedule.substring(0,1)];
+        } else if(GROUPBY === "WEEKDAY"){
+            return getColorScale(WEEKDAYS)[setup.schedule.substring(1,4)];
+        } else if(GROUPBY === "DAILYTOTAL"){
+            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+            dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
+            return getColorScale(DAILYTOTALS)[dailyTotal.toString()];
+        } else if(GROUPBY === "TECHNICIAN"){
+            return getColorScale(TECHNICIANS)[setup.tech];
+        } else if(GROUPBY === "AGE"){
+            return getColorScale(AGES)[setup.age];
         }
+
     }
 
-    function checkLastFocus(){
-        var lastFocus = GM_getValue("PestPacFocus");
+    function getColorScale(dataModel){
 
-        if(lastFocus === window.name){
-            return true;
+        var colorScale = {};
+
+        var keyList;
+
+        var colorList = [
+            "0,0,255",
+            "0,63,255",
+            "0,127,255",
+            "0,191,255",
+            "0,255,255",
+            "0,255,191",
+            "0,255,127",
+            "0,255,63",
+            "0,255,0",
+            "63,255,0",
+            "127,255,0",
+            "191,255,0",
+            "255,255,0",
+            "255,191,0",
+            "255,127,0",
+            "255,63,0",
+            "255,0,0",
+            "255,0,63",
+            "255,0,127",
+            "255,0,191",
+            "255,0,255",
+            "191,0,255",
+            "127,0,255",
+            "63,0,255"
+        ];
+
+        if(!dataModel){
+
+            if(GROUPBY === "WEEK"){
+                keyList = Object.keys(WEEKS);
+            } else if(GROUPBY === "WEEKDAY"){
+                keyList = Object.keys(WEEKDAYS);
+            } else if(GROUPBY === "DAILYTOTAL"){
+                keyList = Object.keys(DAILYTOTALS);
+            } else if(GROUPBY === "TECHNICIAN"){
+                keyList = Object.keys(TECHNICIANS);
+            } else if(GROUPBY === "AGE"){
+                keyList = Object.keys(AGES);
+            }
         } else {
-            return false;
+            keyList = Object.keys(dataModel);
         }
+
+        var conversionRate = colorList.length/keyList.length;
+
+        keyList.forEach(function(key, index){
+
+            var newIndex = Math.round(conversionRate * index);
+
+            colorScale[key] = "rgb("+colorList[newIndex]+")";
+
+        });
+
+        return colorScale;
+    }
+
+    function getMarker(setup){
+        if(GROUPBY === "WEEK"){
+            return getMarkerScale(WEEKS)[setup.schedule.substring(0,1)];
+        } else if(GROUPBY === "WEEKDAY"){
+            return getMarkerScale(WEEKDAYS)[setup.schedule.substring(1,4)];
+        } else if(GROUPBY === "DAILYTOTAL"){
+            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+            dailyTotal = dailyTotal > 449 ? dailyTotal : 450;
+            return getMarkerScale(DAILYTOTALS)[dailyTotal];
+        } else if(GROUPBY === "TECHNICIAN"){
+            return getMarkerScale(TECHNICIANS)[setup.tech];
+        } else if(GROUPBY === "SCHEDULE"){
+            return getMarkerScale(SCHEDULES)[setup.schedule.substring(1,4)];
+        } else if(GROUPBY === "AGE"){
+            return getMarkerScale(AGES)[setup.age];
+        } else {
+            console.error("groupBy not recognized", GROUPBY);
+        }
+
+    }
+
+    function getMarkerScale(dataModel){
+
+        var markerScale = {};
+
+        var markerList = [
+            "0_0_255",
+            "0_63_255",
+            "0_127_255",
+            "0_191_255",
+            "0_255_255",
+            "0_255_191",
+            "0_255_127",
+            "0_255_63",
+            "0_255_0",
+            "63_255_0",
+            "127_255_0",
+            "191_255_0",
+            "255_255_0",
+            "255_191_0",
+            "255_127_0",
+            "255_63_0",
+            "255_0_0",
+            "255_0_63",
+            "255_0_127",
+            "255_0_191",
+            "255_0_255",
+            "191_0_255",
+            "127_0_255",
+            "63_0_255"
+        ];
+
+        var keyList = Object.keys(dataModel);
+
+        var conversionRate = markerList.length/keyList.length;
+
+        keyList.forEach(function(key, index){
+
+            var newIndex = Math.round(conversionRate * index);
+
+            markerScale[key] = "https://rjhuffaker.github.io/markers/"+markerList[newIndex]+".png";
+
+        });
+
+        return markerScale;
+    }
+
+    function getNearestActiveSetups(data, callback){
+        var al = activeSetups.length;
+        var nearestList = [];
+        var _long = parseFloat(data.longitude);
+        var _lat = parseFloat(data.latitude);
+
+        var accountId = getContactInfo().split("|")[0];
+
+        refreshTechnicianList();
+
+        for(var i = 1; i < al; i++){
+            var setup = activeSetups[i];
+            if(!setup.id){
+                console.error("No setup.id", setup);
+            }
+
+            updateTechnicianList(activeSetups[i]);
+
+            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+            dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
+
+            if(setup.id !== accountId){
+
+                if(DAILYTOTALS[dailyTotal] && !DAILYTOTALS[dailyTotal].excluded){
+
+                    if(WEEKDAYS[setup.weekDay] && !WEEKDAYS[setup.weekDay].excluded){
+
+                        if(WEEKS[setup.week] && !WEEKS[setup.week].excluded){
+
+                            if(TECHNICIANS[setup.tech] && !TECHNICIANS[setup.tech].excluded){
+
+                                if(AGES[setup.age] && !AGES[setup.age].excluded){
+
+                                    if(nearestList.length < PROXLISTSIZE){
+                                        setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                                        nearestList.push(setup);
+                                    } else {
+                                        for(var ij = 0; ij < nearestList.length; ij++){
+                                            var nearSetup = nearestList[ij];
+
+                                            if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+
+                                                setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                                                nearestList.splice(ij, 0, setup);
+                                                nearestList = nearestList.slice(0, PROXLISTSIZE);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        alphabetizeTechnicianList();
+
+        if(nearestList.length > 1){
+            for(var j = 0; j < nearestList.length; j++){
+                var _nearest = nearestList[j];
+                for(var key in TECHNICIANS){
+                    var _tech = TECHNICIANS[key];
+                    if(_tech.name === _nearest.tech){
+                        if(_nearest.schedule){
+                            _nearest.dailyTotal = _tech.dailyTotals[_nearest.schedule.substring(0,4)];
+                            _nearest.dailyStops = _tech.dailyStops[_nearest.schedule.substring(0,4)];
+                        }
+                    }
+                }
+            }
+        }
+
+        callback(nearestList);
+
+        function refreshTechnicianList(){
+            for(var key in TECHNICIANS){
+                var _tech = TECHNICIANS[key];
+                for(var key in _tech.dailyTotals){
+                    _tech.dailyTotals[key] = 0;
+                }
+                for(var key in _tech.dailyStops){
+                    _tech.dailyStops[key] = 0;
+                }
+            }
+        }
+
+        function updateTechnicianList(setup){
+            var addTech = true;
+
+            for(var key in TECHNICIANS){
+                var _tech = TECHNICIANS[key];
+                if(setup.tech && setup.tech === _tech.name){
+                    addTech = false;
+                    var multiplier;
+                    if(setup.schedule[4] === "M"){
+                        multiplier = 1;
+                    } else if(setup.schedule[4] === "B"){
+                        multiplier = 0.5;
+                    } else if(setup.schedule[4] === "Q"){
+                        multiplier = 0.33;
+                    }
+
+                    if(setup.schedule){
+                        _tech.dailyTotals[setup.schedule.substring(0,4)] += Math.ceil(parseInt(setup.total) * multiplier);
+                        _tech.dailyStops[setup.schedule.substring(0,4)] += multiplier;
+                    } else {
+                        console.error("No setup.schedule", setup);
+                    }
+                }
+            }
+
+            if(addTech && setup.tech){
+                TECHNICIANS[setup.tech] = new technician(setup.tech);
+            }
+
+        }
+
+        function alphabetizeTechnicianList(){
+            var _techArray = [];
+
+            var _technicians = {};
+
+            for(var key in TECHNICIANS){
+                _techArray.push(TECHNICIANS[key])
+            }
+
+            _techArray.sort(function(a, b){
+                if (a.name < b.name)
+                    return -1;
+                if (a.name > b.name)
+                    return 1;
+                return 0;
+            });
+
+            _techArray.forEach(function(tech){
+                _technicians[tech.name] = tech;
+            });
+
+            TECHNICIANS = _technicians;
+        }
+
     }
 
     function proximinator(){
@@ -726,8 +1328,10 @@
                 proxContainer.appendChild(createProxHeader());
                 proxContainer.appendChild(createProxTabs([
                     {id: "list", title: "List", shown: true},
-                    {id: "map", title: "Map", shown: false}
-                ], 300, 466));
+                    {id: "map", title: "Map", shown: false},
+                    {id: "zillow", title: "Zillow", shown: false, content: createZillowDiv()},
+                    {id: "service", title: "Service", shown: false, content: createServiceDiv()}
+                ], 300, 466, "proxContent"));
 
                 proxContainer.appendChild(spacerDiv);
 
@@ -868,12 +1472,11 @@
                     var tabContent = document.createElement("div");
 
                     tabContent.id = tab.id+"-tab-content";
+                    tabContent.classList.add(containerID+"-tab-content");
 
                     tabContent.style.height = height-20+"px";
                     tabContent.style.height = height-20+"px";
                     tabContent.style.display = tab.shown?"block":"none";
-
-                    tabContent.classList.add(containerID+"-tab-content");
 
                     if(tab.content){
                         tabContent.appendChild(tab.content);
@@ -888,6 +1491,13 @@
         }
 
         function proxIconListener(){
+
+          //  debugGMStorage();
+
+          //  debugLocalStorage();
+
+          //  debugSessionStorage();
+
             setTimeout(function(){
                 var proxModal = document.getElementById("prox-modal");
 
@@ -896,204 +1506,17 @@
                     proxModal.classList.remove("show");
                 } else {
                     proxModal.classList.add("show");
-                    fetchGeocodes(getLocationAddress(), function(dataList){
+                    fetchGeocodes(function(dataList){
                         getNearestActiveSetups(dataList, function(dataList){
                             sessionStorage.removeItem("mapState");
                             generateProxContent(dataList);
-                            fixDivision(dataList);
+                            setDivision(dataList);
                         });
                     });
 
                 }
             }, 0);
 
-            function fixDivision(dataList){
-                if(urlContains(["location/add.asp", "location/edit.asp"])){
-                    autoGeocodinator();
-                    var divisionSelect = document.getElementById("Division");
-
-                    if(!divisionSelect.value){
-                        var divisionList = [];
-                        for(var i = 0; i < dataList.length; i++){
-                            if(dataList[i].zipCode===document.getElementById("Zip").value){
-                                divisionList.push(dataList[i].division);
-                            }
-                        }
-                        divisionSelect.focus();
-                        divisionSelect.value = divisionList.sort((a,b) => divisionList.filter(v => v===a).length - divisionList.filter(v => v===b).length).pop();
-                        divisionSelect.blur();
-
-                        var divisionLabel = divisionSelect.parentElement.previousElementSibling;
-                        divisionLabel.classList.add("scorpinated");
-                    }
-                }
-            }
-
-        }
-
-        function getLocationAddress(){
-            var address = "";
-            var addressTable = document.getElementById("location-address-block");
-            if(addressTable){
-                var addressTableRows = addressTable.children[0].children;
-                for(var i = 0; i < addressTableRows.length; i++){
-                    if(!addressTableRows[i].children[0].children[0]){
-                        var rowText = addressTableRows[i].children[0].innerHTML.replace(/\#([^#]+)/, "");  // Filters out lines starting with "#"
-                        if(address && rowText) address = address.concat(", ");
-                        address = address.concat(rowText);
-                    }
-                }
-            } else {
-                address = document.getElementById("Address").value+" "+
-                    document.getElementById("City").value+" "+
-                    document.getElementById("Zip").value;
-            }
-
-            return address.replace(/#[1-9]+,/g, "");
-        }
-
-        function refreshTechnicianList(){
-            for(var key in TECHNICIANS){
-                var _tech = TECHNICIANS[key];
-                for(var key in _tech.dailyTotals){
-                    _tech.dailyTotals[key] = 0;
-                }
-                for(var key in _tech.dailyStops){
-                    _tech.dailyStops[key] = 0;
-                }
-            }
-        }
-
-        function updateTechnicianList(setup){
-            var addTech = true;
-
-            for(var key in TECHNICIANS){
-                var _tech = TECHNICIANS[key];
-                if(setup.tech && setup.tech === _tech.name){
-                    addTech = false;
-                    var multiplier;
-                    if(setup.schedule[4] === "M"){
-                        multiplier = 1;
-                    } else if(setup.schedule[4] === "B"){
-                        multiplier = 0.5;
-                    } else if(setup.schedule[4] === "Q"){
-                        multiplier = 0.33;
-                    }
-
-                    if(setup.schedule){
-                        _tech.dailyTotals[setup.schedule.substring(0,4)] += Math.ceil(parseInt(setup.total) * multiplier);
-                        _tech.dailyStops[setup.schedule.substring(0,4)] += multiplier;
-                    } else {
-                        console.error("No setup.schedule", setup);
-                    }
-                }
-            }
-
-            if(addTech && setup.tech){
-                TECHNICIANS[setup.tech] = new technician(setup.tech);
-            }
-
-        }
-
-        function alphabetizeTechnicianList(){
-            var _techArray = [];
-
-            var _technicians = {};
-
-            for(var key in TECHNICIANS){
-                _techArray.push(TECHNICIANS[key])
-            }
-
-            _techArray.sort(function(a, b){
-                if (a.name < b.name)
-                    return -1;
-                if (a.name > b.name)
-                    return 1;
-                return 0;
-            });
-
-            _techArray.forEach(function(tech){
-                _technicians[tech.name] = tech;
-            });
-
-            TECHNICIANS = _technicians;
-        }
-
-        function getNearestActiveSetups(data, callback){
-            var al = activeSetups.length;
-            var nearestList = [];
-            var _long = parseFloat(data.longitude);
-            var _lat = parseFloat(data.latitude);
-
-            var accountId = getContactInfo().split("|")[0];
-
-            refreshTechnicianList();
-
-            for(var i = 1; i < al; i++){
-                var setup = activeSetups[i];
-                if(!setup.id){
-                    console.error("No setup.id", setup);
-                }
-
-                updateTechnicianList(activeSetups[i]);
-
-                var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
-                dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
-
-                if(setup.id !== accountId)
-
-                if(DAILYTOTALS[dailyTotal])
-                if(!DAILYTOTALS[dailyTotal].excluded)
-
-                if(WEEKDAYS[setup.weekDay])
-                if(!WEEKDAYS[setup.weekDay].excluded)
-
-                if(WEEKS[setup.week])
-                if(!WEEKS[setup.week].excluded)
-
-                if(TECHNICIANS[setup.tech])
-                if(!TECHNICIANS[setup.tech].excluded)
-
-                if(AGES[setup.age])
-                if(!AGES[setup.age].excluded)
-
-                if(nearestList.length < PROXLISTSIZE){
-                    setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                    nearestList.push(setup);
-                } else {
-                    for(var ij = 0; ij < nearestList.length; ij++){
-                        var nearSetup = nearestList[ij];
-
-                        if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
-
-                            setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                            nearestList.splice(ij, 0, setup);
-                            nearestList = nearestList.slice(0, PROXLISTSIZE);
-                            break;
-                        }
-                    }
-                }
-
-            }
-
-            alphabetizeTechnicianList();
-
-            if(nearestList.length > 1){
-                for(var j = 0; j < nearestList.length; j++){
-                    var _nearest = nearestList[j];
-                    for(var key in TECHNICIANS){
-                        var _tech = TECHNICIANS[key];
-                        if(_tech.name === _nearest.tech){
-                            if(_nearest.schedule){
-                                _nearest.dailyTotal = _tech.dailyTotals[_nearest.schedule.substring(0,4)];
-                                _nearest.dailyStops = _tech.dailyStops[_nearest.schedule.substring(0,4)];
-                            }
-                        }
-                    }
-                }
-            }
-
-            callback(nearestList);
         }
 
         function generateProxContent(data){
@@ -1101,11 +1524,14 @@
 
             generateProxLegend(data);
 
+            createZillowIframe();
+
             if(!PROXMAP){
                 generateProxMap(data);
             } else {
                 updateProxMap(data);
             }
+
         }
 
         function generateProxList(data){
@@ -1117,8 +1543,6 @@
 
             listTabContent.appendChild(createProxTableHeader(data));
             listTabContent.appendChild(createProxTable(data));
-          //  listTabContent.appendChild(createGeocodesLabel());
-          //  listTabContent.appendChild(createRetrieveLink());
 
             function createProxTableHeader(){
                 var _table = document.createElement("table");
@@ -1170,7 +1594,7 @@
                 return scrollDiv;
 
                 function createTableRow(rowData){
-                    
+
                     var _goToAnchor = document.createElement("a");
                     _goToAnchor.innerHTML = rowData.id;
                     _goToAnchor.style.textDecoration = "none";
@@ -1188,7 +1612,7 @@
                     cell_1.style.width = "14%";
 
                     var cell_2 = _tr.insertCell();
-                    cell_2.innerHTML = rowData.zipCode.substring(0,5);
+                    cell_2.innerHTML = rowData.zipcode.substring(0,5);
                     cell_2.style.width = "12%";
 
                     var cell_3 = _tr.insertCell();
@@ -1293,8 +1717,8 @@
                 return geocodesLabel;
             }
 
-            
-            
+
+
         }
 
         function generateProxMap(data){
@@ -1462,7 +1886,7 @@
                     {id: "weekDay", title: "WeekDay", shown: false, content: createWeekDayTab()},
                     {id: "technician", title: "Technician", shown: false, content: createTechnicianTab()},
                     {id: "age", title: "Age", shown: false, content: createAgeTab()}
-                ], 132, 468, "proxLegendTabs"));
+                ], 132, 468, "proxLegend"));
 
                 return legendContent;
 
@@ -1478,7 +1902,7 @@
 
                     generalTab.appendChild(createLegendSelect([50, 100, 250, 500, 1000, 10000], PROXLISTSIZE, function(event){
                         PROXLISTSIZE = event.target.value;
-                        fetchGeocodes(getLocationAddress(), function(data){
+                        fetchGeocodes(function(data){
                             getNearestActiveSetups(data, function(data){
                                 generateProxContent(data);
                             });
@@ -1586,7 +2010,7 @@
                             dataModel[checkBox.id.replace("Box", "")].excluded = event.target.checked;
                         });
 
-                        fetchGeocodes(getLocationAddress(), function(data){
+                        fetchGeocodes(function(data){
                             getNearestActiveSetups(data, function(data){
                                 generateProxContent(data);
                             });
@@ -1629,7 +2053,7 @@
                     var _listItem = document.createElement("li");
                     _listItem.style.transform = "rotate("+Math.round(listLength*2.5)+"deg)";
                     _listItem.style.display = "inline-block";
-                    
+
                     _listItem.style.width = width+"px";
                     _listItem.style.whiteSpace = "nowrap";
 
@@ -1658,7 +2082,7 @@
                         });
                         document.getElementById(listType+"SelectAllBox").checked = selectAll;
 
-                        fetchGeocodes(getLocationAddress(), function(data){
+                        fetchGeocodes(function(data){
                             getNearestActiveSetups(data, function(data){
                                 generateProxContent(data);
                             });
@@ -1693,7 +2117,7 @@
                         checkBox.checked = checkBox.id.replace("GroupByBox","").toUpperCase() === GROUPBY;
                     });
 
-                    fetchGeocodes(getLocationAddress(), function(data){
+                    fetchGeocodes(function(data){
                         getNearestActiveSetups(data, function(data){
                             generateProxContent(data);
                         });
@@ -1755,17 +2179,140 @@
                 +"\n  Tech: "+setup.tech
                 +"\n  Age: "+setup.age
                 +"\n  Total: "+setup.total;
+
             return title;
         }
 
         function createProxLegend(){
-            
+
             var proxLegend = document.createElement("div");
             proxLegend.id = "prox-legend";
             proxLegend.style.border = "1px solid";
             proxLegend.style.backgroundColor = "white";
 
             return proxLegend;
+        }
+
+        function createZillowDiv(){
+
+            var zillowDiv = document.createElement("div");
+            zillowDiv.id = "zillowDiv";
+            zillowDiv.height = "100%";
+            zillowDiv.width = "100%";
+            zillowDiv.innerHTML = "<div style='font-size: 9pt'><strong>Zillonating...</strong></div>";
+
+            GM_addValueChangeListener("zillowData", function(name, old_value, new_value, remote){
+            //    console.log("zillowData changed: "+JSON.parse(new_value).address.street);
+            //    console.log("zillowData changed: "+window.location.href);
+                populateZillowDiv(new_value);
+                populateServiceDiv(new_value);
+            });
+
+            return zillowDiv;
+
+        }
+
+        function createZillowIframe(){
+
+            console.log("createZillowIframe");
+
+            var address = getLocationAddress();
+
+            var zillowDiv = document.getElementById("zillowDiv");
+            
+            var zUrl = "http://www.fruitlandidrealestate.com/testpage/?address="+address.street+"&zipcode="+address.zipcode;
+
+            zUrl = zUrl.replaceAll(" ", "+");
+
+            var zillowIframe = document.createElement("iframe");
+            zillowIframe.id = "zillowIframe";
+            zillowIframe.src = zUrl;
+            zillowIframe.style.display = "none";
+
+            console.log(zUrl);
+
+            zillowDiv.appendChild(zillowIframe);
+        }
+
+        function populateZillowDiv(zData){
+
+            console.log("populateZillowDiv");
+
+            zData = JSON.parse(zData);
+
+            if(!checkAddress(zData.address)) return;
+
+            var zillowDiv = document.getElementById("zillowDiv");
+
+            zillowDiv.innerHTML = "";
+
+            zillowDiv.appendChild(zOutput(zData.address.street));
+            zillowDiv.appendChild(zOutput(zData.address.city+", "+zData.address.state+" "+zData.address.zipcode));
+            zillowDiv.appendChild(zOutput());
+            zillowDiv.appendChild(zOutput(zData.useCode));
+            zillowDiv.appendChild(zOutput());
+            zillowDiv.appendChild(zOutput("Year Built: ", zData.yearBuilt));
+            zillowDiv.appendChild(zOutput("Home Sq Ft: ", zData.finishedSqFt));
+            zillowDiv.appendChild(zOutput("Lot Sq Ft: ", zData.lotSizeSqFt));
+            zillowDiv.appendChild(zOutput("Bedrooms: ", zData.bedrooms));
+            zillowDiv.appendChild(zOutput("Bathrooms: ", zData.bathrooms));
+            zillowDiv.appendChild(zOutput("Total Rooms: ", zData.totalRooms));
+
+        }
+
+        function createServiceDiv(){
+            var serviceDiv = document.createElement("div");
+            serviceDiv.id = "serviceDiv";
+            serviceDiv.height = "100%";
+            serviceDiv.width = "100%";
+
+            serviceDiv.appendChild(zOutput("Service Builder"));
+            serviceDiv.appendChild(zOutput());
+            serviceDiv.appendChild(zOutput("COMING SOON!!!"," "));
+
+            return serviceDiv;
+        }
+
+        function populateServiceDiv(zData){
+            console.log("populateServiceDiv");
+
+            zData = JSON.parse(zData);
+
+            if(!checkAddress(zData.address)) return;
+
+
+
+        }
+
+        function zOutput(label, data){
+            var zOutput = document.createElement("div");
+            if(label){
+                if(data){
+                    zOutput.innerHTML = "<div style='font-size: 9pt'><strong>"+label+"</strong>"+data+"</div>";
+                } else {
+                    zOutput.innerHTML = "<div style='font-size: 11pt'><strong>"+label+"</strong></div>";
+                }
+            } else {
+                zOutput.innerHTML = "<hr>";
+            }
+            return zOutput;
+        }
+
+        function checkAddress(address){
+
+            var location = getLocationAddress();
+
+            var checkAddress = address.street.split(" ")[0]+" "+address.zipcode;
+
+            var checkLocation = location.street.split(" ")[0]+" "+address.zipcode;
+
+            if(checkAddress === checkLocation) {
+                console.log(checkAddress +" === "+ checkLocation);
+                return true;
+            }
+
+            return checkAddress === checkLocation;
+
         }
 
         function clickToDismiss(event){
@@ -1804,152 +2351,31 @@
         }
     }
 
-    function getColor(setup){;
+    function setDivision(dataList){
+        if(urlContains(["location/add.asp", "location/edit.asp"])){
 
-        if(GROUPBY === "WEEK"){
-            return getColorScale(WEEKS)[setup.schedule.substring(0,1)];
-        } else if(GROUPBY === "WEEKDAY"){
-            return getColorScale(WEEKDAYS)[setup.schedule.substring(1,4)];
-        } else if(GROUPBY === "DAILYTOTAL"){
-            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
-            dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
-            return getColorScale(DAILYTOTALS)[dailyTotal.toString()];
-        } else if(GROUPBY === "TECHNICIAN"){
-            return getColorScale(TECHNICIANS)[setup.tech];
-        } else if(GROUPBY === "AGE"){
-            return getColorScale(AGES)[setup.age];
-        }
+            var divisionSelect = document.getElementById("Division");
 
-    }
+            if(!divisionSelect.value){
+                var divisionList = [];
+                for(var i = 0; i < dataList.length; i++){
+                    if(dataList[i].zipcode===document.getElementById("Zip").value){
+                        divisionList.push(dataList[i].division);
+                    }
+                }
 
-    function getColorScale(dataModel){
+                var division = divisionList.sort((a,b) => divisionList.filter(v => v===a).length - divisionList.filter(v => v===b).length).pop();
 
-        var colorScale = {};
+                if(!division) return;
 
-        var keyList;
+                divisionSelect.focus();
+                divisionSelect.value = division;
+                divisionSelect.blur();
 
-        var colorList = [
-            "0,0,255",
-            "0,63,255",
-            "0,127,255",
-            "0,191,255",
-            "0,255,255",
-            "0,255,191",
-            "0,255,127",
-            "0,255,63",
-            "0,255,0",
-            "63,255,0",
-            "127,255,0",
-            "191,255,0",
-            "255,255,0",
-            "255,191,0",
-            "255,127,0",
-            "255,63,0",
-            "255,0,0",
-            "255,0,63",
-            "255,0,127",
-            "255,0,191",
-            "255,0,255",
-            "191,0,255",
-            "127,0,255",
-            "63,0,255"
-        ];
-
-        if(!dataModel){
-
-            if(GROUPBY === "WEEK"){
-                keyList = Object.keys(WEEKS);
-            } else if(GROUPBY === "WEEKDAY"){
-                keyList = Object.keys(WEEKDAYS);
-            } else if(GROUPBY === "DAILYTOTAL"){
-                keyList = Object.keys(DAILYTOTALS);
-            } else if(GROUPBY === "TECHNICIAN"){
-                keyList = Object.keys(TECHNICIANS);
-            } else if(GROUPBY === "AGE"){
-                keyList = Object.keys(AGES);
+                var divisionLabel = divisionSelect.parentElement.previousElementSibling;
+                divisionLabel.classList.add("scorpinated");
             }
-        } else {
-            keyList = Object.keys(dataModel);
         }
-
-        var conversionRate = colorList.length/keyList.length;
-
-        keyList.forEach(function(key, index){
-
-            var newIndex = Math.round(conversionRate * index);
-
-            colorScale[key] = "rgb("+colorList[newIndex]+")";
-
-        });
-
-        return colorScale;
-    }
-
-    function getMarker(setup){
-        if(GROUPBY === "WEEK"){
-            return getMarkerScale(WEEKS)[setup.schedule.substring(0,1)];
-        } else if(GROUPBY === "WEEKDAY"){
-            return getMarkerScale(WEEKDAYS)[setup.schedule.substring(1,4)];
-        } else if(GROUPBY === "DAILYTOTAL"){
-            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
-            dailyTotal = dailyTotal > 449 ? dailyTotal : 450;
-            return getMarkerScale(DAILYTOTALS)[dailyTotal];
-        } else if(GROUPBY === "TECHNICIAN"){
-            return getMarkerScale(TECHNICIANS)[setup.tech];
-        } else if(GROUPBY === "SCHEDULE"){
-            return getMarkerScale(SCHEDULES)[setup.schedule.substring(1,4)];
-        } else if(GROUPBY === "AGE"){
-            return getMarkerScale(AGES)[setup.age];
-        } else {
-            console.error("groupBy not recognized", GROUPBY);
-        }
-
-    }
-
-    function getMarkerScale(dataModel){
-
-        var markerScale = {};
-
-        var markerList = [
-            "0_0_255",
-            "0_63_255",
-            "0_127_255",
-            "0_191_255",
-            "0_255_255",
-            "0_255_191",
-            "0_255_127",
-            "0_255_63",
-            "0_255_0",
-            "63_255_0",
-            "127_255_0",
-            "191_255_0",
-            "255_255_0",
-            "255_191_0",
-            "255_127_0",
-            "255_63_0",
-            "255_0_0",
-            "255_0_63",
-            "255_0_127",
-            "255_0_191",
-            "255_0_255",
-            "191_0_255",
-            "127_0_255",
-            "63_0_255"
-        ];
-
-        var keyList = Object.keys(dataModel);
-
-        var conversionRate = markerList.length/keyList.length;
-
-        keyList.forEach(function(key, index){
-
-            var newIndex = Math.round(conversionRate * index);
-
-            markerScale[key] = "https://rjhuffaker.github.io/markers/"+markerList[newIndex]+".png";
-
-        });
-
-        return markerScale;
     }
 
     function autoTaskinator(){
@@ -2120,7 +2546,7 @@
                         addSetupTask = true;
                         setupPrice = getSetupPrice(serviceOrder.instructions);
                         taskName = "Create New Setup (Commercial)";
-                        taskDescription = "Service: "+setupPrice.replace("M", "COMM")+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
+                        taskDescription = "Service: "+setupPrice.toUpperCase().replace("M", "COMM")+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "ONE":
@@ -2266,9 +2692,8 @@
                     var duration = "00:25";
 
                     if(data){
-                        var price = parseInt(data.replace("M","").replace("$",""));
-
-                        duration = convertMinutesToHours(Math.ceil(price/10)*5);
+                        var price = parseInt(data.toUpperCase().replace("M","").replace("$",""));
+                        if(!isNaN(price)) duration = convertMinutesToHours(Math.ceil(price/10)*5);
                     }
 
                     return duration;
@@ -2341,6 +2766,8 @@
 
                     otherButtonsContainer.appendChild(createTaskSendFollowUpButton());
 
+                    otherButtonsContainer.appendChild(createHistoryIframe());
+
                 } else if(taskName.includes("create new") && schedule[0].split(" ")[1]){
 
                     otherButtonsContainer.appendChild(createTaskSetupButton());
@@ -2348,11 +2775,14 @@
                     otherButtonsContainer.appendChild(createBalanceButton());
                     otherButtonsContainer.appendChild(createUndecidedButton());
 
+                    otherButtonsContainer.appendChild(createHistoryIframe());
+
                 } else if(taskName.includes("new $")){
-                        reformatTaskListener();
-                    //    otherButtonsContainer.appendChild(createTaskReformatButton());
+                    reformatTaskListener();
+
                 } else if(taskName.includes("send welcome")){
                     otherButtonsContainer.appendChild(createTaskWelcomeButton());
+
                 }
 
                 if(taskName){
@@ -2369,30 +2799,6 @@
 
                     return missedButton;
 
-                    function missedListener(event){
-                        event.preventDefault();
-
-                        var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
-
-                        if(locationPhoneNumberLink){
-                            var taskDescription = document.getElementById("description").value;
-
-                            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
-
-                            var textNumber = locationPhoneNumberLink.value;
-
-                            var messageBody = "Hi, Responsible Pest Control here. It looks like we were scheduled to come by on "+startDate+" but it didn't work out. Please reply or give us a call @ 480-924-4111 to reschedule. Thank you!";
-
-                            GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
-
-                            document.getElementById("subject").value = "Send Text to Reschedule Initial";
-
-                            document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Reschedule)";
-
-                            document.getElementById("status").value = "C";
-                        }
-                    }
-
                 }
 
                 function createBalanceButton(){
@@ -2403,33 +2809,6 @@
 
                     return balanceButton;
 
-                    function balanceListener(event){
-                        event.preventDefault();
-
-                        var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
-
-                        if(locationPhoneNumberLink){
-                            var taskDescription = document.getElementById("description").value;
-
-                            var dueDateInput = document.getElementById("dueDate");
-
-                            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
-
-                            var textNumber = locationPhoneNumberLink.value;
-
-                            var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
-                                ". We'd like to schedule your regular service but we're still seeing a balance on your account. Please give us a call @ 480-924-4111 so we can get this resolved. Thanks!";
-
-                            GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
-
-                            document.getElementById("subject").value = "Create New Setup - Balance";
-
-                            document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Balance)";
-
-                            dueDateInput.value = getFutureDate(false, 7);
-
-                        }
-                    }
                 }
 
                 function createUndecidedButton(){
@@ -2440,33 +2819,6 @@
 
                     return undecidedButton;
 
-                    function undecidedListener(event){
-                        event.preventDefault();
-
-                        var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
-
-                        if(locationPhoneNumberLink){
-                            var taskDescription = document.getElementById("description").value;
-
-                            var dueDateInput = document.getElementById("dueDate");
-
-                            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
-
-                            var textNumber = locationPhoneNumberLink.value;
-
-                            var messageBody = "Hi, I was going thru my records saw that we treated your home on "+startDate+
-                                ", but didn't settle on an ongoing service. To review, no contract but we do give warranty. We can do monthly @$49, every-other-month @$69, or quarterly @$95. Thank you! - Responsible Pest Control";
-
-                            GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
-
-                            document.getElementById("subject").value = "Create New Setup - Undecided";
-
-                            document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Undecided)";
-
-                            dueDateInput.value = getFutureDate(false, 7);
-
-                        }
-                    }
                 }
 
                 function createTaskReformatButton(){
@@ -2527,6 +2879,98 @@
                     return completeButton;
                 }
 
+                function createHistoryIframe(){
+                    var locationID = window.location.search.match(/\LocationID.*/g)[0].replace("LocationID=","");
+                    var historyUrl = "iframe/billHist.asp?LocationID="+locationID+"&Sort=Date&BillFilter=B&OpenOnly=0&scorpinator=0";
+
+                    var iframe = document.createElement("iframe");
+                    iframe.id = "historyIframe";
+                    iframe.src = historyUrl;
+                    iframe.style.display = "none";
+
+                    return iframe;
+                }
+
+            }
+        }
+
+        function missedListener(event){
+            event.preventDefault();
+
+            var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+            if(locationPhoneNumberLink){
+                var taskDescription = document.getElementById("description").value;
+
+                var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+                var textNumber = locationPhoneNumberLink.value;
+
+                var messageBody = "Hi, Responsible Pest Control here. It looks like we were scheduled to come by on "+startDate+" but it didn't work out. Please reply or give us a call @ 480-924-4111 to reschedule. Thank you!";
+
+                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+
+                document.getElementById("subject").value = "Send Text to Reschedule Initial";
+
+                document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Reschedule)";
+
+                document.getElementById("status").value = "C";
+            }
+        }
+
+        function balanceListener(event){
+            event.preventDefault();
+
+            var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+            if(locationPhoneNumberLink){
+                var taskDescription = document.getElementById("description").value;
+
+                var dueDateInput = document.getElementById("dueDate");
+
+                var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+                var textNumber = locationPhoneNumberLink.value;
+
+                var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
+                    ". We'd like to schedule your regular service but we're still seeing a balance on your account. Please give us a call @ 480-924-4111 so we can get this resolved. Thanks!";
+
+                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+
+                document.getElementById("subject").value = "Create New Setup - Balance";
+
+                document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Balance)";
+
+                dueDateInput.value = getFutureDate(false, 7);
+
+            }
+        }
+
+        function undecidedListener(event){
+            event.preventDefault();
+
+            var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+            if(locationPhoneNumberLink){
+                var taskDescription = document.getElementById("description").value;
+
+                var dueDateInput = document.getElementById("dueDate");
+
+                var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+                var textNumber = locationPhoneNumberLink.value;
+
+                var messageBody = "Hi, I was going thru my records saw that we treated your home on "+startDate+
+                    ", but didn't settle on an ongoing service. To review, no contract but we do give warranty. We can do monthly @$49, every-other-month @$69, or quarterly @$95. Thank you! - Responsible Pest Control";
+
+                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+
+                document.getElementById("subject").value = "Create New Setup - Undecided";
+
+                document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Undecided)";
+
+                dueDateInput.value = getFutureDate(false, 7);
+
             }
         }
 
@@ -2572,9 +3016,7 @@
                 }
             }
 
-
         }
-
 
         function followUpListener(event){
             event.preventDefault();
@@ -2634,17 +3076,7 @@
         function createSetupListener(event){
             event.preventDefault();
 
-            var invoiceDetails = JSON.parse(localStorage.getItem("invoiceDetails"));
-
-            console.log(invoiceDetails);
-
-            var invoiceText = "SERVICE HISTORY: \n";
-
-            invoiceDetails.forEach(function(invoice){
-                invoiceText = invoiceText + invoice.workDate+" --- "+invoice.serviceCode1+" --- $"+invoice.unitPrice1+" --- "+invoice.description1+"\nLocation: "+invoice.locationInstructions+"\nTech Notes:"+invoice.techComment+"\n-------------------------------------\n";
-            });
-
-            if(!confirm(invoiceText)) return;
+            if(!showHistoryConfirm()) return;
 
             var taskNameInput = document.getElementById("subject");
             var dueDate = document.getElementById("dueDate").value;
@@ -2657,7 +3089,7 @@
             if(description.includes("Service: ")){
                 var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
 
-                serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
+                serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
 
                 price = _service.replaceAll(/[^0-9]+/, '')+".00";
 
@@ -2667,7 +3099,7 @@
 
             } else { // Needed for Backwards Compatability
                 var _taskArray = taskNameInput.value.split(" ");
-                serviceCode = _taskArray[1].replaceAll(/[^a-zA-Z]+/, "").replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
+                serviceCode = _taskArray[1].replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
                 price = _taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
                 schedule = _taskArray[2]+serviceCode[0];
                 tech = getTechnician(_taskArray[3]);
@@ -2686,7 +3118,7 @@
             if(description.includes("Duration: ")){
                 duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
             } else {
-                var cost = parseInt(price.replace("M","").replace("$",""));
+                var cost = parseInt(price.toUpperCase().replace("M","").replace("$",""));
 
                 duration = convertMinutesToHours(Math.ceil(cost/9)*5);
             }
@@ -2773,7 +3205,9 @@
 
             welcomeLetter.schedule = getServiceSchedule(serviceSetup.schedule);
 
-            var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+            welcomeLetter.startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+
+            welcomeLetter.nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
 
             if(taskDescription.includes("NextDate:")){
                 welcomeLetter.nextService = getServiceDate(taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1]);
@@ -2787,7 +3221,7 @@
 
             taskNameInput.value = "Follow up for Initial";
 
-            dueDateInput.value = getFutureDate(startDate, 14);
+            dueDateInput.value = getFutureDate(welcomeLetter.startDate, 14);
 
             prioritySelect.value = "2";
 
@@ -2800,6 +3234,8 @@
 
         function sendFollowUpListener(event){
             event.preventDefault();
+
+            if(!showHistoryConfirm()) return;
 
             var taskSubject = document.getElementById('subject').value;
 
@@ -2845,6 +3281,7 @@
 
     function autoSetupinator(){
         if(urlContains(["serviceSetup/detail.asp"])){
+
             var serviceSetup = JSON.parse(sessionStorage.getItem("serviceSetup"));
             
             if(serviceSetup){
@@ -2854,11 +3291,8 @@
             }
 
             GM_addValueChangeListener("serviceSetup", function(name, old_value, new_value, remote){
-                console.log("trigger");
-
+                
                 var serviceSetup = new_value;
-
-                console.log(serviceSetup);
 
                 if(serviceSetup){
 
@@ -2872,6 +3306,8 @@
 
         function addSetupDetails(serviceSetup){
             console.log(serviceSetup);
+
+            sessionStorage.removeItem("serviceSetup");
 
             var serviceCodeInput = document.getElementById("ServiceCode1");
             var unitPriceInput = document.getElementById("UnitPrice1");
@@ -2917,6 +3353,9 @@
             scheduleInput.blur();
 
             GM_deleteValue("serviceSetup");
+
+            sessionStorage.setItem("generateService", JSON.stringify(serviceSetup));
+
         }
 
         function parseSchedule(setup){
@@ -2954,13 +3393,17 @@
     }
 
     function autoWelcomator(){
-        if(urlContains(["letters/default.asp"])){
-            if(sessionStorage.getItem("welcomeLetter")){
+        if(!urlContains(["letters/default.asp", "letters/add.asp", "letters/detail.asp"])) return;
+
+        var welcomeLetter = sessionStorage.getItem("welcomeLetter");
+
+        if(welcomeLetter){
+
+            welcomeLetter = JSON.parse(welcomeLetter);
+
+            if(urlContains(["letters/default.asp"])){
                 document.getElementById("butAddLetter").click();
-            }
-        } else if(urlContains(["letters/add.asp"])){
-            if(sessionStorage.getItem("welcomeLetter")){
-                var welcomeLetter = JSON.parse(sessionStorage.getItem("welcomeLetter"));
+            } else if(urlContains(["letters/add.asp"])){
 
                 document.getElementById("SLT").click();
 
@@ -2973,11 +3416,8 @@
                 letterCodeInput.blur();
 
                 document.getElementById("butContinue").click();
-            }
-        } else if(urlContains(["letters/detail.asp"])){
-            if(sessionStorage.getItem("welcomeLetter")){
+            } else if(urlContains(["letters/detail.asp"])){
                 setTimeout(function(){
-                    var welcomeLetter = JSON.parse(sessionStorage.getItem("welcomeLetter"));
 
                     sessionStorage.removeItem("welcomeLetter");
 
@@ -3000,43 +3440,35 @@
         }
     }
 
-    function autoGeocodinator(){
-		if(!urlContains(["location/edit.asp", "location/add.asp"])) return;
+    function autoGenerator(){
+        if(!urlContains(["location/detail.asp", "serviceOrder/detail.asp"])) return;
 
-		var butSave = document.getElementById("butSave");
-		var butAdd = document.getElementById("butAdd");
-		var addressInput = document.getElementById("Address");
-        var stateInput = document.getElementById("State");
-		var mapMessage = document.getElementById("map_message");
+        var serviceSetup = JSON.parse(sessionStorage.getItem("generateService"));
 
-        if(!mapMessage) return;
-		if(mapMessage.innerHTML === "Address not found; position is approximate"){
-
-			var address = addressInput.value.replaceAll(" ", "+")+"+"+stateInput.value;
-			
-			var longitudeInput = document.getElementById("Longitude");
-			var latitudeInput = document.getElementById("Latitude");
-
-			fetchGeocodes(address, function(data){
-				document.getElementById("Longitude").value = data.longitude;
-				document.getElementById("Latitude").value = data.latitude;
-				document.getElementById("ExclBatchGeoCode").click();
-
-                mapMessage.innerHTML = "Correct GeoCode Found.";
-                mapMessage.classList.add("scorpinated");
-                mapMessage.style.color = "black";
-
-                if(butSave){
-                    butSave.style.fontSize = "14px";
-                    butSave.classList.add("scorpinated");
-                    butSave.innerHTML = "Save";
-                } else if(butAdd){
-                    butAdd.style.fontSize = "14px";
-                    butAdd.classList.add("scorpinated");
-                    butAdd.innerHTML = "Save";
+        if(serviceSetup){
+            if(urlContains(["location/detail.asp"])){
+                if(confirm("Generate Next Service: "+serviceSetup.nextDate+"?")){
+                    document.getElementById("RSOrderLink1").click();
+                } else {
+                    sessionStorage.removeItem("generateService");
                 }
-			});
-		}
+
+            } else if(urlContains(["serviceOrder/detail.asp"])){
+                setTimeout(function(){
+
+                    var workDateInput = document.getElementById("WorkDate");
+
+                    workDateInput.focus();
+                    workDateInput.value = serviceSetup.nextDate;
+                    workDateInput.blur();
+
+                    sessionStorage.removeItem("generateService");
+
+                }, 1500);
+            }
+
+        }
+
     }
 
     function autoDataFixinator(){
@@ -3178,110 +3610,6 @@
         }
     }
 
-    function monitorHistory(){
-        console.log("monitorHistory");
-
-        var body = document.getElementsByTagName("body")[0];
-
-        var iframe = document.createElement("IFRAME");
-
-        iframe.style.display = "none";
-
-        body.appendChild(iframe);
-
-        var invoiceLinks = [];
-
-        Array.from(document.getElementsByTagName("a")).forEach(
-            function(element, index, array){
-                var href = element.href.match(/'(.*?)'/)[1];
-
-                if(href.includes("invoice")){
-
-                    invoiceLinks.push("http://app.pestpac.com"+href);
-
-                }
-
-            });
-
-        localStorage.setItem("invoiceLinks", invoiceLinks.toString());
-
-        localStorage.setItem("invoiceDetails", "[]");
-
-        iframe.contentWindow.location.href = invoiceLinks[0];
-
-    }
-
-    function monitorInvoice(){
-        console.log("monitorInvoice");
-
-        var invoiceLinks = localStorage.getItem("invoiceLinks").split(",");
-
-        var invoiceDetails = JSON.parse(localStorage.getItem("invoiceDetails"));
-
-        if(invoiceLinks.length < 1){ console.log("no list: "+invoiceLinks); }
-
-        invoiceLinks.forEach(function(element, index, array){
-
-            if(element === window.location.href){
-
-                var invoice = {};
-
-                var serviceCode1 = document.getElementById("ServiceCode1");
-
-                if(serviceCode1){
-
-                    invoice.serviceCode1 = serviceCode1.value;
-
-                //    if(["CANCELLED","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","RE-START","TICKS","ROACH"].indexOf(invoice.serviceCode1) > -1){
-
-                        var description1 = document.getElementById("Description1");
-
-                        var unitPrice1 = document.getElementById("UnitPrice1");
-
-                        var workDate  = document.getElementById("WorkDate");
-
-                        var directions = document.getElementsByName("Directions")[0];
-
-                        var fieldComment = document.getElementById("FieldComment");
-
-                        if(description1) invoice.description1 = description1.value;
-
-                        if(unitPrice1) invoice.unitPrice1 = unitPrice1.value;
-
-                        if(workDate) invoice.workDate = workDate.value;
-
-                        if(directions) invoice.locationInstructions = directions.value;
-
-                        if(fieldComment) invoice.techComment = fieldComment.value;
-
-                        invoiceDetails.push(invoice);
-
-                        localStorage.setItem("invoiceDetails", JSON.stringify(invoiceDetails));
-
-                //    }
-
-                }
-
-                invoiceLinks.splice(index, 1);
-
-                localStorage.setItem("invoiceLinks", invoiceLinks.toString());
-
-                if(invoiceLinks[0]){
-
-                    window.location.href = invoiceLinks[0];
-
-                } else {
-
-                    console.log(invoiceDetails[0]);
-
-                }
-
-            }
-
-        });
-
-    }
-
     function autoContactinator(){
         if(urlContains(["app.pestpac.com/location"])){
             GM_addValueChangeListener('autoCall', function(name, old_value, new_value, remote){
@@ -3327,6 +3655,8 @@
             addPestPacIcon();
 
             GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
+
+                if(!new_value) return;
                 var _textData = new_value.split("|");
                 var _textNumber = _textData[0];
                 var _textAccount = _textData[1];
@@ -3337,6 +3667,7 @@
                 window.focus();
 
                 goToContact(_textNumber, function(){
+                    GM_deleteValue("autoText");
                     prepareMessage(_textBody);
                     updateContact(_textAccount, _textName, _assignee);
                 });
@@ -3506,7 +3837,6 @@
                 link.appendChild(textIcon);
                 link.addEventListener("click", function(){
                     GM_setValue("autoText", phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"|||"+Date.now());
-                    console.log(GM_getValue("autoText"))
                     spinButton(textIcon, 20);
                 });
 
@@ -3533,7 +3863,7 @@
                 var phoneIcon = createPhoneIcon();
                 link.appendChild(phoneIcon);
                 link.onclick = function(){
-                    GM_setValue('autoCall', phoneNumber+"|"+Date.now());
+                    GM_setValue("autoCall", phoneNumber+"|"+Date.now());
                     spinButton(phoneIcon, 20);
                 };
 
@@ -3755,8 +4085,8 @@
                 addressInput.value = contact.address.replace(".", "");
             }
 
-            if(contact.zip){
-                zipInput.value = contact.zip;
+            if(contact.zipcode){
+                zipInput.value = contact.zipcode;
             }
 
             if(contact.phone){
@@ -3831,11 +4161,11 @@
                                     } else if(headerText === "Address"){
                                         if(contentRow.split("<br>").length){
                                             contact.address = contentRow.split("<br>")[0];
-                                            var zipCodeRegEx = /85[0-9]{3}/;
-                                            var zipCodeRegExMatcher = new RegExp(zipCodeRegEx);
+                                            var zipcodeRegEx = /85[0-9]{3}/;
+                                            var zipcodeRegExMatcher = new RegExp(zipcodeRegEx);
 
-                                            if(zipCodeRegExMatcher.exec(contentRow)){
-                                                contact.zip = zipCodeRegExMatcher.exec(contentRow)[0];
+                                            if(zipcodeRegExMatcher.exec(contentRow)){
+                                                contact.zipcode = zipcodeRegExMatcher.exec(contentRow)[0];
                                             }
                                         }
 
@@ -4010,6 +4340,7 @@
         } else if(urlContains(["app.pestpac.com/search/default.asp"])){
             var _payment = sessionStorage.getItem("paymentNote");
             if(_payment){
+                sessionStorage.removeItem("paymentNote");
                 _payment = JSON.parse(_payment);
                 goToNotes(_payment.id);
             }
@@ -4034,17 +4365,32 @@
     }
 
     function serviceOrderDuplicator(){
-        if(urlContains(["location/detail.asp"])){
-            if(sessionStorage.getItem("duplicateOrder")){
-                var aButton = document.getElementsByClassName("ui-button")[0];
-                if(aButton){
-                    setTimeout(function(){aButton.click();}, 0);
-                }
 
-                document.getElementById("butOrder").click();
+        if(urlContains(["location/detail.asp"])){
+            var duplicateOrder = JSON.parse(sessionStorage.getItem("duplicateOrder"));
+            if(duplicateOrder){
+
+                if(duplicateOrder.delete){
+
+                    sessionStorage.removeItem("duplicateOrder");
+
+                } else {
+
+                    duplicateOrder.delete = true;
+
+                    sessionStorage.setItem("duplicateOrder", JSON.stringify(duplicateOrder));
+
+                    var aButton = document.getElementsByClassName("ui-button")[0];
+
+                    if(aButton){
+                        setTimeout(function(){aButton.click();}, 0);
+                    }
+
+                    document.getElementById("butOrder").click();
+
+                }
             }
-        }
-        if(urlContains(["serviceOrder/detail.asp"])){
+        } else if(urlContains(["serviceOrder/detail.asp"])){
 
             var serviceCodeInput = document.getElementById("ServiceCode1");
             var unitPriceInput = document.getElementById("UnitPrice1");
@@ -4060,43 +4406,10 @@
             var choicesSpan = document.getElementById("Choices");
             var butExit = document.getElementById("butExit");
 
-            if(choicesSpan){
-
-                var duplicatorButton = document.createElement("button");
-                duplicatorButton.classList.add("scorpinated");
-                duplicatorButton.innerHTML = "Duplicate";
-                duplicatorButton.style.marginRight = "8px";
-
-                choicesSpan.insertBefore(duplicatorButton, choicesSpan.children[0]);
-
-                duplicatorButton.addEventListener("click", function(e){
-                    e.preventDefault();
-                    console.log("duplicate");
-
-                    var duplicateOrder = {};
-
-                    duplicateOrder.serviceCode = serviceCodeInput.value;
-                    duplicateOrder.unitPrice = unitPriceInput.value;
-                    duplicateOrder.workDate = workDateInput.value;
-                    duplicateOrder.workTime = workTimeInput.value;
-                    duplicateOrder.timeRange = timeRangeInput.value;
-                    duplicateOrder.timeBegin = timeBeginInput.value;
-                    duplicateOrder.timeEnd = timeEndInput.value;
-                    duplicateOrder.target = targetInput.value;
-                    duplicateOrder.tech = techInput.value;
-                    duplicateOrder.directions = directionsInput.value;
-
-                    duplicateOrder = JSON.stringify(duplicateOrder);
-
-                    sessionStorage.setItem("duplicateOrder", duplicateOrder);
-
-                    butExit.click();
-
-                });
-
-            } else {
+            if(urlContains(["Mode=New"])){
 
                 var duplicateOrder = JSON.parse(sessionStorage.getItem("duplicateOrder"));
+
                 if(!duplicateOrder) return;
 
                 sessionStorage.removeItem("duplicateOrder");
@@ -4150,7 +4463,42 @@
                     directionsInput.blur();
                 },1000);
 
+            } else {
+
+                var duplicatorButton = document.createElement("button");
+                duplicatorButton.classList.add("scorpinated");
+                duplicatorButton.innerHTML = "Duplicate";
+                duplicatorButton.style.marginRight = "8px";
+
+                choicesSpan.insertBefore(duplicatorButton, choicesSpan.children[0]);
+
+                duplicatorButton.addEventListener("click", function(e){
+                    e.preventDefault();
+                    console.log("duplicate");
+
+                    var duplicateOrder = {};
+
+                    duplicateOrder.serviceCode = serviceCodeInput.value;
+                    duplicateOrder.unitPrice = unitPriceInput.value;
+                    duplicateOrder.workDate = workDateInput.value;
+                    duplicateOrder.workTime = workTimeInput.value;
+                    duplicateOrder.timeRange = timeRangeInput.value;
+                    duplicateOrder.timeBegin = timeBeginInput.value;
+                    duplicateOrder.timeEnd = timeEndInput.value;
+                    duplicateOrder.target = targetInput.value;
+                    duplicateOrder.tech = techInput.value;
+                    duplicateOrder.directions = directionsInput.value;
+
+                    duplicateOrder = JSON.stringify(duplicateOrder);
+
+                    sessionStorage.setItem("duplicateOrder", duplicateOrder);
+
+                    butExit.click();
+
+                });
+
             }
+
         }
     }
 
