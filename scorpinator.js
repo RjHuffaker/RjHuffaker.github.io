@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.600
+// @version      1.610
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -62,6 +62,33 @@
         "4": { name: "Week 4", excluded: false }
     };
 
+    var MONTHFILTER = {
+        name: "Month",
+        options: {
+            "Any": { name: "Any", checked: true },
+            "Odd": { name: "Odd", checked: false },
+            "Even": { name: "Even", checked: false },
+            "Specific": {
+                name: "Specific",
+                checked: false,
+                options: {
+                    "JAN": { name: "JAN", checked: true },
+                    "FEB": { name: "FEB", checked: false },
+                    "MAR": { name: "MAR", checked: false },
+                    "APR": { name: "APR", checked: false },
+                    "MAY": { name: "MAY", checked: false },
+                    "JUN": { name: "JUN", checked: false },
+                    "JUL": { name: "JUL", checked: false },
+                    "AUG": { name: "AUG", checked: false },
+                    "SEP": { name: "SEP", checked: false },
+                    "OCT": { name: "OCT", checked: false },
+                    "NOV": { name: "NOV", checked: false },
+                    "DEC": { name: "DEC", checked: false }
+                }
+            }
+        },
+    };
+
     var DAILYTOTALS = {
         "450": {name: "450", excluded: false },
         "500": {name: "500", excluded: false },
@@ -118,8 +145,6 @@
 
     var SCHEDULES = ["1MON","1TUE","1WED","1THU","1FRI", "2MON","2TUE","2WED","2THU","2FRI","3MON","3TUE","3WED","3THU","3FRI","4MON","4TUE","4WED","4THU","4FRI"];
 
-  //  var DAILYTOTALS = ["450","500","550","600", "650","700","750","800", "850","900","950","1000", "1050","1100","1150","1200", "1250","1300","1350","1400", "1450","1500","1550","1600"];
-
     var ROUTELIST = [];
 
   //  var phoneNumberRegEx = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
@@ -145,6 +170,7 @@
             this.tech = setupArray[12];
             this.age = setupArray[13];
             this.total = setupArray[14];
+            this.month = getMonth(setupArray[11]);
         }
     }
 
@@ -180,7 +206,7 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        if(!urlContains(["blank", "iframe", "invoice"])){
+        if(!urlContains(["blank", "iframe", "invoice", "appointment"])){
             retrieveCSS();
             retrieveGoogleMaps();
             focusListener();
@@ -407,6 +433,21 @@
         return mm+"/"+dd+"/"+yy;
     }
 
+    function getDifferenceInDays(firstDate, secondDate){
+        if(secondDate){
+            var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
+            if(firstDate){
+                firstDate = new Date(firstDate);
+            } else {
+                firstDate = new Date();
+            }
+            secondDate = new Date(secondDate);
+            return Math.round(Math.abs((firstDate.getTime() - secondDate.getTime())/(oneDay)));
+        } else {
+            console.log('Error: differenceInDays: firstDate: '+firstDate+", secondDate: "+secondDate);
+        }
+    }
+
     function getCurrentReadableTime(){
         var hours = new Date().getHours();
         hours = hours<13?hours:hours-12;
@@ -499,14 +540,14 @@
             if(addressList.length === 2){
                 address.street = addressList[0];
                 address.city = addressList[1].split(", ")[0];
-                address.state = addressList[1].split(" ")[1];
-                address.zipcode = addressList[1].split(" ")[2];
+                address.state = addressList[1].split(", ")[1].split(" ")[0];
+                address.zipcode = addressList[1].split(", ")[1].split(" ")[1];
             } else if(addressList.length === 3){
                 address.street = addressList[0];
                 address.suite = addressList[1];
                 address.city = addressList[2].split(", ")[0];
-                address.state = addressList[2].split(" ")[1];
-                address.zipcode = addressList[2].split(" ")[2];
+                address.state = addressList[2].split(", ")[1].split(" ")[0];
+                address.zipcode = addressList[2].split(", ")[1].split(" ")[1];
             }
 
         } else {
@@ -522,9 +563,23 @@
         return address;
     }
 
+    function getMonth(schedule){
+        if(schedule.length === 5 && schedule[4] === "M"){
+            return "111111111111";
+        } else if(schedule.includes("BJ")){
+            return "101010101010";
+        } else if(schedule.includes("BF")){
+            return "010101010101";
+        } else if(schedule.includes("QJ")){
+            return "100100100100";
+        } else if(schedule.includes("QF")){
+            return "010010010010";
+        } else if(schedule.includes("QM")){
+            return "001001001001";
+        }
+    }
 
     function getServiceDate(input){
-        console.log(input);
         var month = input.split("/")[0];
 
         if(month.length===1){
@@ -645,6 +700,77 @@
         }
     }
 
+    function getGuesstimate(zData){
+
+        var basePrice = 100;
+
+        var homeSqFt = zData.finishedSqFt ? zData.finishedSqFt : 0;
+        var lotSqFt = zData.lotSizeSqFt ? zData.lotSizeSqFt : 0;
+
+        var PRICE_INCREMENT = 10;
+
+        var AVERAGE_HOME_MIN = 1500;
+        var AVERAGE_HOME_MAX = 3000;
+        var HOME_SQFT_INCREMENT = 500;
+
+        var AVERAGE_LOT_MIN = 5445;       // 1/8 Acre
+        var AVERAGE_LOT_MAX = 10890;      // 1/4 Acre
+        var LOT_SQFT_INCREMENT = 10890;   // 1/4 Acre
+
+        if(homeSqFt){
+            if(homeSqFt < AVERAGE_HOME_MIN && lotSqFt < AVERAGE_LOT_MIN){
+                basePrice -= 10;
+            }
+
+            if(homeSqFt > AVERAGE_HOME_MAX){
+                basePrice += Math.ceil((homeSqFt - AVERAGE_HOME_MAX) / HOME_SQFT_INCREMENT) * PRICE_INCREMENT;
+            }
+        }
+
+        if(lotSqFt){
+            if(lotSqFt < AVERAGE_LOT_MIN && homeSqFt < AVERAGE_HOME_MIN){
+                basePrice -= 10;
+            }
+
+            if(lotSqFt > AVERAGE_LOT_MAX){
+                basePrice += Math.ceil((lotSqFt - AVERAGE_LOT_MAX) / LOT_SQFT_INCREMENT) * PRICE_INCREMENT;
+            }
+        }
+
+        return getPricing(basePrice);
+
+        function getPricing(base){
+            var INITIAL = 1;
+            var ONETIME = 1.3;
+            var QUARTERLY = .95;
+            var BIMONTHLY = .7;
+            var MONTHLY = .5;
+
+            return {
+                initial: prettifyPrice(base * INITIAL),
+                oneTime: prettifyPrice(base * ONETIME),
+                quarterly: prettifyPrice(base * QUARTERLY),
+                bimonthly: prettifyPrice(base * BIMONTHLY),
+                monthly: prettifyPrice(base * MONTHLY)
+            };
+
+            function prettifyPrice(price){
+                var roundedPrice = Math.round(price/5)*5;
+
+                var priceString = roundedPrice.toString();
+
+                if(priceString.substr(priceString.length-1) === "0"){
+                    return parseInt(priceString)-1;
+                } else {
+                    return parseInt(priceString);
+                }
+
+            }
+
+        }
+
+    }
+
     function monitorAddress(){
 
         var addressInput = document.getElementById("Address");
@@ -714,6 +840,7 @@
 
     function monitorZillow(){
         var zillowData = document.getElementById("zillowData");
+        if(!zillowData) return;
         if(zillowData.innerHTML === "null"){
             console.log("No Zillow Data: "+window.location.href);
         } else {
@@ -738,14 +865,23 @@
 
         Array.from(document.getElementsByTagName("a")).forEach(
             function(element, index, array){
-                var href = element.href.match(/'(.*?)'/)[1];
 
-                if(href.includes("invoice")){
+                var href = element.href;
 
-                    invoiceLinks.push("http://app.pestpac.com"+href+"scorpinator=0");
+                if(href){
 
+                    var hrefMatch = href.match(/'(.*?)'/);
+
+                    if(hrefMatch){
+                        var hrefMatch = hrefMatch[1];
+
+                        if(hrefMatch.includes("invoice")){
+
+                            invoiceLinks.push("http://app.pestpac.com"+hrefMatch+"scorpinator=0");
+
+                        }
+                    }
                 }
-
             });
 
         GM_setValue("InvoiceLinks", invoiceLinks.toString());
@@ -1131,36 +1267,39 @@
                 console.error("No setup.id", setup);
             }
 
-            updateTechnicianList(activeSetups[i]);
-
             var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
             dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
 
             if(setup.id !== accountId){
 
-                if(DAILYTOTALS[dailyTotal] && !DAILYTOTALS[dailyTotal].excluded){
+                if(monthFilter(setup.month)){
 
-                    if(WEEKDAYS[setup.weekDay] && !WEEKDAYS[setup.weekDay].excluded){
+                    updateTechnicianList(activeSetups[i]);
 
-                        if(WEEKS[setup.week] && !WEEKS[setup.week].excluded){
+                    if(DAILYTOTALS[dailyTotal] && !DAILYTOTALS[dailyTotal].excluded){
 
-                            if(TECHNICIANS[setup.tech] && !TECHNICIANS[setup.tech].excluded){
+                        if(WEEKDAYS[setup.weekDay] && !WEEKDAYS[setup.weekDay].excluded){
 
-                                if(AGES[setup.age] && !AGES[setup.age].excluded){
+                            if(WEEKS[setup.week] && !WEEKS[setup.week].excluded){
 
-                                    if(nearestList.length < PROXLISTSIZE){
-                                        setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                                        nearestList.push(setup);
-                                    } else {
-                                        for(var ij = 0; ij < nearestList.length; ij++){
-                                            var nearSetup = nearestList[ij];
+                                if(!TECHNICIANS[setup.tech] || !TECHNICIANS[setup.tech].excluded){
 
-                                            if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+                                    if(AGES[setup.age] && !AGES[setup.age].excluded){
 
-                                                setup.hyp = setup.getDist(_long, _lat).toFixed(3);
-                                                nearestList.splice(ij, 0, setup);
-                                                nearestList = nearestList.slice(0, PROXLISTSIZE);
-                                                break;
+                                        if(nearestList.length < PROXLISTSIZE){
+                                            setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                                            nearestList.push(setup);
+                                        } else {
+                                            for(var ij = 0; ij < nearestList.length; ij++){
+                                                var nearSetup = nearestList[ij];
+
+                                                if(setup.getDist(_long, _lat) < nearSetup.getDist(_long, _lat)){
+
+                                                    setup.hyp = setup.getDist(_long, _lat).toFixed(3);
+                                                    nearestList.splice(ij, 0, setup);
+                                                    nearestList = nearestList.slice(0, PROXLISTSIZE);
+                                                    break;
+                                                }
                                             }
                                         }
                                     }
@@ -1191,6 +1330,38 @@
 
         callback(nearestList);
 
+        function monthFilter(monthString){
+            var returnvar = false;
+            if(MONTHFILTER.options["Any"].checked){
+                returnvar = true;
+            } else if(MONTHFILTER.options["Odd"].checked){
+                for(var i = 0; i < 10; i+=2){
+                    returnvar = true;
+                    if(monthString.charAt(i) === "0"){
+                        returnvar = false;
+                        break;
+                    }
+                }
+            } else if(MONTHFILTER.options["Even"].checked){
+                for(var i = 1; i < 11; i+=2){
+                    returnvar = true;
+                    if(monthString.charAt(i) === "0"){
+                        returnvar = false;
+                        break;
+                    }
+                }
+            } else if(MONTHFILTER.options["Specific"].checked){
+                Object.keys(MONTHFILTER.options["Specific"].options).forEach(function(key, index){
+                    var month = MONTHFILTER.options["Specific"].options[key];
+                    if(month.checked && (monthString.charAt(index) === "1")){
+                        returnvar = true;
+                    }
+                });
+            }
+            
+            return returnvar;
+        }
+
         function refreshTechnicianList(){
             for(var key in TECHNICIANS){
                 var _tech = TECHNICIANS[key];
@@ -1211,14 +1382,17 @@
                 if(setup.tech && setup.tech === _tech.name){
                     addTech = false;
                     var multiplier;
-                    if(setup.schedule[4] === "M"){
+                    if(MONTHFILTER.options["Any"].checked){
+                        if(setup.schedule[4] === "M"){
+                            multiplier = 1;
+                        } else if(setup.schedule[4] === "B"){
+                            multiplier = 0.5;
+                        } else if(setup.schedule[4] === "Q"){
+                            multiplier = 0.33;
+                        }
+                    } else {
                         multiplier = 1;
-                    } else if(setup.schedule[4] === "B"){
-                        multiplier = 0.5;
-                    } else if(setup.schedule[4] === "Q"){
-                        multiplier = 0.33;
                     }
-
                     if(setup.schedule){
                         _tech.dailyTotals[setup.schedule.substring(0,4)] += Math.ceil(parseInt(setup.total) * multiplier);
                         _tech.dailyStops[setup.schedule.substring(0,4)] += multiplier;
@@ -1844,7 +2018,6 @@
                     var mapLng = mapCenter.lng();
                     var mapString = mapLat + "_" + mapLng + "_" + mapZoom;
                     sessionStorage.setItem("mapState", mapString);
-                    console.log(mapString);
                 }
 
                 function loadMapState(){
@@ -1893,6 +2066,8 @@
                 function createGeneralTab(){
                     var generalTab = document.createElement("div");
 
+                    generalTab.appendChild(createRetrieveLink());
+
                     var setupsReturned = document.createElement("span");
                     setupsReturned.style.fontSize = "10pt";
                     setupsReturned.style.fontWeight = "bold";
@@ -1909,9 +2084,153 @@
                         });
                     }));
 
-                    generalTab.appendChild(createRetrieveLink());
+                    generalTab.appendChild(document.createElement("br"));
+
+                    generalTab.appendChild(createRadioSelect(MONTHFILTER));
+
+                    generalTab.appendChild(document.createElement("br"));
+
+                    
 
                     return generalTab;
+
+                    function refreshScorpinator(){
+                        console.log("REFRESH THE SCORPINATOR!!");
+                        fetchGeocodes(function(data){
+                            getNearestActiveSetups(data, function(data){
+                                generateProxContent(data);
+                            });
+                        });
+                    };
+
+                    function createRadioSelect(dataModel){
+                        var optionsDiv = document.createElement("div");
+                        optionsDiv.id = dataModel.name+"OptionsDiv";
+                        optionsDiv.style.display = "flex";
+                        optionsDiv.style.flexWrap = "wrap";
+
+                        for(var key in dataModel.options){
+                            optionsDiv.appendChild(createToggle(dataModel, key));
+                        }
+
+                        var radioHeader = document.createElement("span");
+                        radioHeader.innerHTML = dataModel.name+"  ";
+                        radioHeader.style.fontSize = "10pt";
+                        radioHeader.style.fontWeight = "bold";
+
+                        var radioSelectDiv = document.createElement("div");
+                        radioSelectDiv.appendChild(radioHeader);
+                        radioSelectDiv.appendChild(optionsDiv);
+                        radioSelectDiv.style.width = "100%";
+
+                        return radioSelectDiv;
+
+                        function createToggle(dataModel, key){
+
+                            var _radio = document.createElement("input");
+                            _radio.setAttribute("type", "radio");
+                            _radio.id = dataModel.options[key].name+"Option";
+                            _radio.classList.add(dataModel.name+"Option");
+                            _radio.value = "";
+                            _radio.checked = dataModel.options[key].checked;
+
+                            var _label = document.createElement("label");
+                            _label.appendChild(_radio);
+                            _label.appendChild(document.createTextNode(dataModel.options[key].name));
+
+                            var _radioDiv = document.createElement("div");
+                            _radioDiv.style.display = "flex";
+                            _radioDiv.style.width = "16%";
+                          //  _radioDiv.style.flexWrap = "wrap";
+                            _radioDiv.appendChild(_label);
+
+                            _radio.onclick = function(event){
+                                dataModel.options[key].checked = true;
+
+                                var radioList = Array.from(document.getElementsByClassName(dataModel.name+"Option"));
+
+                                radioList.forEach(function(radioButton){
+                                    var radioKey = radioButton.id.replace("Option", "");
+
+                                    dataModel.options[radioKey].checked = dataModel.options[radioKey] === dataModel.options[key];
+
+                                    radioButton.checked = dataModel.options[radioKey].checked;
+
+                                    if(dataModel.options[radioKey].options){
+                                        var subOptionsDiv = document.getElementById(dataModel.options[radioKey].name+"OptionsDiv");
+                                        if(subOptionsDiv){
+                                            if(!dataModel.options[radioKey].checked){
+                                                subOptionsDiv.parentNode.removeChild(subOptionsDiv);
+                                            }
+                                        } else if(dataModel.options[radioKey].checked){
+                                            var subOptionsDiv = createRadioSelect(dataModel.options[radioKey]);
+                                            subOptionsDiv.id = dataModel.options[radioKey].name+"OptionsDiv";
+
+                                            subOptionsDiv.style.display = "flex";
+                                            subOptionsDiv.style.flexWrap = "wrap";
+                                            subOptionsDiv.style.width = "100%";
+
+
+                                            radioSelectDiv.appendChild(subOptionsDiv);
+                                        }
+                                    }
+
+                                });
+
+                                refreshScorpinator();
+                            };
+
+                            return _radioDiv;
+                        }
+
+                    }
+
+                    function createFilter(dataModel){
+                        var _filterDiv = document.createElement("div");
+
+                        for(var key in dataModel){
+                            _filterDiv.appendChild(createToggle(key, dataModel));
+                        }
+
+                        return _filterDiv;
+
+                        function createToggle(key, dataModel){
+                            var _radio = document.createElement("input");
+                            _radio.setAttribute("type", "radio");
+                            _radio.id = key+"Radio";
+                            _radio.classList.add("monthRadio");
+
+                            _radio.onclick = function(event){
+
+                                var radioKey = event.target.id.replace("Radio", "");
+
+                                dataModel[radioKey].checked = true;
+
+                                Array.from(document.getElementsByClassName("monthRadio")).forEach(function(radioButton){
+                                    var _key = radioButton.id.replace("Radio", "");
+
+                                    dataModel[_key].checked = (radioButton.id === radioKey+"Radio");
+
+                                    radioButton.checked = dataModel[_key].checked;
+                                });
+
+                                fetchGeocodes(function(data){
+                                    getNearestActiveSetups(data, function(data){
+                                        generateProxContent(data);
+                                    });
+                                });
+
+                            };
+
+                            var _label = document.createElement("label");
+                            _label.appendChild(_radio);
+                            _label.appendChild(document.createTextNode(key));
+
+                            return _label;
+                        }
+
+                    }
+
                 }
 
                 function createDailyTotalTab(){
@@ -2178,7 +2497,8 @@
                 +"\n  Service: "+setup.service
                 +"\n  Tech: "+setup.tech
                 +"\n  Age: "+setup.age
-                +"\n  Total: "+setup.total;
+                +"\n  Total: "+setup.total
+                +"\n  Months: "+setup.month;
 
             return title;
         }
@@ -2202,8 +2522,6 @@
             zillowDiv.innerHTML = "<div style='font-size: 9pt'><strong>Zillonating...</strong></div>";
 
             GM_addValueChangeListener("zillowData", function(name, old_value, new_value, remote){
-            //    console.log("zillowData changed: "+JSON.parse(new_value).address.street);
-            //    console.log("zillowData changed: "+window.location.href);
                 populateZillowDiv(new_value);
                 populateServiceDiv(new_value);
             });
@@ -2213,9 +2531,6 @@
         }
 
         function createZillowIframe(){
-
-            console.log("createZillowIframe");
-
             var address = getLocationAddress();
 
             var zillowDiv = document.getElementById("zillowDiv");
@@ -2229,15 +2544,10 @@
             zillowIframe.src = zUrl;
             zillowIframe.style.display = "none";
 
-            console.log(zUrl);
-
             zillowDiv.appendChild(zillowIframe);
         }
 
         function populateZillowDiv(zData){
-
-            console.log("populateZillowDiv");
-
             zData = JSON.parse(zData);
 
             if(!checkAddress(zData.address)) return;
@@ -2246,17 +2556,15 @@
 
             zillowDiv.innerHTML = "";
 
-            zillowDiv.appendChild(zOutput(zData.address.street));
-            zillowDiv.appendChild(zOutput(zData.address.city+", "+zData.address.state+" "+zData.address.zipcode));
-            zillowDiv.appendChild(zOutput());
-            zillowDiv.appendChild(zOutput(zData.useCode));
-            zillowDiv.appendChild(zOutput());
-            zillowDiv.appendChild(zOutput("Year Built: ", zData.yearBuilt));
-            zillowDiv.appendChild(zOutput("Home Sq Ft: ", zData.finishedSqFt));
-            zillowDiv.appendChild(zOutput("Lot Sq Ft: ", zData.lotSizeSqFt));
-            zillowDiv.appendChild(zOutput("Bedrooms: ", zData.bedrooms));
-            zillowDiv.appendChild(zOutput("Bathrooms: ", zData.bathrooms));
-            zillowDiv.appendChild(zOutput("Total Rooms: ", zData.totalRooms));
+            zillowDiv.appendChild(displayText({title: zData.address.street}));
+            zillowDiv.appendChild(displayText({title: zData.address.city+", "+zData.address.state+" "+zData.address.zipcode, line: true}));
+            zillowDiv.appendChild(displayText({title: zData.useCode, line: true}));
+            zillowDiv.appendChild(displayText({bold: "Year Built: ", plain: zData.yearBuilt}));
+            zillowDiv.appendChild(displayText({bold: "Home Sq Ft: ", plain: zData.finishedSqFt}));
+            zillowDiv.appendChild(displayText({bold: "Lot Sq Ft: ", plain: zData.lotSizeSqFt}));
+            zillowDiv.appendChild(displayText({bold: "Bedrooms: ", plain: zData.bedrooms}));
+            zillowDiv.appendChild(displayText({bold: "Bathrooms: ", plain: zData.bathrooms}));
+            zillowDiv.appendChild(displayText({bold: "Total Rooms: ", plain: zData.totalRooms}));
 
         }
 
@@ -2266,36 +2574,129 @@
             serviceDiv.height = "100%";
             serviceDiv.width = "100%";
 
-            serviceDiv.appendChild(zOutput("Service Builder"));
-            serviceDiv.appendChild(zOutput());
-            serviceDiv.appendChild(zOutput("COMING SOON!!!"," "));
+            serviceDiv.appendChild(displayText({title: "Service Builder", line: true}));
 
             return serviceDiv;
         }
 
         function populateServiceDiv(zData){
-            console.log("populateServiceDiv");
-
             zData = JSON.parse(zData);
 
             if(!checkAddress(zData.address)) return;
 
+            displayGuesstimate(getGuesstimate(zData));
 
+            function displayGuesstimate(guesstimate){
+                var serviceDiv = document.getElementById("serviceDiv");
+                serviceDiv.innerHTML = "";
+
+                serviceDiv.appendChild(displayText({title: zData.address.street}));
+                serviceDiv.appendChild(displayText({title: zData.address.city+", "+zData.address.state+" "+zData.address.zipcode, line: true}));
+
+                serviceDiv.appendChild(createSqFtInputs());
+
+                serviceDiv.appendChild(displayText({line: true}));
+
+                serviceDiv.appendChild(displayText({bold: "Initial: ", plain: "$"+guesstimate.initial}));
+                serviceDiv.appendChild(displayText({bold: "One Time: ", plain: "$"+guesstimate.oneTime}));
+                serviceDiv.appendChild(displayText({bold: "Quarterly: ", plain: "$"+guesstimate.quarterly}));
+                serviceDiv.appendChild(displayText({bold: "Bimonthly: ", plain: "$"+guesstimate.bimonthly}));
+                serviceDiv.appendChild(displayText({bold: "Monthly: ", plain: "$"+guesstimate.monthly}));
+            }
+
+            function createSqFtInputs(){
+
+                var homeSqFtInput = document.createElement("input");
+                homeSqFtInput.value = zData.finishedSqFt;
+                homeSqFtInput.style.width = "50%";
+                homeSqFtInput.style.textAlign = "right";
+                homeSqFtInput.style.fontSize = "11pt";
+                homeSqFtInput.style.margin = "0";
+                homeSqFtInput.style.padding = "0";
+
+                homeSqFtInput.addEventListener("blur", function(){
+                    zData.finishedSqFt = homeSqFtInput.value;
+                    displayGuesstimate(getGuesstimate(zData));
+                });
+
+                var homeSqFtLabel = document.createElement("label");
+                homeSqFtLabel.style.top = "2px";
+                homeSqFtLabel.style.width = "49%";
+                homeSqFtLabel.style.fontSize = "10pt";
+                homeSqFtLabel.style.fontWeight = "bold";
+                homeSqFtLabel.innerHTML = "Home Sq Ft: ";
+
+                var homeDiv = document.createElement("div");
+                homeDiv.style.display = "flex";
+                homeDiv.appendChild(homeSqFtLabel);
+                homeDiv.appendChild(homeSqFtInput);
+
+                var lotSqFtInput = document.createElement("input");
+                lotSqFtInput.value = zData.lotSizeSqFt;
+                lotSqFtInput.style.width = "49%";
+                lotSqFtInput.style.textAlign = "right";
+                lotSqFtInput.style.fontSize = "11pt";
+                lotSqFtInput.style.margin = "0";
+                lotSqFtInput.style.padding = "0";
+
+                lotSqFtInput.addEventListener("blur", function(){
+                    zData.lotSizeSqFt = lotSqFtInput.value;
+                    displayGuesstimate(getGuesstimate(zData));
+                });
+
+                var lotSqFtLabel = document.createElement("label");
+                lotSqFtLabel.style.top = "2px";
+                lotSqFtLabel.style.left = "1%";
+                lotSqFtLabel.style.width = "50%";
+                lotSqFtLabel.style.fontSize = "10pt";
+                lotSqFtLabel.style.fontWeight = "bold";
+                lotSqFtLabel.innerHTML = "Lot Sq Ft: ";
+
+                var lotDiv = document.createElement("div");
+                lotDiv.style.display = "flex";
+                lotDiv.appendChild(lotSqFtLabel);
+                lotDiv.appendChild(lotSqFtInput);
+
+                var sqFtDiv = document.createElement("div");
+                sqFtDiv.style.display = "flex";
+                sqFtDiv.appendChild(homeDiv);
+                sqFtDiv.appendChild(lotDiv);
+
+                return sqFtDiv;
+            }
 
         }
 
-        function zOutput(label, data){
-            var zOutput = document.createElement("div");
-            if(label){
-                if(data){
-                    zOutput.innerHTML = "<div style='font-size: 9pt'><strong>"+label+"</strong>"+data+"</div>";
-                } else {
-                    zOutput.innerHTML = "<div style='font-size: 11pt'><strong>"+label+"</strong></div>";
-                }
-            } else {
-                zOutput.innerHTML = "<hr>";
+        function displayText(data){
+            var outputDiv = document.createElement("div");
+
+            if(data.title){
+                var titleDiv = document.createElement("div");
+                titleDiv.style.fontSize = "11pt";
+                titleDiv.innerHTML = "<strong>"+data.title+"</strong>";
+                outputDiv.appendChild(titleDiv);
             }
-            return zOutput;
+
+            if(data.bold){
+                var boldSpan = document.createElement("span");
+                boldSpan.style.fontSize = "9pt";
+                boldSpan.innerHTML = "<strong>"+data.bold+"</strong>";
+                outputDiv.appendChild(boldSpan);
+            }
+
+            if(data.plain){
+                var plainSpan = document.createElement("span");
+                plainSpan.style.fontSize = "9pt";
+                plainSpan.innerHTML = data.plain;
+                outputDiv.appendChild(plainSpan);
+            }
+
+            if(data.line){
+                var hr = document.createElement("hr");
+                outputDiv.appendChild(hr);
+            }
+
+            return outputDiv;
         }
 
         function checkAddress(address){
@@ -2307,7 +2708,6 @@
             var checkLocation = location.street.split(" ")[0]+" "+address.zipcode;
 
             if(checkAddress === checkLocation) {
-                console.log(checkAddress +" === "+ checkLocation);
                 return true;
             }
 
@@ -2437,7 +2837,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","ONE","RE-START","ROACH","TICKS","WDO TERMITE"]
+                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","FLEAS","ONE","RE-START","ROACH","TICKS","WDO TERMITE"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -2548,6 +2948,12 @@
                         taskName = "Create New Setup (Commercial)";
                         taskDescription = "Service: "+setupPrice.toUpperCase().replace("M", "COMM")+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
+                        break;
+                    case "FLEAS":
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "12";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskName = "Generate 1 more Flea treatment on "+getFutureDate(serviceOrder.date, 14);
                         break;
                     case "ONE":
                         prioritySelect.value = "3";
@@ -3138,9 +3544,7 @@
 
             document.getElementById("butSave").click();
 
-            serviceSetup = JSON.stringify(serviceSetup);
-
-            sessionStorage.setItem("serviceSetup", serviceSetup);
+            sessionStorage.setItem("serviceSetup", JSON.stringify(serviceSetup));
 
             var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
 
@@ -3148,17 +3552,27 @@
 
             function getTechnician(name){
                 if(name==="Brian"){
-                    return "BRIAN B";
-                } else if(name==="Craig" || name==="Kody"){
+                    return "DEREK S";
+                } else if(name==="Craig"){
                     return "CRAIG L";
                 } else if(name==="Daniel"){
                     return "DANIEL A";
+                } else if(name==="Derek"){
+                    return "DEREK S";
                 } else if(name==="Jeff"){
                     return "JEFF H";
+                } else if(name==="Kody"){
+                    return "CRAIG L";
+                } else if(name==="Jesse"){
+                    return "JESSE H";
                 } else if(name==="Joseph"){
                     return "JOSEPH A";
+                } else if(name==="Landon"){
+                    return "JESSE H";
                 } else if(name==="Michael"){
                     return "MICHAEL R";
+                } else if(name==="Raybrown"){
+                    return "RICKY";
                 } else if(name){
                     return name;
                 } else {
@@ -3214,16 +3628,14 @@
             } else {
                 welcomeLetter.nextService = getServiceDate(serviceSetup.nextService);
             }
-
-            welcomeLetter = JSON.stringify(welcomeLetter);
-
-            sessionStorage.setItem("welcomeLetter", welcomeLetter);
-
+            
             taskNameInput.value = "Follow up for Initial";
 
             dueDateInput.value = getFutureDate(welcomeLetter.startDate, 14);
 
             prioritySelect.value = "2";
+
+            sessionStorage.setItem("welcomeLetter", JSON.stringify(welcomeLetter));
 
             document.getElementById("butSave").click();
 
@@ -3243,38 +3655,43 @@
 
             var assignee = document.getElementById("Division").value;
 
-            var startDate, nextDate;
-
-            if(taskDescription.includes("StartDate:")){
-                startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
-            } else {
-                startDate = getFutureDate(document.getElementById("dueDate").value, -14);
-            }
-
-            var serviceSetup = getServiceSetup(1);
-
-            var nextService = getServiceOrder(1);
-
-            console.log(serviceSetup);
-
-            if(nextService.date){
-                nextDate = nextService.date;
-            } else if(taskDescription.includes("NextDate:")){
-                nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
-            }
-
             if(taskSubject.toLowerCase().includes('follow up')){
-                var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
 
-                if(!locationPhoneNumberLink) return;
-                var textNumber = locationPhoneNumberLink.value;
-                var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
-                    ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!";
+                var startDate, nextDate, currentDate = new Date();
 
-                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"|"+assignee+"|"+Date.now());
+                if(taskDescription.includes("StartDate:")){
+                    startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
+                } else {
+                    startDate = getFutureDate(document.getElementById("dueDate").value, -14);
+                }
 
-                document.getElementById("status").value = "C";
+                var serviceSetup = getServiceSetup(1);
 
+                var nextService = getServiceOrder(1);
+
+                if(nextService.date){
+                    nextDate = nextService.date;
+                } else if(taskDescription.includes("NextDate:")){
+                    nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
+                }
+
+                if(new Date(nextDate) > currentDate && getDifferenceInDays(currentDate, nextDate) > 4){
+
+                    var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+                    if(!locationPhoneNumberLink) return;
+                    var textNumber = locationPhoneNumberLink.value;
+                    var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
+                        ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!";
+
+                    GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"|"+assignee+"|"+Date.now());
+
+                    document.getElementById("status").value = "C";
+                } else {
+                    document.getElementById("status").value = "C";
+
+                    document.getElementById("butSave").click();
+                }
             }
         }
     }
@@ -3447,10 +3864,17 @@
 
         if(serviceSetup){
             if(urlContains(["location/detail.asp"])){
-                if(confirm("Generate Next Service: "+serviceSetup.nextDate+"?")){
-                    document.getElementById("RSOrderLink1").click();
-                } else {
-                    sessionStorage.removeItem("generateService");
+
+                var daysToNextService = getDifferenceInDays(null, serviceSetup.nextDate);
+
+                if(daysToNextService < 45){
+
+                    if(confirm("Generate Next Service: "+serviceSetup.nextDate+"?")){
+                        document.getElementById("RSOrderLink1").click();
+                    } else {
+                        sessionStorage.removeItem("generateService");
+                    }
+
                 }
 
             } else if(urlContains(["serviceOrder/detail.asp"])){
@@ -3466,9 +3890,7 @@
 
                 }, 1500);
             }
-
         }
-
     }
 
     function autoDataFixinator(){
@@ -4489,9 +4911,7 @@
                     duplicateOrder.tech = techInput.value;
                     duplicateOrder.directions = directionsInput.value;
 
-                    duplicateOrder = JSON.stringify(duplicateOrder);
-
-                    sessionStorage.setItem("duplicateOrder", duplicateOrder);
+                    sessionStorage.setItem("duplicateOrder", JSON.stringify(duplicateOrder));
 
                     butExit.click();
 
@@ -4503,11 +4923,9 @@
     }
 
     function createRetrieveLink(){
+
         var retrieveLink = document.createElement("a");
         retrieveLink.innerHTML = "Retrieve Account Data";
-        retrieveLink.style.position = "absolute";
-        retrieveLink.style.paddingTop = "2px";
-        retrieveLink.style.right = "10px";
         retrieveLink.style.cursor = "pointer";
 
         retrieveLink.onclick = function(){
@@ -4517,10 +4935,19 @@
 
           //  window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
 
-            window.open("http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12");
+            window.open(retrieveURL);
         }
 
-        return retrieveLink;
+        var retrieveDiv = document.createElement("div");
+        retrieveDiv.style.position = "relative";
+        retrieveDiv.style.top = "10px";
+        retrieveDiv.style.right = "10px";
+        retrieveDiv.style.marginBottom = "-10px";
+        retrieveDiv.style.paddingTop = "2px";
+        retrieveDiv.style.textAlign = "right";
+        retrieveDiv.appendChild(retrieveLink);
+
+        return retrieveDiv;
     }
 
     function accountListExtractinator(){
@@ -4606,7 +5033,14 @@
 
             var accountString = formatSchedule(data);
 
-            if(accountString.includes("WEEKLY") || accountString.includes("BIWEEKLY") || accountString.includes("Report Totals") || accountString.includes("28 DAYS") || accountString.includes("3 WEEKS") || accountString.includes("6 WEEKS") || accountString.includes("TMSJ")){
+            if(accountString.includes("Report Totals")
+                || accountString.includes("WEEKLY")
+                    || accountString.includes("BIWEEKLY")
+                        || accountString.includes("28 DAYS")
+                            || accountString.includes("3 WEEKS")
+                                || accountString.includes("6 WEEKS")
+                                    || accountString.includes("TMSJ"))
+            {
                 return false;
             } else if(accountString.split("\t").length !== 15){
                 return false;
