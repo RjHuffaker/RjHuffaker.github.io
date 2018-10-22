@@ -1,5 +1,16 @@
 <!DOCTYPE html>
 <html>
+<head>
+	<script>
+	  (function(){
+	    var redirect = sessionStorage.redirect;
+	    delete sessionStorage.redirect;
+	    if (redirect && redirect != location.href) {
+	      history.replaceState(null, null, redirect);
+	    }
+	  })();
+	</script>
+</head>
 <body>
 	<div style="padding-left: 20%; padding-right: 20%; padding-top: 50px;">
 		<img src="ScorpImage.png">
