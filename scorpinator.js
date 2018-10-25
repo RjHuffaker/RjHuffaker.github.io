@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.610
+// @version      1.611
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -514,7 +514,7 @@
 
         if(addressBlock && locationHeaderDetailLink){
             accountId = locationHeaderDetailLink.children[0].innerHTML;
-            accountName = addressBlock.children[0].children[1].children[0].children[0].innerHTML.replace(" &amp; ","&");
+            accountName = addressBlock.children[0].children[1].children[0].children[0].innerHTML.replace("amp; ","");
         } else {
             accountId = "";
             accountName = "";
@@ -2893,6 +2893,7 @@
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "12";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
                         taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
                         taskForSelect.value = "2915";
                         break;
@@ -2903,7 +2904,7 @@
                         taskForSelect.value = "2719";
                         addSetupTask = true;
                         taskName = "Check Estimate";
-                        taskDescription = "Service: $??\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: \nStartDate: "+serviceOrder.date;
+                        taskDescription = "Service: $??M\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: \nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
                     case "FREE ESTIMATE C":
@@ -2953,6 +2954,7 @@
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "12";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
                         taskName = "Generate 1 more Flea treatment on "+getFutureDate(serviceOrder.date, 14);
                         break;
                     case "ONE":
@@ -2977,20 +2979,22 @@
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "12";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
                         taskName = "Generate 2 more GR treatments @ $100 ea";
                         break;
                     case "TICKS":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "12";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
                         taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
                         break;
                     case "WDO TERMITE":
                         prioritySelect.value = "3";
                         taskTypeSelect.value = "12";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                        taskName = "Add termite warranty";
                         taskForSelect.value = "2719";
+                        taskName = "Add termite warranty";
                         break;
                     default:
                         console.log("TODO: Don't know what to do with this.");
@@ -3002,9 +3006,10 @@
 
                 function getSetupPrice(data){
                     var setupPrice = "???";
-
+                    console.log(data);
                     var setupNotes = [
                         { input: "40mo", output: "$40M" },
+                        { input: "$40mo", output: "$40M" },
                         { input: "40 mo", output: "$40M" },
                         { input: "mo$40", output: "$40M" },
                         { input: "mo $40", output: "$40M" },
@@ -3012,6 +3017,7 @@
                         { input: "monthly @ $40", output: "$40M" },
 
                         { input: "45mo", output: "$45M" },
+                        { input: "$45mo", output: "$45M" },
                         { input: "45 mo", output: "$45M" },
                         { input: "mo$45", output: "$45M" },
                         { input: "mo $45", output: "$45M" },
@@ -3019,6 +3025,7 @@
                         { input: "monthly @ $45", output: "$45M" },
 
                         { input: "49mo", output: "$49M" },
+                        { input: "$49mo", output: "$49M" },
                         { input: "49 mo", output: "$49M" },
                         { input: "mo$49", output: "$49M" },
                         { input: "mo $49", output: "$49M" },
@@ -3026,13 +3033,23 @@
                         { input: "monthly @ $49", output: "$49M" },
 
                         { input: "55mo", output: "$55M" },
+                        { input: "$55mo", output: "$55M" },
                         { input: "55 mo", output: "$55M" },
                         { input: "mo$55", output: "$55M" },
                         { input: "mo $55", output: "$55M" },
                         { input: "mo @ $55", output: "$55M" },
                         { input: "monthly @ $55", output: "$55M" },
 
+                        { input: "59mo", output: "$59M" },
+                        { input: "$59mo", output: "$59M" },
+                        { input: "59 mo", output: "$59M" },
+                        { input: "mo$59", output: "$59M" },
+                        { input: "mo $59", output: "$59M" },
+                        { input: "mo @ $59", output: "$59M" },
+                        { input: "monthly @ $59", output: "$59M" },
+
                         { input: "60mo", output: "$60M" },
+                        { input: "$60mo", output: "$60M" },
                         { input: "60 mo", output: "$60M" },
                         { input: "mo$60", output: "$60M" },
                         { input: "mo $60", output: "$60M" },
@@ -3040,11 +3057,20 @@
                         { input: "monthly @ $60", output: "$60M" },
 
                         { input: "65mo", output: "$65M" },
+                        { input: "$65mo", output: "$65M" },
                         { input: "65 mo", output: "$65M" },
                         { input: "mo$65", output: "$65M" },
                         { input: "mo $65", output: "$65M" },
                         { input: "mo @ $65", output: "$65M" },
                         { input: "monthly @ $65", output: "$65M" },
+
+                        { input: "69mo", output: "$69M" },
+                        { input: "$69mo", output: "$69M" },
+                        { input: "69 mo", output: "$69M" },
+                        { input: "mo$69", output: "$69M" },
+                        { input: "mo $69", output: "$69M" },
+                        { input: "mo @ $69", output: "$69M" },
+                        { input: "monthly @ $69", output: "$69M" },
 
                         { input: "55eom", output: "$55B" },
                         { input: "55 bimonthly", output: "$55B" },
@@ -3066,7 +3092,10 @@
                         { input: "99 quarterly", output: "$99Q" }
                     ];
 
+                    console.log(data.toLowerCase());
+
                     for(var i = 1; i < setupNotes.length; i++){
+
                         if(data.toLowerCase().indexOf(setupNotes[i].input) > -1){
                             setupPrice = setupNotes[i].output;
                         }
@@ -3495,7 +3524,7 @@
             if(description.includes("Service: ")){
                 var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
 
-                serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
+                serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY").replace("C", "MONTHLY");
 
                 price = _service.replaceAll(/[^0-9]+/, '')+".00";
 
@@ -3543,6 +3572,8 @@
             taskNameInput.value = "Send Welcome Letter";
 
             document.getElementById("butSave").click();
+
+            console.log(JSON.stringify(serviceSetup));
 
             sessionStorage.setItem("serviceSetup", JSON.stringify(serviceSetup));
 
@@ -3675,7 +3706,7 @@
                     nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
                 }
 
-                if(new Date(nextDate) > currentDate && getDifferenceInDays(currentDate, nextDate) > 4){
+                if(new Date(nextDate) > currentDate && getDifferenceInDays(currentDate, nextDate) > 2){
 
                     var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
 
@@ -4341,7 +4372,7 @@
                 var link = document.createElement("a");
                 link.style.cursor = "pointer";
                 link.style.position = "absolute";
-                link.style.top = "12px";
+                link.style.top = "11px";
                 link.style.right = "115px";
                 link.style.height = "30px";
                 link.style.width = "30px";
@@ -4372,13 +4403,15 @@
                     alert("profileContent not found!");
                     return;
                 }
-                var name = profileContent.children[2].children[0].innerHTML;
-                var phone = profileContent.children[2].children[1].innerHTML;
 
                 var nameDiv = document.getElementsByClassName("name")[0];
                 var phoneLink = document.getElementsByClassName("phone")[0];
 
+                var name = nameDiv.innerHTML;
+                var phone = phoneLink.innerHTML;
+
                 var contactInfo;
+
                 if(phone){
                     contactInfo = name.replace("(", "").replace(") ", "-")+" "+phone;
                 } else {
