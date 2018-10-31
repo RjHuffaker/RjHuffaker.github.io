@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.611
+// @version      1.612
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -140,6 +140,51 @@
         "9 Years": {name: "9 Years", excluded: false },
         "> 10 Years": {name: "> 10 Years", excluded: false }
     };
+
+    var CITIES = [
+        { name: "Phoenix", branch: "35" },
+        { name: "New River", branch: "35" },
+        { name: "Gold Canyon", branch: "35" },
+        { name: "Apache Junction", branch: "35" },
+        { name: "Casa Grande", branch: "35" },
+        { name: "Arizona City", branch: "35" },
+        { name: "Coolidge", branch: "35" },
+        { name: "Florence", branch: "35" },
+        { name: "Maricopa", branch: "35" },
+        { name: "San Tan Valley", branch: "35" },
+        { name: "Queen Creek", branch: "35" },
+        { name: "Casa Grande", branch: "35" },
+        { name: "Mesa", branch: "35" },
+        { name: "Chandler", branch: "35" },
+        { name: "Gilbert", branch: "35" },
+        { name: "Scottsdale", branch: "35" },
+        { name: "Paradise Valley", branch: "35" },
+        { name: "Rio Verde", branch: "35" },
+        { name: "Fountain Hills", branch: "35" },
+        { name: "Tempe", branch: "35" },
+        { name: "Glendale", branch: "35" },
+        { name: "Avondale", branch: "35" },
+        { name: "Buckeye", branch: "35" },
+        { name: "Cave Creek", branch: "35" },
+        { name: "El Mirage", branch: "35" },
+        { name: "Goodyear", branch: "35" },
+        { name: "Laveen", branch: "35" },
+        { name: "Litchfield Park", branch: "35" },
+        { name: "Peoria", branch: "35" },
+        { name: "Tolleson", branch: "35" },
+        { name: "Waddell", branch: "35" },
+        { name: "Sun City", branch: "35" },
+        { name: "Surprise", branch: "35" },
+        { name: "Sun City West", branch: "35" },
+        { name: "Carefree", branch: "35" },
+        { name: "Red Rock", branch: "38" },
+        { name: "Green Valley", branch: "38" },
+        { name: "Sahuarita", branch: "38" },
+        { name: "Vail", branch: "38" },
+        { name: "Marana", branch: "38" },
+        { name: "Tucson", branch: "38" }
+    ];
+
 
     var TECHNICIANS = {};
 
@@ -380,8 +425,6 @@
     function debugSessionStorage(){
         var sessionText = "DEBUG - sessionStorage variables:";
 
-        
-
         sessionText = sessionText+"\n   serviceSetup: "+sessionStorage.getItem("serviceSetup");
         sessionText = sessionText+"\n   welcomeLetter: "+sessionStorage.getItem("welcomeLetter");
         sessionText = sessionText+"\n   generateService: "+sessionStorage.getItem("generateService");
@@ -561,6 +604,14 @@
         address.timestamp = Date.now();
 
         return address;
+    }
+
+    function getBranch(city){
+        for(var i = 0; i < CITIES.length; i++){
+            if(city === CITIES[i].name){
+                return CITIES[i].branch;
+            }
+        }
     }
 
     function getMonth(schedule){
@@ -777,6 +828,7 @@
         var cityInput = document.getElementById("City");
         var stateInput = document.getElementById("State");
         var zipInput = document.getElementById("Zip");
+        var branchInput = document.getElementById("BranchID");
 
         var mapMessage = document.getElementById("map_message");
 
@@ -802,6 +854,8 @@
             var zip = zipInput.value.trim();
 
             if(address && city && state && zip){
+
+                branchInput.value = getBranch(city);
 
                 var butSave = document.getElementById("butSave");
                 var butAdd = document.getElementById("butAdd");
