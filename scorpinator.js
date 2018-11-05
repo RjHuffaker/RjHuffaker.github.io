@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.612
+// @version      1.613
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -11,6 +11,7 @@
 // @match        *app.heymarket.com/*
 // @match        *email24.godaddy.com/webmail.php*
 // @match        http://www.fruitlandidrealestate.com/*
+// @match        *secure.helpscout.net/conversation/*
 // @require      https://unpkg.com/github-api/dist/GitHub.bundle.js
 // @grant        window.open
 // @grant        GM_setValue
@@ -251,7 +252,7 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-        if(!urlContains(["blank", "iframe", "invoice", "appointment"])){
+        if(!urlContains(["blank", "iframe", "invoice", "appointment", "secure.helpscout.net"])){
             retrieveCSS();
             retrieveGoogleMaps();
             focusListener();
@@ -266,7 +267,12 @@
             paymentNotificator();
             serviceOrderDuplicator();
             accountListExtractinator();
-            goDaddyAddressGrabber();
+            emailAddressReciever();
+        }
+
+        if(urlContains(["secure.helpscout.net/conversation"])){
+            emailAddressGrabber();
+            autoContactinator();
         }
 
         if(urlContains(["location/add.asp", "location/edit.asp"])){
@@ -2891,7 +2897,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","COM-IN","FLEAS","ONE","RE-START","ROACH","TICKS","WDO TERMITE"]
+                        if(["BED BUGS","COM-IN","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","FLEAS","ONE","RE-START","ROACH","TICK-IN","TICKS","WDO TERMITE"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -3042,6 +3048,17 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14);
+                        break;
+                    case "TICK-IN":
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "16";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2915";
+                        addSetupTask = true;
+                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14)+" & Create New Setup";
+                        taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
+                        document.getElementById("prox-icon").click();
                         break;
                     case "WDO TERMITE":
                         prioritySelect.value = "3";
@@ -4153,8 +4170,39 @@
             addContactIcons(document.getElementById("location-address-block"));
             addContactIcons(document.getElementById("billto-address-block"));
 
-        } else if(urlContains(["godaddy.com/webmail.php"])){
-            watchWebmail();
+        } else if(urlContains(["secure.helpscout.net/conversation"])){
+            var observer = new MutationObserver(function(mutations){
+                mutations.forEach(function(mutation){
+
+                    if (!mutation.addedNodes) return
+
+                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+
+                        var node = mutation.addedNodes[i]
+                        if(!node.classList) return;
+
+                        if(node.id === "tkContent"){
+                            var tkContent = document.getElementById("tkContent");
+
+                            if(!tkContent) return;
+
+                            addContactIcons(tkContent);
+
+                        }
+                    }
+
+                });
+            });
+
+            observer.observe(document.getElementById("js-wrap"), {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
+
+
+            addContactIcons(document.getElementById("tkContent"));
 
         } else if(urlContains(['app.heymarket.com'])){
             console.log("hello");
@@ -4181,32 +4229,6 @@
 
             });
 
-        }
-
-        function watchWebmail(){
-            var observer = new MutationObserver(function(mutations){
-                mutations.forEach(function(mutation){
-                    if (!mutation.addedNodes) return
-
-                    for (var i = 0; i < mutation.addedNodes.length; i++) {
-
-                        var node = mutation.addedNodes[i]
-                        if(!node.classList) return;
-
-                        if(node.id === "view_body" && node.style.display !== "none"){
-                            addContactIcons(node);
-                        }
-                    }
-
-                });
-            });
-
-            observer.observe(document.getElementById("main"), {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                characterData: true
-            });
         }
 
         function goToContact(textNumber, callback){
@@ -4478,35 +4500,141 @@
 
     }
 
-    function goDaddyAddressGrabber(){
-        if(urlContains(["godaddy.com/webmail.php"])){
-            var observer = new MutationObserver(function(mutations){
 
-                mutations.forEach(function(mutation){
-                    if (!mutation.addedNodes) return
 
-                    for (var i = 0; i < mutation.addedNodes.length; i++) {
+    function emailAddressGrabber(){
 
-                        var node = mutation.addedNodes[i];
+        var observer = new MutationObserver(function(mutations){
+            mutations.forEach(function(mutation){
 
-                        if(node.id === "view_body" && node.style.display !== "none"){
+                if (!mutation.addedNodes) return
 
-                            node.appendChild(document.createElement("p"));
-                            node.appendChild(createPestPacLink());
+                for (var i = 0; i < mutation.addedNodes.length; i++) {
 
-                        }
+                    var node = mutation.addedNodes[i]
+                    if(!node.classList) return;
+
+                    if(node.id === "tkContent"){
+                        var tkContent = document.getElementById("tkContent");
+
+                        if(!tkContent) return;
+
+                        tkContent.appendChild(createPestPacLink());
+
                     }
-                });
-            });
+                }
 
-            observer.observe(document.getElementById("main"), {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                characterData: true
             });
+        });
+
+        observer.observe(document.getElementById("js-wrap"), {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            characterData: true
+        });
+
+        document.getElementById("tkContent").appendChild(createPestPacLink());
+
+        function createPestPacLink(){
+            var pestPacIcon = document.createElement("img");
+            pestPacIcon.id = "pestPacIcon";
+            pestPacIcon.src = "https://rjhuffaker.github.io/pestpac_logo.png";
+            pestPacIcon.style.margin = "-4px";
+            pestPacIcon.style.width = "20px";
+            pestPacIcon.style.height = "20px";
+
+            var pestPacLink = document.createElement("a");
+            pestPacLink.style.margin = "12px";
+            pestPacLink.style.cursor = "pointer";
+            pestPacLink.appendChild(pestPacIcon);
+            pestPacLink.appendChild(document.createTextNode(" Send to PestPac"));
+
+            pestPacLink.onclick = sendContactInfo;
+
+            return pestPacLink;
+
+            function sendContactInfo(){
+                spinButton(document.getElementById("pestPacIcon"), 20);
+                GM_setValue("contactInfo", JSON.stringify(getContactInfo()));
+
+                function getContactInfo(){
+                    var contact = {};
+
+                    Array.from(document.getElementsByTagName("tr")).forEach(
+                        function(element, index, array){
+
+                            if(element.hasAttribute("style")){
+
+                                if(element.style.backgroundColor === "rgb(234, 242, 250)"){
+
+                                    var headerText, contentRow;
+
+                                    if(element.children[0].children[0]){
+                                        headerText = element.children[0].children[0].innerHTML;
+                                    }
+
+                                    console.log(element.nextElementSibling);
+
+                                    var elementSibling = element.nextElementSibling;
+
+                                    if(elementSibling){
+                                        if(elementSibling.children[1]){
+                                            contentRow = elementSibling.children[1].innerHTML;
+                                        }
+                                    }
+
+                                    console.log("headerText",headerText);
+                                    console.log("contentRow",contentRow);
+
+                                    if(headerText === "Name"){
+                                        contact.name = contentRow.replace(/<(?:.|\n)*?>/gm, '');
+
+                                        if(contact.name.split(" ")){
+                                            contact.fname = contact.name.split(" ")[0];
+                                            contact.lname = contact.name.split(" ")[1];
+                                        }
+
+                                    } else if(headerText === "Email"){
+                                        contact.email = contentRow.replace(/<(?:.|\n)*?>/gm, '');
+                                    } else if(headerText === "Phone"){
+                                        contact.phone = contentRow.replace(/<(?:.|\n)*?>/gm, '').replace("(", "").replace(") ", "-").replace(/\s+/g, "");
+                                    } else if(headerText === "Address"){
+                                        if(contentRow.split("<br>").length){
+                                            contact.address = contentRow.split("<br>")[0];
+                                            var zipcodeRegEx = /85[0-9]{3}/;
+                                            var zipcodeRegExMatcher = new RegExp(zipcodeRegEx);
+
+                                            if(zipcodeRegExMatcher.exec(contentRow)){
+                                                contact.zipcode = zipcodeRegExMatcher.exec(contentRow)[0];
+                                            }
+                                        }
+
+                                    } else if(headerText === "Pest concerns &amp; square footage."){
+                                        contact.details = contentRow.replace(/<(?:.|\n)*?>/gm, '');
+                                    }
+
+                                }
+
+                            }
+
+                        });
+
+                    contact.date = Date.now();
+
+                    console.log(contact);
+
+                    return contact;
+
+                }
+
+            }
+
         }
 
+    }
+
+    function emailAddressReciever(){
 
         if(urlContains(["app.pestpac.com"])){
 
@@ -4570,7 +4698,6 @@
 
         }
 
-
         function inputContactInfo(contact){
             console.log("updateContactInfo");
 
@@ -4620,80 +4747,6 @@
                 emailInput.focus();
                 emailInput.blur();
             }, 1000);
-
-        }
-
-        function createPestPacLink(){
-            var pestPacIcon = document.createElement("img");
-            pestPacIcon.id = "pestPacIcon";
-            pestPacIcon.src = "https://rjhuffaker.github.io/pestpac_logo.png";
-            pestPacIcon.style.margin = "-4px";
-            pestPacIcon.style.width = "20px";
-            pestPacIcon.style.height = "20px";
-
-            var pestPacLink = document.createElement("a");
-            pestPacLink.style.margin = "12px";
-            pestPacLink.style.cursor = "pointer";
-            pestPacLink.appendChild(pestPacIcon);
-            pestPacLink.appendChild(document.createTextNode(" Send to PestPac"));
-
-            pestPacLink.onclick = sendContactInfo;
-
-            return pestPacLink;
-
-            function sendContactInfo(){
-                spinButton(document.getElementById("pestPacIcon"), 20);
-                GM_setValue("contactInfo", JSON.stringify(getContactInfo()));
-
-                function getContactInfo(){
-                    var contact = {};
-
-                    Array.from(document.getElementsByTagName("tr")).forEach(
-                        function(element, index, array){
-                            if(element.hasAttribute("bgcolor")){
-                                if(element.bgColor === "#EAF2FA"){
-                                    var headerText = element.children[0].children[0].children[0].innerHTML;
-                                    var contentRow = element.nextElementSibling.children[1].children[0].innerHTML;
-
-                                    if(headerText === "Name"){
-                                        contact.name = contentRow.replace(/<(?:.|\n)*?>/gm, '');
-
-                                        if(contact.name.split(" ")){
-                                            contact.fname = contact.name.split(" ")[0];
-                                            contact.lname = contact.name.split(" ")[1];
-                                        }
-
-                                    } else if(headerText === "Email"){
-                                        contact.email = contentRow.replace(/<(?:.|\n)*?>/gm, '');
-                                    } else if(headerText === "Phone"){
-                                        contact.phone = contentRow.replace(/<(?:.|\n)*?>/gm, '').replace("(", "").replace(") ", "-").replace(/\s+/g, "");
-                                    } else if(headerText === "Address"){
-                                        if(contentRow.split("<br>").length){
-                                            contact.address = contentRow.split("<br>")[0];
-                                            var zipcodeRegEx = /85[0-9]{3}/;
-                                            var zipcodeRegExMatcher = new RegExp(zipcodeRegEx);
-
-                                            if(zipcodeRegExMatcher.exec(contentRow)){
-                                                contact.zipcode = zipcodeRegExMatcher.exec(contentRow)[0];
-                                            }
-                                        }
-
-                                    } else if(headerText === "Pest concerns &amp; square footage."){
-                                        contact.details = contentRow.replace(/<(?:.|\n)*?>/gm, '');
-                                    }
-                                }
-                            }
-                        });
-
-                    contact.date = Date.now();
-
-                    console.log(contact);
-
-                    return contact;
-
-                }
-
-            }
 
         }
 
