@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.613
+// @version      1.620
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -9,8 +9,6 @@
 // @match        https://app.pestpac.com/*
 // @match        reporting.pestpac.com/reports/serviceSetups/reportRemote.asp
 // @match        *app.heymarket.com/*
-// @match        *email24.godaddy.com/webmail.php*
-// @match        http://www.fruitlandidrealestate.com/*
 // @match        *secure.helpscout.net/conversation/*
 // @require      https://unpkg.com/github-api/dist/GitHub.bundle.js
 // @grant        window.open
@@ -87,7 +85,7 @@
                     "DEC": { name: "DEC", checked: false }
                 }
             }
-        },
+        }
     };
 
     var DAILYTOTALS = {
@@ -287,9 +285,6 @@
             monitorInvoice();
         }
 
-        if(urlContains(["/testpage/"])){
-            monitorZillow();
-        }
     }
 
     function triggerMouseEvent(node, eventType) {
@@ -365,6 +360,49 @@
         return result;
     }
 
+    function xmlToJson(xml) {
+        // Create the return object
+        var obj = {};
+
+        if (xml.nodeType == 1) { // element
+            // do attributes
+            if (xml.attributes.length > 0) {
+                obj["@attributes"] = {};
+                for (var j = 0; j < xml.attributes.length; j++) {
+                    var attribute = xml.attributes.item(j);
+                    obj["@attributes"][attribute.nodeName] = attribute.nodeValue;
+                }
+            }
+        } else if (xml.nodeType == 3) { // text
+            obj = xml.nodeValue;
+        }
+
+        // do children
+        if (xml.hasChildNodes()) {
+            for(var i = 0; i < xml.childNodes.length; i++) {
+
+                var item = xml.childNodes.item(i);
+                var nodeName = item.nodeName;
+
+                if (typeof(obj[nodeName]) === "undefined") {
+                    if(nodeName === "#text"){
+                        obj = xmlToJson(item);
+                    } else {
+                        obj[nodeName] = xmlToJson(item);
+                    }
+                } else {
+                    if (typeof(obj[nodeName].push) === "undefined") {
+                        var old = obj[nodeName];
+                        obj[nodeName] = [];
+                        obj[nodeName].push(old);
+                    }
+                    obj[nodeName].push(xmlToJson(item));
+                }
+            }
+        }
+        return obj;
+    };
+
     function capitalizeFirstLetter(string) {
         return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
     }
@@ -372,8 +410,20 @@
     function httpGetAsync(theUrl, callback) {
         var xmlHttp = new XMLHttpRequest();
         xmlHttp.onreadystatechange = function() {
-            if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200){
                 callback(xmlHttp.responseText);
+            }
+        };
+        xmlHttp.open("GET", theUrl, true); // true for asynchronous
+        xmlHttp.send(null);
+    }
+
+    function httpGetXML(theUrl, callback) {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200){
+                callback(xmlToJson(xmlHttp.responseXML));
+            }
         };
         xmlHttp.open("GET", theUrl, true); // true for asynchronous
         xmlHttp.send(null);
@@ -591,12 +641,18 @@
                 address.city = addressList[1].split(", ")[0];
                 address.state = addressList[1].split(", ")[1].split(" ")[0];
                 address.zipcode = addressList[1].split(", ")[1].split(" ")[1];
-            } else if(addressList.length === 3){
+            } else if(addressList.length > 2){
                 address.street = addressList[0];
-                address.suite = addressList[1];
-                address.city = addressList[2].split(", ")[0];
-                address.state = addressList[2].split(", ")[1].split(" ")[0];
-                address.zipcode = addressList[2].split(", ")[1].split(" ")[1];
+                var thirdline;
+                if(addressList[1].split(", ").length > 1){
+                    thirdline = addressList[1].split(", ")
+                } else {
+                    address.suite = addressList[1];
+                    thirdline = addressList[2].split(", ")
+                }
+                address.city = thirdline[0];
+                address.state = thirdline[1].split(" ")[0];
+                address.zipcode = thirdline[1].split(" ")[1];
             }
 
         } else {
@@ -898,18 +954,6 @@
 
     }
 
-    function monitorZillow(){
-        var zillowData = document.getElementById("zillowData");
-        if(!zillowData) return;
-        if(zillowData.innerHTML === "null"){
-            console.log("No Zillow Data: "+window.location.href);
-        } else {
-            zillowData = JSON.parse(zillowData.innerHTML)
-            zillowData.date = new Date();
-            GM_setValue("zillowData", JSON.stringify(zillowData));
-        }
-    }
-
     function monitorHistory(){
         console.log("monitorHistory");
 
@@ -937,7 +981,7 @@
 
                         if(hrefMatch.includes("invoice")){
 
-                            invoiceLinks.push("http://app.pestpac.com"+hrefMatch+"scorpinator=0");
+                            invoiceLinks.push("https://app.pestpac.com"+hrefMatch+"scorpinator=0");
 
                         }
                     }
@@ -1070,11 +1114,11 @@
                 var newURL = pattern.exec(onclickText)[0].replaceAll("'", "");
 
                 if(openWindow){
-                    var newWindow = window.open("http://app.pestpac.com"+newURL);
+                    var newWindow = window.open("https://app.pestpac.com"+newURL);
                     quickSearchField.value = "";
                     document.getElementsByClassName("actions")[0].children[1].click();
                 } else {
-                    window.location.href="http://app.pestpac.com"+newURL;
+                    window.location.href="https://app.pestpac.com"+newURL;
                 }
             }
 
@@ -1101,7 +1145,7 @@
                 var onclickText = searchResults[0].getAttribute('onclick');
                 var newURL = pattern.exec(onclickText)[0].replaceAll("'", "").replace("location/detail.asp","notes/default.asp");
 
-                window.location.href="http://app.pestpac.com"+newURL;
+                window.location.href="https://app.pestpac.com"+newURL;
 
             }
 
@@ -1758,8 +1802,6 @@
 
             generateProxLegend(data);
 
-            createZillowIframe();
-
             if(!PROXMAP){
                 generateProxMap(data);
             } else {
@@ -2026,12 +2068,10 @@
 
                 });
 
-
-
                 var marker = new google.maps.Marker({
                     map: PROXMAP,
                     icon: {
-                        url: "http://maps.google.com/mapfiles/kml/paddle/wht-circle.png",
+                        url: "https://maps.google.com/mapfiles/kml/paddle/wht-circle.png",
                         size: new google.maps.Size(40, 40),
                         scaledSize: new google.maps.Size(40, 40),
                         origin: new google.maps.Point(0, 0),
@@ -2575,6 +2615,8 @@
 
         function createZillowDiv(){
 
+            sendZillowRequest();
+
             var zillowDiv = document.createElement("div");
             zillowDiv.id = "zillowDiv";
             zillowDiv.height = "100%";
@@ -2590,21 +2632,24 @@
 
         }
 
-        function createZillowIframe(){
+        function sendZillowRequest(){
             var address = getLocationAddress();
-
-            var zillowDiv = document.getElementById("zillowDiv");
             
-            var zUrl = "http://www.fruitlandidrealestate.com/testpage/?address="+address.street+"&zipcode="+address.zipcode;
+            var proxyUrl = "https://cors-anywhere.herokuapp.com/";
 
-            zUrl = zUrl.replaceAll(" ", "+");
+            var baseUrl = "https://www.zillow.com/webservice/GetDeepSearchResults.htm?zws-id=";
 
-            var zillowIframe = document.createElement("iframe");
-            zillowIframe.id = "zillowIframe";
-            zillowIframe.src = zUrl;
-            zillowIframe.style.display = "none";
+            var zwsid = "X1-ZWz1ghiciuoeff_6jziz";
 
-            zillowDiv.appendChild(zillowIframe);
+            var queryUrl = proxyUrl+baseUrl+zwsid+"&address="+address.street+"&citystatezip="+address.zipcode+"&rentzestimate=true";
+
+            queryUrl = queryUrl.replaceAll(" ", "+");
+
+            httpGetXML(queryUrl, function(data){
+                var zillowData = data['SearchResults:searchresults'].response.results.result;
+                GM_setValue("zillowData", JSON.stringify(zillowData));
+            });
+
         }
 
         function populateZillowDiv(zData){
@@ -4262,7 +4307,7 @@
         function updateContact(account, name, assignee){
             console.log("updateContact: "+account+" "+name+" "+assignee);
 
-            var nameDiv = document.getElementsByClassName("name")[0];
+            var nameDiv = document.getElementsByClassName("name")[1];
 
             if(nameDiv && nameDiv.innerHTML.includes(account)){
                 console.log("Do nothing "+account+" "+nameDiv.innerHTML);
@@ -4660,7 +4705,7 @@
 
                     window.focus();
 
-                    window.location = "http://app.pestpac.com/location/add.asp";
+                    window.location = "https://app.pestpac.com/location/add.asp";
 
                 }
 
@@ -4688,7 +4733,7 @@
 
                         window.focus();
 
-                        window.location = "http://app.pestpac.com/location/add.asp";
+                        window.location = "https://app.pestpac.com/location/add.asp";
 
                     }
 
@@ -5071,7 +5116,7 @@
         retrieveLink.onclick = function(){
             GM_setValue("retrieveAccountData", "residential");
 
-            var retrieveURL = "http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
+            var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
 
           //  window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
 
