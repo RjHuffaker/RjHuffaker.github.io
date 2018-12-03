@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.620
+// @version      1.630
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -508,6 +508,25 @@
                 clearInterval(spinterval);
             }
         }
+    }
+
+    function alignLeftRight(leftDiv, rightDiv){
+        leftDiv.style.position = "absolute";
+        leftDiv.style.width = "50%";
+        leftDiv.style.left = "0";
+
+        rightDiv.style.position = "absolute";
+        rightDiv.style.width = "50%";
+        rightDiv.style.right = "0";
+        rightDiv.style.textAlign = "right";
+
+        var wrapperDiv = document.createElement("div");
+        wrapperDiv.style.position = "relative";
+        wrapperDiv.style.height = "2em";
+        wrapperDiv.appendChild(leftDiv);
+        wrapperDiv.appendChild(rightDiv);
+
+        return wrapperDiv;
     }
 
     function getFutureDate(startDate, daysOut){
@@ -2166,31 +2185,9 @@
                 function createGeneralTab(){
                     var generalTab = document.createElement("div");
 
-                    generalTab.appendChild(createRetrieveLink());
-
-                    var setupsReturned = document.createElement("span");
-                    setupsReturned.style.fontSize = "10pt";
-                    setupsReturned.style.fontWeight = "bold";
-                    setupsReturned.innerHTML = "Setups: ";
-
-                    generalTab.appendChild(setupsReturned);
-
-                    generalTab.appendChild(createLegendSelect([50, 100, 250, 500, 1000, 10000], PROXLISTSIZE, function(event){
-                        PROXLISTSIZE = event.target.value;
-                        fetchGeocodes(function(data){
-                            getNearestActiveSetups(data, function(data){
-                                generateProxContent(data);
-                            });
-                        });
-                    }));
-
-                    generalTab.appendChild(document.createElement("br"));
+                    generalTab.appendChild(alignLeftRight(createSetupsReturned(), createRetrieveLink()));
 
                     generalTab.appendChild(createRadioSelect(MONTHFILTER));
-
-                    generalTab.appendChild(document.createElement("br"));
-
-                    
 
                     return generalTab;
 
@@ -2203,6 +2200,60 @@
                         });
                     };
 
+                    function createFirstRow(){
+                        var wrapperDiv = document.createElement("div");
+                        wrapperDiv.style.position = "relative";
+                        wrapperDiv.appendChild(createSetupsReturned());
+                        wrapperDiv.appendChild(createRetrieveLink());
+
+                        return wrapperDiv;
+
+                    }
+
+                    function createSetupsReturned(){
+
+                        var wrapperDiv = document.createElement("div");
+
+                        wrapperDiv.style.fontSize = "10pt";
+                        wrapperDiv.style.fontWeight = "bold";
+                        wrapperDiv.innerHTML = "Setups: ";
+
+                        wrapperDiv.appendChild(createLegendSelect([50, 100, 250, 500, 1000, 10000], PROXLISTSIZE, function(event){
+                            PROXLISTSIZE = event.target.value;
+                            fetchGeocodes(function(data){
+                                getNearestActiveSetups(data, function(data){
+                                    generateProxContent(data);
+                                });
+                            });
+                        }));
+
+                        return wrapperDiv;
+
+                    }
+
+                    function createRetrieveLink(){
+
+                        var retrieveLink = document.createElement("a");
+                        retrieveLink.innerHTML = "Retrieve Account Data";
+                        retrieveLink.style.cursor = "pointer";
+                        retrieveLink.style.fontSize = "9pt";
+
+                        retrieveLink.onclick = function(){
+                            GM_setValue("retrieveAccountData", "residential");
+
+                            var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
+
+                            //  window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
+
+                            window.open(retrieveURL);
+                        }
+
+                        var wrapperDiv = document.createElement("div");
+                        wrapperDiv.appendChild(retrieveLink);
+
+                        return wrapperDiv;
+                    }
+
                     function createRadioSelect(dataModel){
                         var optionsDiv = document.createElement("div");
                         optionsDiv.id = dataModel.name+"OptionsDiv";
@@ -2213,17 +2264,17 @@
                             optionsDiv.appendChild(createToggle(dataModel, key));
                         }
 
-                        var radioHeader = document.createElement("span");
-                        radioHeader.innerHTML = dataModel.name+"  ";
+                        var radioHeader = document.createElement("p");
+                        radioHeader.innerHTML = dataModel.name+":";
                         radioHeader.style.fontSize = "10pt";
                         radioHeader.style.fontWeight = "bold";
 
-                        var radioSelectDiv = document.createElement("div");
-                        radioSelectDiv.appendChild(radioHeader);
-                        radioSelectDiv.appendChild(optionsDiv);
-                        radioSelectDiv.style.width = "100%";
+                        var wrapperDiv = document.createElement("div");
+                        wrapperDiv.appendChild(radioHeader);
+                        wrapperDiv.appendChild(optionsDiv);
+                        wrapperDiv.style.width = "100%";
 
-                        return radioSelectDiv;
+                        return wrapperDiv;
 
                         function createToggle(dataModel, key){
 
@@ -2389,16 +2440,16 @@
             }
 
             function createLegendHeader(listType, dataModel){
-                var _filterTitle = document.createElement("span");
+                var _filterTitle = document.createElement("div");
                 _filterTitle.innerHTML = listType+"  ";
                 _filterTitle.style.fontSize = "10pt";
                 _filterTitle.style.fontWeight = "bold";
 
-                var _header = document.createElement("span");
+                var _header = document.createElement("div");
                 _header.appendChild(_filterTitle);
                 _header.appendChild(createSelectAll());
 
-                return _header;
+                return alignLeftRight(_filterTitle, _header)
 
                 function createSelectAll(){
                     var _selectAllBox = document.createElement("input");
@@ -2634,19 +2685,14 @@
 
         function sendZillowRequest(){
             var address = getLocationAddress();
-            
-            var proxyUrl = "https://cors-anywhere.herokuapp.com/";
 
-            var baseUrl = "https://www.zillow.com/webservice/GetDeepSearchResults.htm?zws-id=";
+            var baseUrl = "https://azpestcontrol.services/api/zillowData.php";
 
-            var zwsid = "X1-ZWz1ghiciuoeff_6jziz";
-
-            var queryUrl = proxyUrl+baseUrl+zwsid+"&address="+address.street+"&citystatezip="+address.zipcode+"&rentzestimate=true";
-
-            queryUrl = queryUrl.replaceAll(" ", "+");
+            var queryUrl = baseUrl+"?address="+address.street+"&citystatezip="+address.zipcode.replaceAll(" ", "+");
 
             httpGetXML(queryUrl, function(data){
                 var zillowData = data['SearchResults:searchresults'].response.results.result;
+                zillowData.date = new Date();
                 GM_setValue("zillowData", JSON.stringify(zillowData));
             });
 
@@ -5105,34 +5151,6 @@
             }
 
         }
-    }
-
-    function createRetrieveLink(){
-
-        var retrieveLink = document.createElement("a");
-        retrieveLink.innerHTML = "Retrieve Account Data";
-        retrieveLink.style.cursor = "pointer";
-
-        retrieveLink.onclick = function(){
-            GM_setValue("retrieveAccountData", "residential");
-
-            var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
-
-          //  window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
-
-            window.open(retrieveURL);
-        }
-
-        var retrieveDiv = document.createElement("div");
-        retrieveDiv.style.position = "relative";
-        retrieveDiv.style.top = "10px";
-        retrieveDiv.style.right = "10px";
-        retrieveDiv.style.marginBottom = "-10px";
-        retrieveDiv.style.paddingTop = "2px";
-        retrieveDiv.style.textAlign = "right";
-        retrieveDiv.appendChild(retrieveLink);
-
-        return retrieveDiv;
     }
 
     function accountListExtractinator(){
