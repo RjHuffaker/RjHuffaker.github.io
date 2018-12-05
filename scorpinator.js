@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      1.630
+// @version      1.640
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -499,7 +499,7 @@
         function spinner(){
             if(_count <= 20){
                 var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
-                elem.style.margin = "-"+Math.abs(growth*size*.25)+"px";
+            //    elem.style.margin = "-"+Math.abs(growth*size*.25)+"px";
                 elem.style.width = Math.abs(growth*size)+"px";
                 elem.style.height = Math.abs(growth*size)+"px";
                 elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
@@ -638,7 +638,7 @@
             accountName = "";
         }
 
-        return accountId+"|"+accountName;
+        return { id: accountId, name: accountName };
     }
 
     function getLocationAddress(){
@@ -1380,7 +1380,7 @@
         var _long = parseFloat(data.longitude);
         var _lat = parseFloat(data.latitude);
 
-        var accountId = getContactInfo().split("|")[0];
+        var accountId = getContactInfo().id;
 
         refreshTechnicianList();
 
@@ -3501,11 +3501,13 @@
 
                 var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
 
-                var textNumber = locationPhoneNumberLink.value;
-
-                var messageBody = "Hi, Responsible Pest Control here. It looks like we were scheduled to come by on "+startDate+" but it didn't work out. Please reply or give us a call @ 480-924-4111 to reschedule. Thank you!";
-
-                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+                GM_setValue("autoText", JSON.stringify({
+                    phone: locationPhoneNumberLink.value,
+                    name: getContactInfo().name,
+                    id: getContactInfo().id,
+                    message: "Hi, Responsible Pest Control here. It looks like we were scheduled to come by on "+startDate+" but it didn't work out. Please reply or give us a call @ 480-924-4111 to reschedule. Thank you!",
+                    timeStamp: Date.now()
+                }));
 
                 document.getElementById("subject").value = "Send Text to Reschedule Initial";
 
@@ -3527,12 +3529,14 @@
 
                 var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
 
-                var textNumber = locationPhoneNumberLink.value;
-
-                var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
-                    ". We'd like to schedule your regular service but we're still seeing a balance on your account. Please give us a call @ 480-924-4111 so we can get this resolved. Thanks!";
-
-                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+                GM_setValue("autoText", JSON.stringify({
+                    phone: locationPhoneNumberLink.value,
+                    name: getContactInfo().name,
+                    id: getContactInfo().id,
+                    message: "Responsible Pest Control here, just following up with service provided on "+startDate+
+                    ". We'd like to schedule your regular service but we're still seeing a balance on your account. Please give us a call @ 480-924-4111 so we can get this resolved. Thanks!",
+                    timeStamp: Date.now()
+                }));
 
                 document.getElementById("subject").value = "Create New Setup - Balance";
 
@@ -3555,12 +3559,14 @@
 
                 var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
 
-                var textNumber = locationPhoneNumberLink.value;
-
-                var messageBody = "Hi, I was going thru my records saw that we treated your home on "+startDate+
-                    ", but didn't settle on an ongoing service. To review, no contract but we do give warranty. We can do monthly @$49, every-other-month @$69, or quarterly @$95. Thank you! - Responsible Pest Control";
-
-                GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"||"+Date.now());
+                GM_setValue("autoText", JSON.stringify({
+                    phone: locationPhoneNumberLink.value,
+                    name: getContactInfo().name,
+                    id: getContactInfo().id,
+                    message: "Hi, I was going thru my records saw that we treated your home on "+startDate+
+                    ", but didn't settle on an ongoing service. To review, no contract but we do give warranty. We can do monthly @$49, every-other-month @$69, or quarterly @$95. Thank you! - Responsible Pest Control",
+                    timeStamp: Date.now()
+                }));
 
                 document.getElementById("subject").value = "Create New Setup - Undecided";
 
@@ -3877,7 +3883,16 @@
                     var messageBody = "Responsible Pest Control here, just following up with service provided on "+startDate+
                         ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!";
 
-                    GM_setValue("autoText", textNumber+"|"+getContactInfo()+"|"+messageBody+"|"+assignee+"|"+Date.now());
+                    GM_setValue("autoText", JSON.stringify({
+                        phone: locationPhoneNumberLink.value,
+                        name: getContactInfo().name,
+                        id: getContactInfo().id,
+                        assignee: assignee,
+                        message: "Responsible Pest Control here, just following up with service provided on "+startDate+
+                        ". Just wanted to make sure we have taken care of your pest problems. If not, please call us @ 480-924-4111. We have your next service scheduled for "+nextDate+". Thanks!",
+                        timeStamp: Date.now()
+                    }));
+
 
                     document.getElementById("status").value = "C";
                 } else {
@@ -4292,30 +4307,24 @@
                 characterData: true
             });
 
-
             addContactIcons(document.getElementById("tkContent"));
 
         } else if(urlContains(['app.heymarket.com'])){
-            console.log("hello");
-
+            
             addPestPacIcon();
 
             GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
 
                 if(!new_value) return;
-                var _textData = new_value.split("|");
-                var _textNumber = _textData[0];
-                var _textAccount = _textData[1];
-                var _textName = _textData[2];
-                var _textBody = _textData[3];
-                var _assignee = _textData[4];
+
+                var textData = JSON.parse(new_value);
 
                 window.focus();
 
-                goToContact(_textNumber, function(){
+                goToContact(textData.phone, function(){
                     GM_deleteValue("autoText");
-                    prepareMessage(_textBody);
-                    updateContact(_textAccount, _textName, _assignee);
+                    prepareMessage(textData.message);
+                    updateContact(textData.id, textData.name, textData.assignee);
                 });
 
             });
@@ -4353,34 +4362,28 @@
         function updateContact(account, name, assignee){
             console.log("updateContact: "+account+" "+name+" "+assignee);
 
-            var nameDiv = document.getElementsByClassName("name")[1];
+            var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
 
-            if(nameDiv && nameDiv.innerHTML.includes(account)){
+            if(nameInput && nameInput.value.includes(account)){
                 console.log("Do nothing "+account+" "+nameDiv.innerHTML);
             } else {
-                console.log("Update Contact Info");
+                console.log("Update Contact Info"+account);
+
                 var nameList = name.split(" ");
+
                 if(nameList.length = 2){
-                    name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ");
+                    name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
                 }
 
-                setTimeout(function(){
-                    var optionsDot = document.getElementsByClassName("options-dot")[0];
-                    if(optionsDot) optionsDot.click();
 
-                }, 100);
+                nameInput.value = account+" "+name;
 
-                setTimeout(function(){
-                    var editButton = document.getElementsByClassName("edit")[0];
-
-                    triggerMouseEvent(editButton, "mousedown");
-
-                    var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
-                    nameInput.value = account+" "+name;
-                }, 200);
+                var keyUpEvent = document.createEvent("Event");
+                keyUpEvent.initEvent('keyup');
+                nameInput.dispatchEvent(keyUpEvent);
+                phoneInput.dispatchEvent(keyUpEvent);
 
                 setTimeout(function(){
-
                     var assigneeDiv = document.getElementsByClassName("assignee")[0];
                     if(assigneeDiv) assigneeDiv.click();
 
@@ -4398,7 +4401,7 @@
 
                         if(_name.includes(assignee)){
                             console.log(_name);
-
+                            console.log(_button);
                             _button.click();
 
                         }
@@ -4456,7 +4459,14 @@
                 var textIcon = createTextIcon();
                 link.appendChild(textIcon);
                 link.addEventListener("click", function(){
-                    GM_setValue("autoText", phoneNumber.replace(/\D/g,'')+"|"+getContactInfo()+"|||"+Date.now());
+                    GM_setValue("autoText", JSON.stringify({
+                        phone: phoneNumber,
+                        name: getContactInfo().name,
+                        id: getContactInfo().id,
+                        message: "",
+                        timeStamp: Date.now()
+                    }));
+
                     spinButton(textIcon, 20);
                 });
 
@@ -4516,11 +4526,11 @@
                         if(!node.classList) return;
 
                         if(node.id === "profile-content"){
-                            var chatRoomContainer = document.getElementsByClassName("chat-room-container")[0];
+                            var headerBar = document.getElementsByClassName("chat-room-container")[0].children[0];
 
-                            if(!chatRoomContainer) return;
+                            if(!headerBar) return;
 
-                            chatRoomContainer.appendChild(createPestPacLink());
+                            headerBar.appendChild(createPestPacLink());
 
                         }
                     }
@@ -4539,26 +4549,28 @@
                 var link = document.createElement("a");
                 link.style.cursor = "pointer";
                 link.style.position = "absolute";
-                link.style.top = "11px";
-                link.style.right = "115px";
-                link.style.height = "30px";
-                link.style.width = "30px";
+                link.style.height = "32px";
+                link.style.width = "32px";
                 link.appendChild(createPestPacImage());
 
                 link.addEventListener("click", function(){
-                        var contactInfo = getHeyMarketContactInfo();
-                        GM_setValue("findAccount", contactInfo+"|"+Date.now());
-                        spinButton(document.getElementById("pestPacImage"), 30);
+                    var contactInfo = getHeyMarketContactInfo();
+                    GM_setValue("findAccount", JSON.stringify(contactInfo));
+                    spinButton(document.getElementById("pestPacImage"), 32);
                 });
 
-                return link;
+                var iconHeaderDiv = document.createElement("div");
+                iconHeaderDiv.classList.add("icon-header");
+                iconHeaderDiv.appendChild(link);
+
+                return iconHeaderDiv;
 
                 function createPestPacImage(){
                     var image = document.createElement("img");
                     image.id = "pestPacImage";
                     image.src = "https://rjhuffaker.github.io/pestpac_logo.png";
-                    image.style.height = "30px";
-                    image.style.width = "30px";
+                    image.style.height = "32px";
+                    image.style.width = "32px";
 
                     return image;
                 }
@@ -4571,19 +4583,13 @@
                     return;
                 }
 
-                var nameDiv = document.getElementsByClassName("name")[0];
-                var phoneLink = document.getElementsByClassName("phone")[0];
+                var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
+                var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
 
-                var name = nameDiv.innerHTML;
-                var phone = phoneLink.innerHTML;
+                var name = nameInput.value;
+                var phone = phoneInput.value.replace("(", "").replace(") ", "-");
 
-                var contactInfo;
-
-                if(phone){
-                    contactInfo = name.replace("(", "").replace(") ", "-")+" "+phone;
-                } else {
-                    contactInfo = name.replace("(", "").replace(") ", "-");
-                }
+                var contactInfo = { name: name, phone: phone, timeStamp: new Date() };
 
                 return contactInfo;
             }
@@ -4921,41 +4927,28 @@
 
                 window.focus();
 
-                console.log("New: "+new_value);
-                console.log("Old: "+old_value);
+                var accountInfo = JSON.parse(new_value);
 
-                var accountInfo = new_value.split("|")[0].replace("(", "").replace(") ", "-");
-
-                console.log("accountInfo "+accountInfo);
+                console.log(accountInfo);
 
                 var accountIdRegEx = /(?<!\d)\d{5,6}(?!\d)/;
                 var accountIdRegExMatcher = new RegExp(accountIdRegEx);
                 var accountIdMatch = null;
-                accountIdMatch = accountIdRegExMatcher.exec(accountInfo);
+                accountIdMatch = accountIdRegExMatcher.exec(accountInfo.name);
 
                 if(accountIdMatch){
-                    console.log("goToAccount: "+accountIdMatch[0]);
+                    console.log("goToAccount: Account="+accountIdMatch[0]);
                     goToAccount(accountIdMatch[0]);
                 } else {
-                    console.log("accountId null");
-
-                    var phoneNumberMatch = phoneNumberRegExMatcher.exec(accountInfo);
+                    var phoneNumberMatch = phoneNumberRegExMatcher.exec(accountInfo.phone);
 
                     if(phoneNumberMatch){
-                        console.log("goToAccount: "+phoneNumberMatch[0]);
+                        console.log("goToAccount: Phone="+phoneNumberMatch[0]);
                         goToAccount(phoneNumberMatch[0]);
                     }
                 }
 
             });
-
-            var goToAccountId = GM_getValue("goToAccount");
-
-            if(goToAccountId){
-                GM_deleteValue("goToAccount");
-                goToAccount(goToAccountId);
-            }
-
         }
     }
 
