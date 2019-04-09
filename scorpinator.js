@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.0
+// @version      2.001
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -3656,21 +3656,13 @@
 
                 var taskDescription = document.getElementById("description").value;
 
-                var schedule = taskDescription.match(/Schedule: (.*)/g);
-
-                if(!schedule){
-                    schedule = taskDescription.match(/Schedule:(.*)/g).split(":")[1];
-                } else {
-                    schedule = schedule[0].split(" ")[1];
-                }
-
                 if(taskName.includes("follow up")){
 
                     otherButtonsContainer.appendChild(createTaskSendFollowUpButton());
 
                     otherButtonsContainer.appendChild(createHistoryIframe());
 
-                } else if(taskName.includes("create new") && schedule){
+                } else if(taskName.includes("create new") && taskDescription.includes("Schedule:")){
 
                     otherButtonsContainer.appendChild(createTaskSetupButton());
                     otherButtonsContainer.appendChild(createMissedButton());
