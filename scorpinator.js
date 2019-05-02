@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.010
+// @version      2.011
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -1269,6 +1269,7 @@
 
         function closeModal(){
             GM_setValue("inviteEmail", "");
+            GM_deleteValue("scorpModalData");
             GM_setValue("scorpModalData", "");
         }
 
@@ -1904,9 +1905,12 @@
 
         GM_addValueChangeListener("scorpModalData", function(name, old_value, new_value, remote){
 
-            if(!checkLastFocus()) return;
+            if(new_value === ""){
+                scorpOverlay.style.display = "none";
+                scorpModal.style.display = "none";
+                contentDiv.innerHTML = "";
 
-            if(new_value !== ""){
+            } else if(checkLastFocus()){
 
                 console.log("scorpModalData: "+new_value);
 
@@ -1922,11 +1926,8 @@
 
                 }
 
-            } else if(new_value === ""){
-                scorpOverlay.style.display = "none";
-                scorpModal.style.display = "none";
-                contentDiv.innerHTML = "";
             }
+
         });
 
 
