@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.001
+// @version      2.010
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -173,7 +173,6 @@
         { name: "Tucson", branch: "38" }
     ];
 
-
     var TECHNICIANS = {};
 
     var SCHEDULES = ["1MON","1TUE","1WED","1THU","1FRI", "2MON","2TUE","2WED","2THU","2FRI","3MON","3TUE","3WED","3THU","3FRI","4MON","4TUE","4WED","4THU","4FRI"];
@@ -239,6 +238,9 @@
     function initializeScorpinator(){
 
         if(urlContains(["app.pestpac.com"]) && !urlContains(["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com"])){
+
+            scorpModal();
+
             checkLogin(function(loginData){
                 if(loginData){
                     pestpacValidated();
@@ -362,24 +364,68 @@
     }
 
     function loginPrompt(){
-        var username = prompt("Scorpinator Username:");
-        if(username){
-            var password = prompt("Scorpinator Password:");
-            if(password){
+        var usernameLabel = document.createElement("label");
+        usernameLabel.style.display = "block";
+        usernameLabel.innerHTML = "Username: ";
+
+        var usernameInput = document.createElement("input");
+        usernameInput.id = "scorpinatorUsername";
+        usernameInput.type = "text";
+
+        var passwordLabel = document.createElement("label");
+        passwordLabel.style.display = "block";
+        passwordLabel.innerHTML = "Password: ";
+
+        var passwordInput = document.createElement("input");
+        passwordInput.id = "scorpinatorPassword";
+        passwordInput.type = "password";
+
+        var okButton = document.createElement("button");
+        okButton.innerHTML = "Ok";
+        okButton.onclick = function(){
+            var username = usernameInput.value;
+            var password = passwordInput.value;
+            if(username && password){
                 httpGetAsync(`https://azpestcontrol.services/api/users.php?username=`+username+`&password=`+password, function(response){
                     response = JSON.parse(response);
                     if(response){
                         console.log("LOGIN SUCCESSFUL");
                         localStorage.setItem("currentUser", JSON.stringify(response));
                         GM_setValue("currentUser", JSON.stringify(response));
-
+                        GM_setValue("scorpModalData", "");
                         initializeScorpinator();
                     } else {
                         console.log("LOGIN FAILED");
                     }
                 });
             }
-        }
+        };
+
+        var cancelButton = document.createElement("button");
+        cancelButton.innerHTML = "Cancel";
+        cancelButton.onclick = function(){
+            GM_setValue("scorpModalData", "");
+        };
+
+        var scorpModalContent = document.getElementById("scorp-modal-content");
+
+        usernameLabel.appendChild(usernameInput);
+
+        passwordLabel.appendChild(passwordInput);
+
+        scorpModalContent.appendChild(usernameLabel);
+        scorpModalContent.appendChild(passwordLabel);
+        scorpModalContent.appendChild(okButton);
+        scorpModalContent.appendChild(cancelButton);
+
+        var modalData = {
+            height: "auto",
+            width: "500px",
+            title: "User Login"
+        };
+
+        GM_setValue("scorpModalData", JSON.stringify(modalData));
+
     }
 
     function triggerMouseEvent(node, eventType) {
@@ -448,6 +494,8 @@
 
     function xmlToJson(xml) {
         // Create the return object
+        if(!xml) return;
+
         var obj = {};
 
         if (xml.nodeType == 1) { // element
@@ -519,7 +567,6 @@
 
         xmlHttp.send(data);
     }
-
 
     function httpGetXML(theUrl, callback) {
         var xmlHttp = new XMLHttpRequest();
@@ -655,6 +702,9 @@
     }
 
     function getDifferenceInDays(firstDate, secondDate){
+        console.log(firstDate);
+        console.log(secondDate);
+
         if(secondDate){
             var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
             if(firstDate){
@@ -663,6 +713,7 @@
                 firstDate = new Date();
             }
             secondDate = new Date(secondDate);
+
             return Math.round(Math.abs((firstDate.getTime() - secondDate.getTime())/(oneDay)));
         } else {
             console.log('Error: differenceInDays: firstDate: '+firstDate+", secondDate: "+secondDate);
@@ -925,8 +976,8 @@
                 serviceSetup.serviceCode = setupColumns[2].children[0].innerHTML.replace("&nbsp;", "");
                 serviceSetup.schedule = setupColumns[3].children[0].innerHTML.replace("&nbsp;", "");
                 serviceSetup.tech = setupColumns[4].children[0].innerHTML.replace("&nbsp;", "");
-                serviceSetup.lastService = setupColumns[5].innerHTML.replace("&nbsp;", "");
-                serviceSetup.nextService = setupColumns[6].innerHTML.replace("&nbsp;", "");
+                serviceSetup.lastDate = setupColumns[5].innerHTML.replace("&nbsp;", "");
+                serviceSetup.nextDate = setupColumns[6].innerHTML.replace("&nbsp;", "");
                 serviceSetup.price = setupColumns[8].innerHTML.replace("&nbsp;", "");
                 serviceSetup.active = setupTableRows[row].getAttribute("bgcolor")==="#ffffff";
             }
@@ -1124,7 +1175,8 @@
         var invoiceLinks = GM_getValue("InvoiceLinks");
         if(invoiceLinks) invoiceLinks = GM_getValue("InvoiceLinks").split(",");
 
-        var invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
+
+        var invoiceDetails = GM_getValue("InvoiceDetails");
         if(invoiceDetails) invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
 
         sessionStorage.removeItem("InvoiceLinks");
@@ -1183,10 +1235,6 @@
 
                     window.location.href = invoiceLinks[index];
 
-                } else {
-
-                    console.log(invoiceDetails);
-
                 }
 
             }
@@ -1221,11 +1269,95 @@
 
         function closeModal(){
             GM_setValue("inviteEmail", "");
+            GM_setValue("scorpModalData", "");
         }
 
     }
 
+    function getHistoryTable(){
+        var invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
+
+        var tableData = { rows: [] };
+
+        invoiceDetails.forEach(function(invoice){
+
+            tableData.rows.push(
+                { cells: [
+                    { content: displayText( { bold: invoice.workDate+" --- "+invoice.serviceCode1+" --- $"+invoice.unitPrice1+" --- "+invoice.description1 } ) }
+                ] }
+            );
+
+            tableData.rows.push(
+                { cells: [
+                    { content: displayText( { bold: "Location: ", plain: invoice.locationInstructions } ) }
+                ] }
+            );
+
+            tableData.rows.push(
+                { cells: [
+                    { content: displayText( { bold: "Tech Notes ("+invoice.technician+"): ", plain: invoice.techComment } ) }
+                ] }
+            );
+
+        });
+
+        return createTable(tableData);
+    }
+
+    function showHistoryModal(){
+        if(!checkLastFocus()) return;
+
+        var historyDiv = document.createElement("div");
+
+        historyDiv.appendChild(displayText( { title: "Service History" } ));
+
+        var invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
+
+        var tableData = { rows: [] }
+
+        invoiceDetails.forEach(function(invoice){
+
+            tableData.rows.push(
+                { cells: [
+                    { content: displayText( { bold: invoice.workDate+" --- "+invoice.serviceCode1+" --- $"+invoice.unitPrice1+" --- "+invoice.description1 } ) }
+                ] }
+            );
+
+            tableData.rows.push(
+                { cells: [
+                    { content: displayText( { bold: "Location: ", plain: invoice.locationInstructions } ) }
+                ] }
+            );
+
+            tableData.rows.push(
+                { cells: [
+                    { content: displayText( { bold: "Tech Notes ("+invoice.technician+"): ", plain: invoice.techComment } ) }
+                ] }
+            );
+
+        });
+
+        var scorpModalContent = document.getElementById("scorp-modal-content");
+
+        var historyTable = createTable(tableData);
+
+        historyDiv.appendChild(historyTable);
+
+        console.log(historyDiv);
+
+        scorpModalContent.appendChild(historyDiv);
+
+        var modalData = {
+            height: "auto",
+            width: "750px",
+            title: "History"
+        };
+
+        GM_setValue("scorpModalData", JSON.stringify(modalData));
+    }
+
     function showHistoryConfirm(){
+
         var invoiceDetails = JSON.parse(GM_getValue("InvoiceDetails"));
 
         var invoiceText = "SERVICE HISTORY: \n";
@@ -1350,7 +1482,7 @@
                 var dataObj = JSON.parse(data);
                 var geoCodes = {};
 
-                if(dataObj){
+                if(dataObj.results[0]){
                     geoCodes.longitude = parseFloat(dataObj.results[0].geometry.location.lng).toFixed(6);
                     geoCodes.latitude = parseFloat(dataObj.results[0].geometry.location.lat).toFixed(6);
 
@@ -1693,6 +1825,110 @@
 
             TECHNICIANS = _technicians;
         }
+
+    }
+
+    function scorpModal(){
+        var scorpOverlay = document.createElement("div");
+        scorpOverlay.classList.add("ui-widget-overlay");
+        scorpOverlay.classList.add("ui-front");
+        scorpOverlay.id = "scorp-overlay";
+        scorpOverlay.style.display = "none";
+        scorpOverlay.onclick = closeScorpModal;
+
+        var scorpModal = document.createElement("div");
+        scorpModal.classList.add("ui-dialog");
+        scorpModal.classList.add("ui-widget");
+        scorpModal.classList.add("ui-widget-content");
+        scorpModal.classList.add("ui-corner-all");
+        scorpModal.classList.add("ui-front");
+        scorpModal.style.top = "330px";
+        scorpModal.style.left = "490.5px";
+        scorpModal.style.display = "block";
+        scorpModal.style.borderRadius = "10px";
+        scorpModal.id = "scorp-modal";
+        scorpModal.style.display = "none";
+
+        var titleDiv = document.createElement("div");
+        titleDiv.classList.add("ui-dialog-titlebar");
+        titleDiv.classList.add("ui-widget-header");
+        titleDiv.classList.add("ui-corner-all");
+        titleDiv.classList.add("ui-helper-clearfix");
+
+        var titleSpan = document.createElement("span");
+        titleSpan.classList.add("ui-dialog-title");
+        titleSpan.innerHTML = "&nbsp;";
+
+        var closeButton = document.createElement("button");
+        closeButton.classList.add("ui-button");
+        closeButton.classList.add("ui-widget");
+        closeButton.classList.add("ui-state-default");
+        closeButton.classList.add("ui-corner-all");
+        closeButton.classList.add("ui-button-icon-only");
+        closeButton.classList.add("ui-dialog-titlebar-close");
+        closeButton.onclick = closeScorpModal;
+
+        var closeIcon = document.createElement("span");
+        closeIcon.classList.add("ui-button-icon-primary");
+        closeIcon.classList.add("ui-icon");
+        closeIcon.classList.add("ui-icon-closethick");
+
+        var contentDiv = document.createElement("div");
+        contentDiv.classList.add("ui-dialog-content");
+        contentDiv.classList.add("ui-widget-content");
+        contentDiv.style.width = "auto";
+    //    contentDiv.style.minHeight = "0px";
+    //    contentDiv.style.maxHeight = "none";
+    //    contentDiv.style.height = "245px";
+        contentDiv.style.background = "white";
+        contentDiv.id = "scorp-modal-content";
+
+    /*
+        var iframe = document.createElement('iframe');
+        iframe.id = "iframe-modal-0";
+        iframe.classList.add("iframe-modal");
+        iframe.src = "/customerConnect/dialog/inviteUser.asp?BillToID="+billToId;
+    */
+        closeButton.appendChild(closeIcon);
+        titleDiv.appendChild(titleSpan);
+        titleDiv.appendChild(closeButton);
+        scorpModal.appendChild(titleDiv);
+        scorpModal.appendChild(contentDiv);
+
+        document.body.appendChild(scorpOverlay);
+        document.body.appendChild(scorpModal);
+
+        function closeScorpModal(){
+            GM_setValue("scorpModalData", "");
+        }
+
+        GM_addValueChangeListener("scorpModalData", function(name, old_value, new_value, remote){
+
+            if(!checkLastFocus()) return;
+
+            if(new_value !== ""){
+
+                console.log("scorpModalData: "+new_value);
+
+                var modalData = JSON.parse(new_value);
+
+                if(modalData.width && modalData.title){
+                    scorpOverlay.style.display = "block";
+                    scorpModal.style.display = "block";
+
+                    contentDiv.style.width = modalData.width;
+                    contentDiv.style.height = modalData.height;
+                    titleSpan.innerHTML = modalData.title;
+
+                }
+
+            } else if(new_value === ""){
+                scorpOverlay.style.display = "none";
+                scorpModal.style.display = "none";
+                contentDiv.innerHTML = "";
+            }
+        });
+
 
     }
 
@@ -2842,6 +3078,7 @@
                 var queryUrl = baseUrl+"?token="+loginData.token+"&address="+address.street+"&citystatezip="+address.zipcode.replaceAll(" ", "+");
 
                 httpGetXML(queryUrl, function(data){
+                    if(!data) return;
                     var searchResults = data['SearchResults:searchresults'];
                     if(searchResults.response){
                         var zillowData = searchResults.response.results.result;
@@ -3124,8 +3361,9 @@
         var _label = document.createElement("label");
         _label.style.margin = "2%";
         _label.style.fontSize = "13px";
+        _label.style.fontWeight = "bold";
         _label.htmlFor = field+"Input";
-        _label.innerHTML = field;
+        _label.innerHTML = capitalizeFirstLetter(field);
 
         return _label;
     }
@@ -3140,6 +3378,22 @@
         _input.name = field+"Input";
 
         return _input;
+    }
+
+    function createLabeledInput(field, value){
+        var _label = createLabel(field);
+
+        var _input = createInput(field);
+        _input.value = value;
+
+        var _div = document.createElement("div");
+        _div.style.width = "24%";
+        _div.style.display = "inline-block";
+
+        _div.appendChild(_label);
+        _div.appendChild(_input);
+
+        return _div;
     }
 
     function createButton(buttonData){
@@ -3287,7 +3541,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","COM-IN","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","FLEAS","ONE","RE-START","ROACH","TICK-IN","TICKS","WDO TERMITE"]
+                        if(["BED BUGS","COM-IN","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","FLEAS","ONE","RE-START","ROACH","TICK-IN","TICKS","WDO TERMITE","WDO INSP E","WDO INSP H"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -3456,6 +3710,20 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         taskName = "Add termite warranty";
+                        break;
+                    case "WDO INSP E":
+                        prioritySelect.value = "2";
+                        taskTypeSelect.value = "13";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2853";
+                        taskName = "Check for Report";
+                        break;
+                    case "WDO INSP H":
+                        prioritySelect.value = "2";
+                        taskTypeSelect.value = "13";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2853";
+                        taskName = "Check for Report";
                         break;
                     default:
                         console.log("TODO: Don't know what to do with this.");
@@ -3660,6 +3928,8 @@
 
                     otherButtonsContainer.appendChild(createTaskSendFollowUpButton());
 
+                    otherButtonsContainer.appendChild(createGenerateButton());
+
                     otherButtonsContainer.appendChild(createHistoryIframe());
 
                 } else if(taskName.includes("create new") && taskDescription.includes("Schedule:")){
@@ -3671,11 +3941,11 @@
 
                     otherButtonsContainer.appendChild(createHistoryIframe());
 
-                } else if(taskName.includes("new $")){
-                    reformatTaskListener();
-
                 } else if(taskName.includes("send welcome")){
+
                     otherButtonsContainer.appendChild(createTaskWelcomeButton());
+
+                    otherButtonsContainer.appendChild(createGenerateButton());
 
                 }
 
@@ -3686,91 +3956,91 @@
                 return otherButtonsContainer;
 
                 function createMissedButton(){
-                    var missedButton = document.createElement("button");
-                    missedButton.classList.add("scorpinated");
-                    missedButton.innerHTML = "Missed";
-                    missedButton.onclick = missedListener;
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Missed";
+                    taskButton.onclick = missedListener;
 
-                    return missedButton;
+                    return taskButton;
 
                 }
 
                 function createBalanceButton(){
-                    var balanceButton = document.createElement("button");
-                    balanceButton.classList.add("scorpinated");
-                    balanceButton.innerHTML = "Balance";
-                    balanceButton.onclick = balanceListener;
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Balance";
+                    taskButton.onclick = balanceListener;
 
-                    return balanceButton;
+                    return taskButton;
 
                 }
 
                 function createUndecidedButton(){
-                    var undecidedButton = document.createElement("button");
-                    undecidedButton.classList.add("scorpinated");
-                    undecidedButton.innerHTML = "Undecided";
-                    undecidedButton.onclick = undecidedListener;
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Undecided";
+                    taskButton.onclick = undecidedListener;
 
-                    return undecidedButton;
+                    return taskButton;
 
                 }
 
-                function createTaskReformatButton(){
-                    var taskReformatButton = document.createElement("button");
-                    taskReformatButton.classList.add("scorpinated");
-                    taskReformatButton.innerHTML = "Reformat Task";
-                    taskReformatButton.onclick = reformatTaskListener;
+                function createGenerateButton(){
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Generate";
+                    taskButton.onclick = generateListener;
 
-                    return taskReformatButton;
+                    return taskButton;
                 }
 
                 function createTaskSendFollowUpButton(){
-                    var taskSendFollowUpButton = document.createElement("button");
-                    taskSendFollowUpButton.classList.add("scorpinated");
-                    taskSendFollowUpButton.innerHTML = "Text Follow-up";
-                    taskSendFollowUpButton.onclick = sendFollowUpListener;
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Text Follow-up";
+                    taskButton.onclick = sendFollowUpListener;
 
-                    return taskSendFollowUpButton;
+                    return taskButton;
                 }
 
                 function createTaskFollowUpButton(){
-                    var taskFollowUpButton = document.createElement("button");
-                    taskFollowUpButton.classList.add("scorpinated");
-                    taskFollowUpButton.innerHTML = "Follow Up";
-                    taskFollowUpButton.onclick = followUpListener;
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Follow Up";
+                    taskButton.onclick = followUpListener;
 
-                    return taskFollowUpButton;
+                    return taskButton;
                 }
 
                 function createTaskSetupButton(){
-                    var taskSetupButton = document.createElement("button");
-                    taskSetupButton.innerHTML = "Create Setup";
-                    taskSetupButton.classList.add("scorpinated");
-                    taskSetupButton.onclick = createSetupListener;
+                    var taskButton = document.createElement("button");
+                    taskButton.innerHTML = "Create Setup";
+                    taskButton.classList.add("scorpinated");
+                    taskButton.onclick = createSetupListener;
 
-                    return taskSetupButton;
+                    return taskButton;
                 }
 
                 function createTaskWelcomeButton(){
-                    var taskWelcomeButton = document.createElement("button");
-                    taskWelcomeButton.classList.add("scorpinated");
-                    taskWelcomeButton.innerHTML = "Welcome Letter";
-                    taskWelcomeButton.onclick = welcomeListener;
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Welcome Letter";
+                    taskButton.onclick = welcomeListener;
 
-                    return taskWelcomeButton;
+                    return taskButton;
                 }
 
                 function createCompleteButton(){
-                    var completeButton = document.createElement("button");
-                    completeButton.classList.add("scorpinated");
-                    completeButton.innerHTML = "Complete";
-                    completeButton.addEventListener("click", function(e){
+                    var taskButton = document.createElement("button");
+                    taskButton.classList.add("scorpinated");
+                    taskButton.innerHTML = "Complete";
+                    taskButton.addEventListener("click", function(e){
                         e.preventDefault();
                         document.getElementById("status").value = "C";
                         document.getElementById("butSave").click();
                     });
 
-                    return completeButton;
+                    return taskButton;
                 }
 
                 function createHistoryIframe(){
@@ -3874,50 +4144,6 @@
             }
         }
 
-        function reformatTaskListener(event){
-            if(event) event.preventDefault();
-
-            var taskNameInput = document.getElementById("subject")
-            var taskDescriptionInput = document.getElementById("description");
-
-            var taskName = taskNameInput.value;
-            var taskDescription = taskDescriptionInput.value;
-
-            if(taskName.includes("New $")){
-                var _taskArray = taskNameInput.value.split(" ");
-
-                var startDate = taskDescription.match(/StartDate: (.*)/g)[0].split(" ")[1];
-
-                var nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
-
-                taskDescription = "Service: "+_taskArray[1]+"\nSchedule: "+_taskArray[2]+"\nTechnician: "+_taskArray[3]+"\nTarget: "+getSetupTarget()+"\nDuration: 00:25\nStartDate: "+startDate+"\nNextDate: "+nextDate;
-
-                taskDescriptionInput.value = taskDescription;
-
-                taskNameInput.value = "Create New Setup";
-            }
-
-            function getSetupTarget(){
-                var data = document.getElementById("tblDirections").value.toLowerCase();
-                if(data.includes("scorpion")){
-                    return "SCORPIONS";
-                } else if(data.includes("spider")){
-                    return "SPIDERS, E";
-                } else if(data.includes("roach")){
-                    return "ROACHES";
-                } else if(data.includes("cricket")){
-                    return "CRICKETS,";
-                } else if(data.includes("ticks")){
-                    return "TICKS";
-                } else if(data.includes("ants")){
-                    return "ANTS";
-                } else {
-                    return "";
-                }
-            }
-
-        }
-
         function followUpListener(event){
             event.preventDefault();
 
@@ -3976,128 +4202,183 @@
         function createSetupListener(event){
             event.preventDefault();
 
-            if(!showHistoryConfirm()) return;
+            var serviceSetup = getSetupData();
 
-            var taskNameInput = document.getElementById("subject");
-            var dueDate = document.getElementById("dueDate").value;
-            var taskType = document.getElementById("taskType").value;
-            var description = document.getElementById("description").value;
-            var directions = document.getElementById("tblDirections").value;
+            var invoiceDetails = GM_getValue("InvoiceDetails");
 
-            var serviceCode, price, schedule, tech, duration, startDate, nextDate;
+            var scorpModalContent = document.getElementById("scorp-modal-content");
 
-            if(description.includes("Service: ")){
-                var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
+            scorpModalContent.appendChild(createSetupForm());
 
-                serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY").replace("C", "MONTHLY");
+            GM_setValue("scorpModalData", "");
 
-                price = _service.replaceAll(/[^0-9]+/, '')+".00";
+            var modalData = {
+                height: "300px",
+                width: "500px",
+                title: "Create Setup?"
+            };
 
-                schedule = description.match(/Schedule: (.*)/g)[0].split(" ")[1]+serviceCode[0];
+            GM_setValue("scorpModalData", JSON.stringify(modalData));
 
-                tech = getTechnician(description.match(/Technician: (.*)/g)[0].split(" ")[1]);
+            function createSetupForm(){
 
-            } else { // Needed for Backwards Compatability
-                var _taskArray = taskNameInput.value.split(" ");
-                serviceCode = _taskArray[1].replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY");
-                price = _taskArray[1].replaceAll(/[^0-9]+/, '')+".00";
-                schedule = _taskArray[2]+serviceCode[0];
-                tech = getTechnician(_taskArray[3]);
+                var containerDiv = document.createElement("div");
+                containerDiv.style.width = "100%";
+
+                containerDiv.appendChild(createLabeledInput("serviceCode", serviceSetup.serviceCode));
+                containerDiv.appendChild(createLabeledInput("price", serviceSetup.price));
+                containerDiv.appendChild(createLabeledInput("schedule", serviceSetup.schedule));
+                containerDiv.appendChild(createLabeledInput("tech", serviceSetup.tech));
+                containerDiv.appendChild(createLabeledInput("duration", serviceSetup.duration));
+                containerDiv.appendChild(createLabeledInput("startDate", serviceSetup.startDate));
+                containerDiv.appendChild(createLabeledInput("nextDate", serviceSetup.nextDate));
+                containerDiv.appendChild(createLabeledInput("target", serviceSetup.target));
+
+                containerDiv.appendChild(displayText({title: "Create Setup?"}));
+
+                containerDiv.appendChild(createButton({text: "Yes", onclick: createSetup}));
+
+                containerDiv.appendChild(displayText({title: "Service History" }));
+
+                containerDiv.appendChild(getHistoryTable());
+
+                return containerDiv;
             }
 
-            if(description.includes("StartDate: ")){
-                startDate = description.match(/StartDate: (.*)/g)[0].split(" ")[1];
-            } else {
-                startDate = dueDate;
+            function createSetup(){
+
+                var setupData = {};
+
+                setupData.serviceCode = document.getElementById("serviceCodeInput").value;
+                setupData.price = document.getElementById("priceInput").value;
+                setupData.schedule = document.getElementById("scheduleInput").value;
+                setupData.tech = document.getElementById("techInput").value;
+                setupData.duration = document.getElementById("durationInput").value;
+                setupData.nextDate = document.getElementById("nextDateInput").value;
+                setupData.startDate = document.getElementById("startDateInput").value;
+                setupData.target = document.getElementById("targetInput").value;
+
+                sessionStorage.setItem("serviceSetup", JSON.stringify(setupData));
+
+                document.getElementById("subject").value = "Send Welcome Letter";
+
+                document.getElementById("butSave").click();
+
+                GM_setValue("scorpModalData", "");
+
+                var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
+
+                window.location.href = newUrl;
+
             }
 
-            if(description.includes("NextDate: ")){
-                nextDate = description.match(/NextDate: (.*)/g)[0].split(" ")[1];
-            }
+            function getSetupData(){
+                var taskNameInput = document.getElementById("subject");
+                var dueDate = document.getElementById("dueDate").value;
+                var taskType = document.getElementById("taskType").value;
+                var description = document.getElementById("description").value;
+                var directions = document.getElementById("tblDirections").value;
 
-            if(description.includes("Duration: ")){
-                duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
-            } else {
-                var cost = parseInt(price.toUpperCase().replace("M","").replace("$",""));
+                var serviceCode, price, schedule, tech, duration, startDate, nextDate;
 
-                duration = convertMinutesToHours(Math.ceil(cost/9)*5);
-            }
+                if(description.includes("Service: ")){
+                    var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
 
-            var serviceSetup = {};
+                    serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY").replace("C", "MONTHLY");
 
-            serviceSetup.serviceCode = serviceCode;
-            serviceSetup.price = price;
-            serviceSetup.schedule = schedule;
-            serviceSetup.tech = tech;
-            serviceSetup.duration = duration;
-            serviceSetup.startDate = startDate;
-            serviceSetup.nextDate = nextDate;
-            serviceSetup.target = getSetupTarget(directions);
+                    price = _service.replaceAll(/[^0-9]+/, '')+".00";
 
-            taskNameInput.value = "Send Welcome Letter";
+                    schedule = description.match(/Schedule: (.*)/g)[0].split(" ")[1]+serviceCode[0];
 
-            document.getElementById("butSave").click();
-
-            console.log(JSON.stringify(serviceSetup));
-
-            sessionStorage.setItem("serviceSetup", JSON.stringify(serviceSetup));
-
-            var newUrl = window.location.href.replace("location/detail.asp?", "serviceSetup/detail.asp?Mode=New&RenewalOrSetup=S&");
-
-            window.location.href = newUrl;
-
-            function getTechnician(name){
-                if(name==="Brian"){
-                    return "DEREK S";
-                } else if(name==="Craig"){
-                    return "CRAIG L";
-                } else if(name==="Daniel"){
-                    return "DANIEL A";
-                } else if(name==="Derek"){
-                    return "DEREK S";
-                } else if(name==="Jeff"){
-                    return "JEFF H";
-                } else if(name==="Kody"){
-                    return "CRAIG L";
-                } else if(name==="Jesse"){
-                    return "JESSE H";
-                } else if(name==="Joseph"){
-                    return "JOSEPH A";
-                } else if(name==="Josh"){
-                    return "Josh C";
-                } else if(name==="Landon"){
-                    return "JESSE H";
-                } else if(name==="Michael"){
-                    return "MICHAEL R";
-                } else if(name==="Raybrown"){
-                    return "RICKY";
-                } else if(name==="Troy"){
-                    return "TROY C";
-                } else if(name){
-                    return name;
-                } else {
-                    return "";
+                    tech = getTechnician(description.match(/Technician: (.*)/g)[0].split(" ")[1]);
                 }
+
+                if(description.includes("StartDate: ")){
+                    startDate = description.match(/StartDate: (.*)/g)[0].split(" ")[1];
+                } else {
+                    startDate = dueDate;
+                }
+
+                if(description.includes("NextDate: ")){
+                    nextDate = description.match(/NextDate: (.*)/g)[0].split(" ")[1];
+                }
+
+                if(description.includes("Duration: ")){
+                    duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
+                } else {
+                    var cost = parseInt(price.toUpperCase().replace("M","").replace("$",""));
+
+                    duration = convertMinutesToHours(Math.ceil(cost/9)*5);
+                }
+
+                var setupData = {};
+
+                setupData.serviceCode = serviceCode;
+                setupData.price = price;
+                setupData.schedule = schedule;
+                setupData.tech = tech;
+                setupData.duration = duration;
+                setupData.startDate = startDate;
+                setupData.nextDate = nextDate;
+                setupData.target = getSetupTarget(directions);
+
+                return setupData;
+
+                function getTechnician(name){
+                    if(name==="Brian"){
+                        return "DEREK S";
+                    } else if(name==="Craig"){
+                        return "CRAIG L";
+                    } else if(name==="Daniel"){
+                        return "DANIEL A";
+                    } else if(name==="Derek"){
+                        return "DEREK S";
+                    } else if(name==="Jeff"){
+                        return "JEFF H";
+                    } else if(name==="Kody"){
+                        return "CRAIG L";
+                    } else if(name==="Jesse"){
+                        return "JESSE H";
+                    } else if(name==="Joseph"){
+                        return "JOSEPH A";
+                    } else if(name==="Josh"){
+                        return "Josh C";
+                    } else if(name==="Landon"){
+                        return "JESSE H";
+                    } else if(name==="Michael"){
+                        return "MICHAEL R";
+                    } else if(name==="Raybrown"){
+                        return "RICKY";
+                    } else if(name==="Troy"){
+                        return "TROY W";
+                    } else if(name){
+                        return name;
+                    } else {
+                        return "";
+                    }
+                }
+
+                function getSetupTarget(data){
+                    data = data.toLowerCase();
+                    if(data.includes("scorpion")){
+                        return "SCORPIONS";
+                    } else if(data.includes("spider")){
+                        return "SPIDERS, E";
+                    } else if(data.includes("roach")){
+                        return "ROACHES";
+                    } else if(data.includes("cricket")){
+                        return "CRICKETS,";
+                    } else if(data.includes("ticks")){
+                        return "TICKS";
+                    } else if(data.includes("ants")){
+                        return "ANTS";
+                    } else {
+                        return "";
+                    }
+                }
+
             }
 
-            function getSetupTarget(data){
-                data = data.toLowerCase();
-                if(data.includes("scorpion")){
-                    return "SCORPIONS";
-                } else if(data.includes("spider")){
-                    return "SPIDERS, E";
-                } else if(data.includes("roach")){
-                    return "ROACHES";
-                } else if(data.includes("cricket")){
-                    return "CRICKETS,";
-                } else if(data.includes("ticks")){
-                    return "TICKS";
-                } else if(data.includes("ants")){
-                    return "ANTS";
-                } else {
-                    return "";
-                }
-            }
         }
 
         function welcomeListener(event){
@@ -4124,9 +4405,9 @@
             welcomeLetter.nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
 
             if(taskDescription.includes("NextDate:")){
-                welcomeLetter.nextService = getServiceDate(taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1]);
+                welcomeLetter.nextDate = getServiceDate(taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1]);
             } else {
-                welcomeLetter.nextService = getServiceDate(serviceSetup.nextService);
+                welcomeLetter.nextDate = getServiceDate(serviceSetup.nextDate);
             }
             
             taskNameInput.value = "Follow up for Initial";
@@ -4142,6 +4423,16 @@
             var newUrl = window.location.href.replace("location","letters").replace("detail","default");
 
             window.location.href = newUrl;
+        }
+
+        function generateListener(){
+            event.preventDefault();
+
+            var serviceSetup = getServiceSetup(1);
+
+            sessionStorage.setItem("generateService", JSON.stringify(serviceSetup));
+
+            document.getElementById("RSOrderLink1").click();
         }
 
         function sendFollowUpListener(event){
@@ -4357,7 +4648,7 @@
 
                     letter.innerHTML = letter.innerHTML
                         .replace("first week of each month", welcomeLetter.schedule)
-                        .replace("DATE", welcomeLetter.nextService);
+                        .replace("DATE", welcomeLetter.nextDate);
 
                     nameInput.value = "Welcome";
 
@@ -4373,6 +4664,8 @@
 
         if(serviceSetup){
             if(urlContains(["location/detail.asp"])){
+
+                console.log("nextDate: "+serviceSetup.nextDate);
 
                 var daysToNextService = getDifferenceInDays(null, serviceSetup.nextDate);
 
@@ -4390,10 +4683,26 @@
                 setTimeout(function(){
 
                     var workDateInput = document.getElementById("WorkDate");
+                    var earliestInput = document.getElementById("SEligibleDate");
+                    var latestInput = document.getElementById("EEligibleDate");
+
+                    var directionsInput = document.getElementsByName("Directions")[0];
 
                     workDateInput.focus();
                     workDateInput.value = serviceSetup.nextDate;
                     workDateInput.blur();
+
+                    earliestInput.focus();
+                    earliestInput.value = serviceSetup.nextDate;
+                    earliestInput.blur();
+
+                    latestInput.focus();
+                    latestInput.value = serviceSetup.nextDate;
+                    latestInput.blur();
+
+                    var directionsValue = directionsInput.value;
+
+                    directionsInput.value = directionsValue.replace("**", "*"+serviceSetup.nextDate+"*");
 
                     sessionStorage.removeItem("generateService");
 
@@ -4492,95 +4801,40 @@
                         rpcIcon.style.width = "20px";
                         rpcIcon.setAttribute("data-email", contactLinks[i].children[1].innerHTML);
 
-                        rpcIcon.onclick = function(event){
-                            spinButton(event.target, 20);
-                            var inviteEmail = event.target.getAttribute("data-email");
+                        contactLinks[i].appendChild(document.createTextNode("  "));
+                        contactLinks[i].appendChild(rpcIcon);
+                        contactLinks.id = "contactEmail";
 
-                            GM_setValue("inviteEmail", inviteEmail);
-
+                        rpcIcon.onclick = function(){
                             var billToLink = document.getElementById("billtoHeaderDetailLink");
                             var billToId, billToRef;
+                            var inviteEmail = event.target.getAttribute("data-email");
+
+
                             if(billToLink){
                                 billToRef = billToLink.href;
                                 billToId = billToRef.substr(billToRef.indexOf("BillToID") + 9).substring(0, 5);
                             }
-
-                            var overlayDiv = document.createElement("div");
-                            overlayDiv.classList.add("ui-widget-overlay");
-                            overlayDiv.classList.add("ui-front");
-                            overlayDiv.id = "ui-widget-overlay";
-
-                            var uiDialogDiv = document.createElement("div");
-                            uiDialogDiv.classList.add("ui-dialog");
-                            uiDialogDiv.classList.add("ui-widget");
-                            uiDialogDiv.classList.add("ui-widget-content");
-                            uiDialogDiv.classList.add("ui-corner-all");
-                            uiDialogDiv.classList.add("ui-fronte");
-                            uiDialogDiv.classList.add("ui-draggable");
-
-                            uiDialogDiv.style.height = "auto";
-                            uiDialogDiv.style.width = "350px";
-                            uiDialogDiv.style.top = "330px";
-                            uiDialogDiv.style.left = "490.5px";
-                            uiDialogDiv.style.display = "block";
-                            uiDialogDiv.style.borderRadius = "10px";
-                            uiDialogDiv.id = "ui-dialog";
-
-                            var titleBarDiv = document.createElement("div");
-                            titleBarDiv.classList.add("ui-dialog-titlebar");
-                            titleBarDiv.classList.add("ui-widget-header");
-                            titleBarDiv.classList.add("ui-corner-all");
-                            titleBarDiv.classList.add("ui-helper-clearfix");
-
-                            var titleSpan = document.createElement("span");
-                            titleSpan.classList.add("ui-dialog-title");
-                            titleSpan.innerHTML = "&nbsp;"
-
-                            var closeButton = document.createElement("button");
-                            closeButton.classList.add("ui-button");
-                            closeButton.classList.add("ui-widget");
-                            closeButton.classList.add("ui-state-default");
-                            closeButton.classList.add("ui-corner-all");
-                            closeButton.classList.add("ui-button-icon-only");
-                            closeButton.classList.add("ui-dialog-titlebar-close");
-
-                            closeButton.onclick = function(){
-                                GM_setValue("inviteEmail", "");
-                            };
-
-                            var closeIcon = document.createElement("span");
-                            closeIcon.classList.add("ui-button-icon-primary");
-                            closeIcon.classList.add("ui-icon");
-                            closeIcon.classList.add("ui-icon-closethick");
-
-                            var modalDiv = document.createElement("div");
-                            modalDiv.classList.add("ui-dialog-content");
-                            modalDiv.classList.add("ui-widget-content");
-                            modalDiv.style.width = "auto";
-                            modalDiv.style.minHeight = "0px";
-                            modalDiv.style.maxHeight = "none";
-                            modalDiv.style.height = "245px";
 
                             var iframe = document.createElement('iframe');
                             iframe.id = "iframe-modal-0";
                             iframe.classList.add("iframe-modal");
                             iframe.src = "/customerConnect/dialog/inviteUser.asp?BillToID="+billToId;
 
-                            closeButton.appendChild(closeIcon);
-                            titleBarDiv.appendChild(titleSpan);
-                            titleBarDiv.appendChild(closeButton);
-                            uiDialogDiv.appendChild(titleBarDiv);
-                            uiDialogDiv.appendChild(modalDiv);
-                            modalDiv.appendChild(iframe);
+                            var scorpModalContent = document.getElementById("scorp-modal-content");
+                            scorpModalContent.appendChild(iframe);
 
-                            document.body.appendChild(overlayDiv);
-                            document.body.appendChild(uiDialogDiv);
+                            var modalData = {
+                                height: "250px",
+                                width: "350px",
+                                title: "Invite User"
+                            };
 
-                        }
 
-                        contactLinks[i].appendChild(document.createTextNode("  "));
-                        contactLinks[i].appendChild(rpcIcon);
-                        contactLinks.id = "contactEmail";
+                            GM_setValue("inviteEmail", inviteEmail);
+                            GM_setValue("scorpModalData", JSON.stringify(modalData));
+
+                        };
 
                     }
                     
@@ -5621,7 +5875,7 @@
                 return false;
             } else if(accountString.split("\t").length !== 15){
                 return false;
-            } else if(["","CRISSANNA","DN","GABBY","MYLISSA","RENAE","SKYE","HALEY"].indexOf(accountString.split("\t")[12]) > -1){
+            } else if(["","CRISSANNA","DN","GABBY","MYLISSA","SKYE","HALEY",""].indexOf(accountString.split("\t")[12]) > -1){
                 return false;
             } else {
                 return accountString;
