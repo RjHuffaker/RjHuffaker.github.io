@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.016
+// @version      2.017
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -334,7 +334,7 @@
     function schedulinator(){}
 
     function getLoginData(){
-        var loginData = localStorage.getItem("currentUser");
+        var loginData = GM_getValue("currentUser");
 
         if(!loginData){
             loginPrompt();
@@ -372,7 +372,9 @@
     }
 
     function loginPrompt(){
+
         console.log("loginPrompt");
+
         var modalData = {
             height: "auto",
             width: "500px",
@@ -2002,7 +2004,7 @@
                         response = JSON.parse(response);
                         if(response){
                             console.log("LOGIN SUCCESSFUL");
-                            localStorage.setItem("currentUser", JSON.stringify(response));
+                            GM_setValue("currentUser", JSON.stringify(response));
 
                             closeScorpModal();
                             initializeScorpinator();
@@ -3535,7 +3537,6 @@
 
             function logoutClick(){
                 console.log("LOGGED OUT");
-                localStorage.removeItem("currentUser");
                 GM_deleteValue("currentUser");
                 location.reload();
             };
