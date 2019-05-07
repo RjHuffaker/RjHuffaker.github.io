@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.017
+// @version      2.018
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -343,6 +343,7 @@
         try {
             loginData = JSON.parse(loginData);
         } catch(e){
+            GM_deleteValue("currentUser");
             return false;
         }
         return loginData;
@@ -1155,7 +1156,7 @@
 
         GM_setValue("InvoiceDetails", "[]");
 
-        iframe.contentWindow.location.href = invoiceLinks[0];
+        if(invoiceLinks[0]) iframe.contentWindow.location.href = invoiceLinks[0];
 
     }
 
@@ -4152,13 +4153,13 @@
                         expandedRowButtonsContainer.style.padding = "0px 32px";
 
                         var allNotesContainer = document.getElementById("allNotesContainer");
-                        allNotesContainer.style.minHeight = "18px";
+                        if(allNotesContainer) allNotesContainer.style.minHeight = "18px";
 
                         var lastNoteSection = document.getElementById("lastNoteSection");
-                        lastNoteSection.style.minHeight = "140px";
+                        if(lastNoteSection) lastNoteSection.style.minHeight = "140px";
 
                         var locationTaskNoteSection = document.getElementById("locationTaskNoteSection");
-                        locationTaskNoteSection.parentNode.style.minHeight = "166px";
+                        if(locationTaskNoteSection) locationTaskNoteSection.parentNode.style.minHeight = "166px";
 
                         var cancelEditContainer = document.getElementById("cancelEditContainer");
 
