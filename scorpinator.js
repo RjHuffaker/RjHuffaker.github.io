@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.018
+// @version      2.019
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -237,7 +237,7 @@
 
     function initializeScorpinator(){
 
-        if(urlContains(["app.pestpac.com"]) && !urlContains(["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp"])){
+        if(urlContains(["app.pestpac.com"]) && !urlContains(["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post"])){
 
             scorpModal();
 
@@ -4082,10 +4082,12 @@
                         { input: "95qtr", output: "$95Q" },
                         { input: "95 quarterly", output: "$95Q" },
                         { input: "99qtr", output: "$99Q" },
-                        { input: "99 quarterly", output: "$99Q" }
-                    ];
+                        { input: "99 quarterly", output: "$99Q" },
 
-                    console.log(data.toLowerCase());
+                        { input: "property size: small selected service: monthly", output: "$45M" },
+                        { input: "property size: medium selected service: monthly", output: "$49M" },
+                        { input: "property size: large selected service: monthly", output: "$55M" }
+                    ];
 
                     for(var i = 1; i < setupNotes.length; i++){
 
@@ -5273,6 +5275,8 @@
     function heymarket_sockets(){
         addPestPacIcon();
 
+    //    watchAssigneeList();
+
         GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
 
             if(!new_value) return;
@@ -5298,10 +5302,12 @@
 
                     for (var i = 0; i < mutation.addedNodes.length; i++) {
 
-                        var node = mutation.addedNodes[i]
+                        var node = mutation.addedNodes[i];
+
                         if(!node.classList) return;
 
                         if(node.id === "profile-content"){
+
                             var headerBar = document.getElementsByClassName("chat-room-container")[0].children[0];
 
                             if(!headerBar) return;
@@ -5371,6 +5377,53 @@
             }
         }
 
+        function watchAssigneeList(){
+            var observer = new MutationObserver(function(mutations){
+                mutations.forEach(function(mutation){
+
+                    if(mutation.target.id === "assignee-list"){
+
+                        var assigneeList = mutation.target.children[0];
+
+                        Array.from(assigneeList.children).forEach(function(element){
+                            var _button = element.children[0];
+
+                            var textData = GM_getValue("autoText");
+
+                            var _name = _button.innerHTML.toUpperCase();
+
+                            if(!_button){ console.log("no button"); return; }
+
+                            if(!textData){ console.log("no textData"); return; }
+
+                            textData = JSON.parse(textData);
+
+                            if(_name.includes(textData.assignee)){
+
+                                console.log(_button);
+
+                                _button.click();
+
+                            }
+
+
+                        });
+
+                    }
+
+                });
+
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                characterData: true
+            });
+
+        }
+
         function goToContact(textNumber, callback){
             var inputSearchContact = document.getElementById('inputSearchContact');
 
@@ -5404,10 +5457,10 @@
 
             var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
 
-            if(nameInput && nameInput.value.includes(account)){
-                console.log("Do nothing "+account+" "+nameDiv.innerHTML);
-            } else {
-                console.log("Update Contact Info"+account);
+        //    if(nameInput && nameInput.value.includes(account)){
+        //        console.log("Do nothing: "+account+" "+nameDiv.innerHTML);
+        //    } else {
+                console.log("Update Contact Info: "+account);
 
                 var nameList = name.split(" ");
 
@@ -5415,22 +5468,40 @@
                     name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
                 }
 
-
                 nameInput.value = account+" "+name;
 
+/*
                 var keyUpEvent = document.createEvent("Event");
                 keyUpEvent.initEvent('keyup');
                 nameInput.dispatchEvent(keyUpEvent);
                 phoneInput.dispatchEvent(keyUpEvent);
+*/
 
+                var assigneeDiv = document.getElementsByClassName("assignee")[0];
+
+                console.log(assigneeDiv);
+
+                assigneeDiv.click();
+
+
+/*
                 setTimeout(function(){
+
                     var assigneeDiv = document.getElementsByClassName("assignee")[0];
+
+                    console.log(assigneeDiv);
+
+                    console.log(assigneeDiv);
+
                     if(assigneeDiv) assigneeDiv.click();
 
-                }, 300);
+                    console.log(assigneeDiv);
+                }, 200);
 
                 setTimeout(function(){
                     var assigneeList = document.getElementById("assignee-list").children[0];
+
+                    console.log(assigneeList);
 
                     Array.from(assigneeList.children).forEach(function(element){
                         var _button = element.children[0];
@@ -5450,8 +5521,8 @@
                     });
 
                 }, 400);
-
-            }
+*/
+        //    }
         }
 
     }
@@ -5642,6 +5713,7 @@
                     name: getContactInfo().name,
                     id: getContactInfo().id,
                     message: "",
+                    assignee: document.getElementById("Division").value,
                     timeStamp: Date.now()
                 }));
 
