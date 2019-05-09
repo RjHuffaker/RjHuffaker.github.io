@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.019
+// @version      2.020
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -237,7 +237,9 @@
 
     function initializeScorpinator(){
 
-        if(urlContains(["app.pestpac.com"]) && !urlContains(["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post"])){
+        var naughtyList = ["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "postNote.asp"];
+
+        if(urlContains(["app.pestpac.com"]) && !urlContains(naughtyList)){
 
             scorpModal();
 
@@ -4503,6 +4505,10 @@
 
             var serviceSetup = getServiceSetup(1);
 
+            var taskDescription = document.getElementById('description').value;
+
+            serviceSetup.nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
+
             sessionStorage.setItem("generateService", JSON.stringify(serviceSetup));
 
             document.getElementById("RSOrderLink1").click();
@@ -5275,7 +5281,7 @@
     function heymarket_sockets(){
         addPestPacIcon();
 
-    //    watchAssigneeList();
+        watchAssigneeList();
 
         GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
 
@@ -5286,7 +5292,6 @@
             window.focus();
 
             goToContact(textData.phone, function(){
-                GM_deleteValue("autoText");
                 prepareMessage(textData.message);
                 updateContact(textData.id, textData.name, textData.assignee);
             });
@@ -5385,29 +5390,46 @@
 
                         var assigneeList = mutation.target.children[0];
 
-                        Array.from(assigneeList.children).forEach(function(element){
-                            var _button = element.children[0];
+                        if(assigneeList){
 
-                            var textData = GM_getValue("autoText");
+                            if(!assigneeList.classList.contains("hidden")){
 
-                            var _name = _button.innerHTML.toUpperCase();
+                                Array.from(assigneeList.children).forEach(function(element){
 
-                            if(!_button){ console.log("no button"); return; }
+                                    var _button = element.children[0];
 
-                            if(!textData){ console.log("no textData"); return; }
+                                    var textData = GM_getValue("autoText");
 
-                            textData = JSON.parse(textData);
+                                    var _name = _button.innerHTML.toUpperCase();
 
-                            if(_name.includes(textData.assignee)){
+                                    if(!_button){ return; }
 
-                                console.log(_button);
+                                    if(!textData){ return; }
 
-                                _button.click();
+                                    textData = JSON.parse(textData);
+
+                                    if(_name.includes(textData.assignee)){
+
+                                        console.log(_name);
+
+                                        console.log(_button);
+
+                                        setTimeout(function(){
+
+                                            _button.click();
+
+                                        }, 1000);
+
+                                        GM_deleteValue("autoText");
+
+                                        return;
+
+                                    }
+
+                                });
 
                             }
-
-
-                        });
+                        }
 
                     }
 
@@ -5441,7 +5463,7 @@
         }
 
         function prepareMessage(messageBody){
-            setTimeout(function(){
+        //    setTimeout(function(){
                 var messageTextarea = document.getElementById('message-textarea');
 
                 if(messageTextarea){
@@ -5449,18 +5471,19 @@
                     messageTextarea.dispatchEvent(new InputEvent('input'));
                 }
 
-            }, 500);
+        //    }, 500);
         }
 
         function updateContact(account, name, assignee){
-            console.log("updateContact: "+account+" "+name+" "+assignee);
+            
 
             var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
 
         //    if(nameInput && nameInput.value.includes(account)){
         //        console.log("Do nothing: "+account+" "+nameDiv.innerHTML);
         //    } else {
-                console.log("Update Contact Info: "+account);
+
+                console.log("updateContact: "+account+" "+name+" "+assignee);
 
                 var nameList = name.split(" ");
 
@@ -5470,58 +5493,9 @@
 
                 nameInput.value = account+" "+name;
 
-/*
-                var keyUpEvent = document.createEvent("Event");
-                keyUpEvent.initEvent('keyup');
-                nameInput.dispatchEvent(keyUpEvent);
-                phoneInput.dispatchEvent(keyUpEvent);
-*/
-
-                var assigneeDiv = document.getElementsByClassName("assignee")[0];
-
-                console.log(assigneeDiv);
-
-                assigneeDiv.click();
-
-
-/*
                 setTimeout(function(){
-
-                    var assigneeDiv = document.getElementsByClassName("assignee")[0];
-
-                    console.log(assigneeDiv);
-
-                    console.log(assigneeDiv);
-
-                    if(assigneeDiv) assigneeDiv.click();
-
-                    console.log(assigneeDiv);
-                }, 200);
-
-                setTimeout(function(){
-                    var assigneeList = document.getElementById("assignee-list").children[0];
-
-                    console.log(assigneeList);
-
-                    Array.from(assigneeList.children).forEach(function(element){
-                        var _button = element.children[0];
-
-                        if(!_button) return;
-
-                        var _name = _button.innerHTML.toUpperCase();
-
-                        if(_name.includes(assignee)){
-                            console.log(_name);
-                            console.log(_button);
-                            _button.click();
-
-                        }
-
-
-                    });
-
-                }, 400);
-*/
+                    document.getElementsByClassName("assignee")[0].click();
+                }, 500);
         //    }
         }
 
