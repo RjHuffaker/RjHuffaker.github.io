@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.020
+// @version      2.021
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -237,7 +237,7 @@
 
     function initializeScorpinator(){
 
-        var naughtyList = ["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "postNote.asp"];
+        var naughtyList = ["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "PostNote.asp"];
 
         if(urlContains(["app.pestpac.com"]) && !urlContains(naughtyList)){
 
