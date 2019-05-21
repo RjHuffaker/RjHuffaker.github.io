@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.022
+// @version      2.023
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -373,8 +373,8 @@
 
         var modalData = {
             height: "auto",
-            width: "400px",
-            title: "User Login",
+            width: "300px",
+            title: "Scorpinator Login",
             userLogin: true,
             sendInvite: false,
             createSetup: false,
@@ -1255,8 +1255,6 @@
 
         var inviteData = GM_getValue("inviteData");
 
-        console.log(inviteData);
-
         function closeModal(){
             GM_deleteValue("inviteData");
             GM_setValue("scorpModal", "closed");
@@ -1987,7 +1985,7 @@
 
             var _div = document.createElement("div");
             _div.style.display = "none";
-            _div.id = "user-login";
+            _div.id = "scorpinatorLogin";
 
             _div.appendChild(usernameLabel);
             _div.appendChild(passwordLabel);
@@ -2178,7 +2176,7 @@
             contentDiv.style.height = modalData.height;
             titleSpan.innerHTML = modalData.title;
 
-            var userLogin = document.getElementById("user-login");
+            var userLogin = document.getElementById("scorpinatorLogin");
             var sendInvite = document.getElementById("send-invite");
             var formatSetup = document.getElementById("format-setup");
             var followUp = document.getElementById("follow-up");
