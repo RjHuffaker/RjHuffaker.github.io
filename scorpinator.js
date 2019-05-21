@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.021
+// @version      2.022
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -252,16 +252,6 @@
             });
         }
 
-        if(urlContains(["appointment"])){
-            checkLogin(function(loginData){
-                if(loginData){
-                    schedulinator();
-                } else {
-                    loginPrompt();
-                }
-            });
-        }
-
         if(urlContains(["app.heymarket.com/chats"])){
             checkLogin(function(loginData){
                 if(loginData) heymarket_sockets();
@@ -333,13 +323,11 @@
         serviceOrderDuplicator();
     }
 
-    function schedulinator(){}
-
     function getLoginData(){
         var loginData = GM_getValue("currentUser");
 
         if(!loginData){
-            loginPrompt();
+            return false;
         }
 
         try {
@@ -348,6 +336,7 @@
             GM_deleteValue("currentUser");
             return false;
         }
+
         return loginData;
     }
 
@@ -356,13 +345,17 @@
         var loginData = getLoginData();
 
         if(loginData){
-            checkToken(loginData.token, function(response){
-                if(response){
-                    if(callback) callback(loginData);
-                } else {
-                    if(callback) callback(false);
-                }
-            });
+            if(loginData.token){
+                checkToken(loginData.token, function(response){
+                    if(response){
+                        if(callback) callback(loginData);
+                    } else {
+                        if(callback) callback(false);
+                    }
+                });
+            } else {
+                if(callback) callback(false);
+            }
         } else {
             if(callback) callback(false);
         }
@@ -380,11 +373,12 @@
 
         var modalData = {
             height: "auto",
-            width: "500px",
+            width: "400px",
             title: "User Login",
             userLogin: true,
             sendInvite: false,
             createSetup: false,
+            updateSetup: false,
             followUp: false,
             showHistory: false
         };
@@ -582,6 +576,8 @@
         GMText = GMText+"\n   InvoiceLinks: "+GM_getValue("InvoiceLinks");
         GMText = GMText+"\n   InvoiceDetails: "+GM_getValue("InvoiceDetails");
 
+        GMText = GMText+"\n   generateService: "+GM_getValue("generateService");
+
         console.log(GMText);
     }
 
@@ -598,7 +594,7 @@
 
         sessionText = sessionText+"\n   serviceSetup: "+sessionStorage.getItem("serviceSetup");
         sessionText = sessionText+"\n   welcomeLetter: "+sessionStorage.getItem("welcomeLetter");
-        sessionText = sessionText+"\n   generateService: "+sessionStorage.getItem("generateService");
+        
         sessionText = sessionText+"\n   paymentNote: "+sessionStorage.getItem("paymentNote");
         sessionText = sessionText+"\n   duplicateOrder: "+sessionStorage.getItem("duplicateOrder");
         sessionText = sessionText+"\n   longitude: "+sessionStorage.getItem("longitude");
@@ -919,7 +915,8 @@
                 serviceOrder.tech = orderColumns[9].children[0].innerHTML.trim().replace("&nbsp;","");
                 serviceOrder.service = orderColumns[10].children[0].innerHTML.trim();
                 if(ordersTableRows[row].getAttribute("popuptext")){
-                    serviceOrder.instructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
+                    serviceOrder.orderInstructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Order Instructions:&nbsp;").pop();
+                    serviceOrder.locationInstructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
                 }
 
             }
@@ -1910,8 +1907,9 @@
         scorpModal.classList.add("ui-widget-content");
         scorpModal.classList.add("ui-corner-all");
         scorpModal.classList.add("ui-front");
-        scorpModal.style.top = "330px";
-        scorpModal.style.left = "490.5px";
+        scorpModal.style.position = "fixed";
+        scorpModal.style.top = "40%";
+        scorpModal.style.left = "40%";
         scorpModal.style.display = "block";
         scorpModal.style.borderRadius = "10px";
         scorpModal.id = "scorp-modal";
@@ -1951,7 +1949,7 @@
 
         contentDiv.appendChild(createUserLogin());
         contentDiv.appendChild(createSendInvite());
-        contentDiv.appendChild(createCreateSetup());
+        contentDiv.appendChild(createFormatSetup());
         contentDiv.appendChild(createFollowUp());
         contentDiv.appendChild(createShowHistory());
 
@@ -2040,16 +2038,17 @@
 
             var _div = document.createElement("div");
             _div.style.display = "none";
+            _div.style.height = "200px";
             _div.id = "send-invite";
             _div.appendChild(iframe);
 
             return _div
         }
 
-        function createCreateSetup(){
+        function createFormatSetup(){
             var _div = document.createElement("div");
             _div.style.display = "none";
-            _div.id = "create-setup";
+            _div.id = "format-setup";
 
             _div.appendChild(createLabeledInput("serviceCode", ""));
             _div.appendChild(createLabeledInput("price", ""));
@@ -2061,6 +2060,8 @@
             _div.appendChild(createLabeledInput("target", ""));
 
             _div.appendChild(createButton({text: "Create Setup", onclick: createSetup}));
+
+            _div.appendChild(createButton({text: "Update Setup", onclick: updateSetup}));
 
             return _div
 
@@ -2087,6 +2088,34 @@
 
                 window.location.href = newUrl;
 
+            }
+
+            function updateSetup(){
+                var setupData = {};
+
+                setupData.serviceCode = document.getElementById("serviceCodeInput").value;
+                setupData.price = document.getElementById("priceInput").value;
+                setupData.schedule = document.getElementById("scheduleInput").value;
+                setupData.duration = document.getElementById("durationInput").value;
+                setupData.nextDate = document.getElementById("nextDateInput").value;
+                setupData.lastGenerated = setupData.nextDate;
+                setupData.startDate = document.getElementById("startDateInput").value;
+                setupData.target = document.getElementById("targetInput").value;
+                setupData.division = document.getElementById("Division").value;
+                setupData.tech = document.getElementById("techInput").value;
+
+                sessionStorage.setItem("serviceSetup", JSON.stringify(setupData));
+
+                document.getElementById("subject").value = "Send Welcome Letter & Generate 1st Service";
+
+                document.getElementById("butSave").click();
+
+                document.getElementById("RSRow1").click();
+
+            }
+
+            function modifySetup(){
+                //if already opened to location
             }
         }
 
@@ -2151,9 +2180,12 @@
 
             var userLogin = document.getElementById("user-login");
             var sendInvite = document.getElementById("send-invite");
-            var createSetup = document.getElementById("create-setup");
+            var formatSetup = document.getElementById("format-setup");
             var followUp = document.getElementById("follow-up");
             var showHistory = document.getElementById("show-history");
+
+            var createSetupButton = document.getElementById("CreateSetupButton");
+            var updateSetupButton = document.getElementById("UpdateSetupButton");
 
             if(modalData.userLogin){
                 userLogin.style.display = "block";
@@ -2169,8 +2201,8 @@
                 sendInvite.style.display = "none";
             }
 
-            if(modalData.createSetup){
-                createSetup.style.display = "block";
+            if(modalData.createSetup || modalData.updateSetup){
+                formatSetup.style.display = "block";
 
                 document.getElementById("serviceCodeInput").value = modalData.setupData.serviceCode;
                 document.getElementById("priceInput").value = modalData.setupData.price;
@@ -2182,7 +2214,18 @@
                 document.getElementById("targetInput").value = modalData.setupData.target;
 
             } else {
-                createSetup.style.display = "none";
+                formatSetup.style.display = "none";
+            }
+
+            if(modalData.createSetup){
+                createSetupButton.style.display = "block";
+                updateSetupButton.style.display = "none";
+            } else if(modalData.updateSetup){
+                createSetupButton.style.display = "none";
+                updateSetupButton.style.display = "block";
+            } else {
+                createSetupButton.style.display = "none";
+                updateSetupButton.style.display = "none";
             }
 
             if(modalData.followUp){
@@ -2315,6 +2358,8 @@
 
                         function testClick(){
                             console.log("Help! I've been clicked!");
+                            GM_deleteValue("activeSetups");
+                            GM_deleteValue("residential");
                         }
                     }
 
@@ -2892,8 +2937,6 @@
                             GM_setValue("retrieveAccountData", "activeSetups");
 
                             var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
-
-                            //  window.open(retrieveURL,'_blank', 'toolbar=no,status=no,menubar=no,scrollbars=no,resizable=no,left=10000, top=10000, width=10, height=10, visible=none', '');
 
                             window.open(retrieveURL);
                         }
@@ -3652,6 +3695,7 @@
 
         var _input = createInput(field);
         _input.value = value;
+        _input.id = field.replace(" ", "")+"Input";
 
         var _div = document.createElement("div");
         _div.style.width = "24%";
@@ -3666,6 +3710,7 @@
     function createButton(buttonData){
         var _button = document.createElement("button");
         _button.classList.add("scorpinated");
+        _button.id = buttonData.text.replace(" ", "")+"Button";
         _button.innerHTML = buttonData.text;
         _button.addEventListener('click', buttonData.onclick);
 
@@ -3893,8 +3938,13 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2915";
                         addSetupTask = true;
-                        setupPrice = getSetupPrice(serviceOrder.instructions);
-                        taskName = "Create New Setup";
+                        setupPrice = getSetupPrice(serviceOrder.locationInstructions);
+
+                        if(serviceOrder.orderInstructions.includes("Name: ")){
+                            taskName = "Update New Setup";
+                        } else {
+                            taskName = "Create New Setup";
+                        }
                         taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
                         break;
@@ -3904,7 +3954,7 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2915";
                         addSetupTask = true;
-                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        setupPrice = getSetupPrice(serviceOrder.locationInstructions);
                         taskName = "Create New Setup";
                         taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
@@ -3915,7 +3965,7 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         addSetupTask = true;
-                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        setupPrice = getSetupPrice(serviceOrder.locationInstructions);
                         taskName = "Create New Setup (Commercial)";
                         taskDescription = "Service: "+setupPrice.toUpperCase().replace("M", "COMM")+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
@@ -3940,7 +3990,7 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2915";
                         addSetupTask = true;
-                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        setupPrice = getSetupPrice(serviceOrder.locationInstructions);
                         taskName = "Create New Setup";
                         taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
@@ -3965,7 +4015,7 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2915";
                         addSetupTask = true;
-                        setupPrice = getSetupPrice(serviceOrder.instructions);
+                        setupPrice = getSetupPrice(serviceOrder.locationInstructions);
                         taskName = "Generate 1 more Tick treatment on "+getFutureDate(serviceOrder.date, 14)+" & Create New Setup";
                         taskDescription = "Service: "+setupPrice+"\nSchedule: \nTechnician: \nTarget: "+target+"\nDuration: "+getSetupDuration(setupPrice)+"\nStartDate: "+serviceOrder.date;
                         document.getElementById("prox-icon").click();
@@ -4069,6 +4119,8 @@
 
                         { input: "55eom", output: "$55B" },
                         { input: "55 bimonthly", output: "$55B" },
+                        { input: "59eom", output: "$59B" },
+                        { input: "59 bimonthly", output: "$59B" },
                         { input: "60eom", output: "$60B" },
                         { input: "60 bimonthly", output: "$60B" },
                         { input: "65eom", output: "$65B" },
@@ -4199,6 +4251,12 @@
 
                     otherButtonsContainer.appendChild(createHistoryIframe());
 
+                } else if(taskName.includes("update new") && taskDescription.includes("Schedule:")){
+
+                    otherButtonsContainer.appendChild(createButton({ text: "Update Setup", onclick: updateSetupHandler }));
+                    otherButtonsContainer.appendChild(createButton({ text: "Missed", onclick: missedHandler }));
+                    otherButtonsContainer.appendChild(createHistoryIframe());
+
                 } else if(taskName.includes("create new") && taskDescription.includes("Schedule:")){
 
                     otherButtonsContainer.appendChild(createButton({ text: "Create Setup", onclick: createSetupHandler }));
@@ -4326,12 +4384,34 @@
             }
         }
 
-        function createSetupHandler(event){
+        function updateSetupHandler(event){
             event.preventDefault();
 
             var serviceSetup = getSetupData();
 
-            var invoiceDetails = GM_getValue("InvoiceDetails");
+            var modalData = {
+                height: "300px",
+                width: "500px",
+                title: "Update Setup?",
+                userLogin: false,
+                sendInvite: false,
+                createSetup: false,
+                updateSetup: true,
+                followUp: false,
+                showHistory: true,
+                setupData: serviceSetup
+            };
+
+            toggleScorpModal(modalData);
+
+            document.getElementById("prox-icon").click();
+
+        }
+
+        function createSetupHandler(event){
+            event.preventDefault();
+
+            var serviceSetup = getSetupData();
 
             var modalData = {
                 height: "300px",
@@ -4340,6 +4420,7 @@
                 userLogin: false,
                 sendInvite: false,
                 createSetup: true,
+                updateSetup: false,
                 followUp: false,
                 showHistory: true,
                 setupData: serviceSetup
@@ -4347,114 +4428,118 @@
 
             toggleScorpModal(modalData);
 
-            function getSetupData(){
-                var taskNameInput = document.getElementById("subject");
-                var dueDate = document.getElementById("dueDate").value;
-                var taskType = document.getElementById("taskType").value;
-                var description = document.getElementById("description").value;
-                var directions = document.getElementById("tblDirections").value;
+            document.getElementById("prox-icon").click();
 
-                var serviceCode, price, schedule, tech, duration, startDate, nextDate;
+        }
 
-                if(description.includes("Service: ")){
-                    var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
 
-                    serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY").replace("C", "MONTHLY");
+        function getSetupData(){
+            var taskNameInput = document.getElementById("subject");
+            var dueDate = document.getElementById("dueDate").value;
+            var taskType = document.getElementById("taskType").value;
+            var description = document.getElementById("description").value;
+            var directions = document.getElementById("tblDirections").value;
 
-                    price = _service.replaceAll(/[^0-9]+/, '')+".00";
+            var serviceCode, price, schedule, tech, duration, startDate, nextDate;
 
-                    schedule = description.match(/Schedule: (.*)/g)[0].split(" ")[1]+serviceCode[0];
+            if(description.includes("Service: ")){
+                var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
 
-                    tech = getTechnician(description.match(/Technician: (.*)/g)[0].split(" ")[1]);
-                }
+                serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY").replace("C", "MONTHLY");
 
-                if(description.includes("StartDate: ")){
-                    startDate = description.match(/StartDate: (.*)/g)[0].split(" ")[1];
+                price = _service.replaceAll(/[^0-9]+/, '')+".00";
+
+                schedule = description.match(/Schedule: (.*)/g)[0].split(" ")[1]+serviceCode[0];
+
+                tech = getTechnician(description.match(/Technician: (.*)/g)[0].split(" ")[1]);
+            }
+
+            if(description.includes("StartDate: ")){
+                startDate = description.match(/StartDate: (.*)/g)[0].split(" ")[1];
+            } else {
+                startDate = dueDate;
+            }
+
+            if(description.includes("NextDate: ")){
+                nextDate = description.match(/NextDate: (.*)/g)[0].split(" ")[1];
+            }
+
+            if(description.includes("Duration: ")){
+                duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
+            } else {
+                var cost = parseInt(price.toUpperCase().replace("M","").replace("$",""));
+
+                duration = convertMinutesToHours(Math.ceil(cost/9)*5);
+            }
+
+            var setupData = {};
+
+            setupData.serviceCode = serviceCode;
+            setupData.price = price;
+            setupData.schedule = schedule;
+            setupData.tech = tech;
+            setupData.duration = duration;
+            setupData.startDate = startDate;
+            setupData.nextDate = nextDate;
+            setupData.target = getSetupTarget(directions);
+
+            return setupData;
+
+            function getTechnician(name){
+                if(name==="Brian"){
+                    return "DEREK S";
+                } else if(name==="Craig"){
+                    return "CRAIG L";
+                } else if(name==="Daniel"){
+                    return "DANIEL A";
+                } else if(name==="Derek"){
+                    return "DEREK S";
+                } else if(name==="Jeff"){
+                    return "JEFF H";
+                } else if(name==="Kody"){
+                    return "CRAIG L";
+                } else if(name==="Jesse"){
+                    return "JESSE H";
+                } else if(name==="Joseph"){
+                    return "JOSEPH A";
+                } else if(name==="Josh"){
+                    return "Josh C";
+                } else if(name==="Landon"){
+                    return "JESSE H";
+                } else if(name==="Michael"){
+                    return "MICHAEL R";
+                } else if(name==="Raybrown"){
+                    return "RICKY";
+                } else if(name==="Troy"){
+                    return "TROY W";
+                } else if(name){
+                    return name;
                 } else {
-                    startDate = dueDate;
+                    return "";
                 }
+            }
 
-                if(description.includes("NextDate: ")){
-                    nextDate = description.match(/NextDate: (.*)/g)[0].split(" ")[1];
-                }
-
-                if(description.includes("Duration: ")){
-                    duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
+            function getSetupTarget(data){
+                data = data.toLowerCase();
+                if(data.includes("scorpion")){
+                    return "SCORPIONS";
+                } else if(data.includes("spider")){
+                    return "SPIDERS, E";
+                } else if(data.includes("roach")){
+                    return "ROACHES";
+                } else if(data.includes("cricket")){
+                    return "CRICKETS,";
+                } else if(data.includes("ticks")){
+                    return "TICKS";
+                } else if(data.includes("ants")){
+                    return "ANTS";
                 } else {
-                    var cost = parseInt(price.toUpperCase().replace("M","").replace("$",""));
-
-                    duration = convertMinutesToHours(Math.ceil(cost/9)*5);
+                    return "";
                 }
-
-                var setupData = {};
-
-                setupData.serviceCode = serviceCode;
-                setupData.price = price;
-                setupData.schedule = schedule;
-                setupData.tech = tech;
-                setupData.duration = duration;
-                setupData.startDate = startDate;
-                setupData.nextDate = nextDate;
-                setupData.target = getSetupTarget(directions);
-
-                return setupData;
-
-                function getTechnician(name){
-                    if(name==="Brian"){
-                        return "DEREK S";
-                    } else if(name==="Craig"){
-                        return "CRAIG L";
-                    } else if(name==="Daniel"){
-                        return "DANIEL A";
-                    } else if(name==="Derek"){
-                        return "DEREK S";
-                    } else if(name==="Jeff"){
-                        return "JEFF H";
-                    } else if(name==="Kody"){
-                        return "CRAIG L";
-                    } else if(name==="Jesse"){
-                        return "JESSE H";
-                    } else if(name==="Joseph"){
-                        return "JOSEPH A";
-                    } else if(name==="Josh"){
-                        return "Josh C";
-                    } else if(name==="Landon"){
-                        return "JESSE H";
-                    } else if(name==="Michael"){
-                        return "MICHAEL R";
-                    } else if(name==="Raybrown"){
-                        return "RICKY";
-                    } else if(name==="Troy"){
-                        return "TROY W";
-                    } else if(name){
-                        return name;
-                    } else {
-                        return "";
-                    }
-                }
-
-                function getSetupTarget(data){
-                    data = data.toLowerCase();
-                    if(data.includes("scorpion")){
-                        return "SCORPIONS";
-                    } else if(data.includes("spider")){
-                        return "SPIDERS, E";
-                    } else if(data.includes("roach")){
-                        return "ROACHES";
-                    } else if(data.includes("cricket")){
-                        return "CRICKETS,";
-                    } else if(data.includes("ticks")){
-                        return "TICKS";
-                    } else if(data.includes("ants")){
-                        return "ANTS";
-                    } else {
-                        return "";
-                    }
-                }
-
             }
 
         }
+
 
         function welcomeHandler(event){
             event.preventDefault();
@@ -4509,7 +4594,7 @@
 
             serviceSetup.nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
 
-            sessionStorage.setItem("generateService", JSON.stringify(serviceSetup));
+            GM_setValue("generateService", JSON.stringify(serviceSetup));
 
             document.getElementById("RSOrderLink1").click();
         }
@@ -4526,6 +4611,7 @@
                 userLogin: false,
                 sendInvite: false,
                 createSetup: false,
+                updateSetup: false,
                 followUp: true,
                 showHistory: true,
                 followUpText: followUpText
@@ -4624,6 +4710,12 @@
             
             if(serviceSetup){
 
+                var editButton = document.getElementById("butEdit");
+
+                if(editButton){
+                    editButton.click();
+                }
+
                 addSetupDetails(serviceSetup);
 
             }
@@ -4651,30 +4743,33 @@
             var unitPriceInput = document.getElementById("UnitPrice1");
             var scheduleInput = document.getElementById("Schedule");
             var workTimeInput = document.getElementById("WorkTime");
+            var timeRangeInput = document.getElementById("TimeRange");
+            var durationInput = document.getElementById("Duration");
+            var lastGenInput = document.getElementById("LastGeneratedDate");
             var startDateInput = document.getElementById("StartDate");
             var targetInput = document.getElementById("TargetPest");
-            var durationInput = document.getElementById("Duration");
+            var divisionInput = document.getElementById("Division");
             var techInput = document.getElementById("Tech1");
 
-            serviceCodeInput.focus();
-            serviceCodeInput.value = serviceSetup.serviceCode;
-            serviceCodeInput.blur();
-
-            unitPriceInput.focus();
-            unitPriceInput.value = serviceSetup.price;
-            unitPriceInput.blur();
+            if(serviceSetup.serviceCode){
+                serviceCodeInput.focus();
+                serviceCodeInput.value = serviceSetup.serviceCode;
+                serviceCodeInput.blur();
+            }
+            
+            if(serviceSetup.price){
+                unitPriceInput.focus();
+                unitPriceInput.value = serviceSetup.price;
+                unitPriceInput.blur();
+            }
 
             workTimeInput.focus();
             workTimeInput.value = getCurrentReadableTime();
             workTimeInput.blur();
 
-            startDateInput.focus();
-            startDateInput.value = serviceSetup.startDate;
-            startDateInput.blur();
-
-            targetInput.focus();
-            targetInput.value = serviceSetup.target;
-            targetInput.blur();
+            timeRangeInput.focus();
+            timeRangeInput.value = "";
+            timeRangeInput.blur();
 
             if(serviceSetup.duration){
                 durationInput.focus();
@@ -4682,9 +4777,35 @@
                 durationInput.blur();
             }
 
-            techInput.focus();
-            techInput.value = serviceSetup.tech;
-            techInput.blur();
+            if(serviceSetup.lastGenerated){
+                lastGenInput.focus();
+                lastGenInput.value = serviceSetup.lastGenerated;
+                lastGenInput.blur();
+            }
+
+            if(serviceSetup.startDate){
+                startDateInput.focus();
+                startDateInput.value = serviceSetup.startDate;
+                startDateInput.blur();
+            }
+
+            if(serviceSetup.target){
+                targetInput.focus();
+                targetInput.value = serviceSetup.target;
+                targetInput.blur();
+            }
+
+            if(serviceSetup.division){
+                divisionInput.focus();
+                divisionInput.value = serviceSetup.division
+                divisionInput.blur();
+            }
+            
+            if(serviceSetup.tech){
+                techInput.focus();
+                techInput.value = serviceSetup.tech;
+                techInput.blur();
+            }
 
             scheduleInput.focus();
             scheduleInput.value = parseSchedule(serviceSetup);
@@ -4804,9 +4925,12 @@
     function autoGenerator(){
         if(!urlContains(["location/detail.asp", "serviceOrder/detail.asp"])) return;
 
-        var serviceSetup = JSON.parse(sessionStorage.getItem("generateService"));
+        var serviceSetup = GM_getValue("generateService");
 
         if(serviceSetup){
+
+            serviceSetup = JSON.parse(serviceSetup);
+
             if(urlContains(["location/detail.asp"])){
 
                 console.log("nextDate: "+serviceSetup.nextDate);
@@ -4818,7 +4942,7 @@
                     if(confirm("Generate Next Service: "+serviceSetup.nextDate+"?")){
                         document.getElementById("RSOrderLink1").click();
                     } else {
-                        sessionStorage.removeItem("generateService");
+                        GM_deleteValue("generateService");
                     }
 
                 }
@@ -4848,7 +4972,7 @@
 
                     directionsInput.value = directionsValue.replace("**", "*"+serviceSetup.nextDate+"*");
 
-                    sessionStorage.removeItem("generateService");
+                    GM_deleteValue("generateService");
 
                 }, 1500);
             }
@@ -4968,12 +5092,13 @@
                             GM_setValue("inviteData", JSON.stringify(inviteData));
 
                             var modalData = {
-                                height: "350px",
+                                height: "auto",
                                 width: "350px",
                                 title: "Invite User",
                                 userLogin: false,
                                 sendInvite: true,
                                 createSetup: false,
+                                updateSetup: false,
                                 followUp: false,
                                 showHistory: false
                             };
@@ -5491,10 +5616,13 @@
                     name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
                 }
 
+                nameInput.focus();
                 nameInput.value = account+" "+name;
+                nameInput.blur();
 
                 setTimeout(function(){
-                    document.getElementsByClassName("assignee")[0].click();
+                    var assigneeDiv =  document.getElementsByClassName("assignee")[0];
+                    if(assigneeDiv) assigneeDiv.click();
                 }, 500);
         //    }
         }
@@ -6068,8 +6196,6 @@
                 alert("Scorpinator SetupList update complete: "+res);
                 window.close();
             });
-
-            GM_setValue("activeSetups", accountString);
 
         }
 
