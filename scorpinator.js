@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.023
+// @version      2.024
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -913,13 +913,21 @@
                 serviceOrder.id = orderColumns[3].children[0].innerHTML.trim();
                 serviceOrder.date = removeLeadingZeroes(orderColumns[4].innerHTML.slice(14,22));
                 serviceOrder.tech = orderColumns[9].children[0].innerHTML.trim().replace("&nbsp;","");
-                serviceOrder.service = orderColumns[10].children[0].innerHTML.trim();
+
+                if(orderColumns[10].children[0]){
+                    serviceOrder.service = orderColumns[10].children[0].innerHTML.trim().replace("&nbsp;","");
+                } else {
+                    serviceOrder.service = orderColumns[10].innerHTML.trim().replace("&nbsp;","");
+                }
+
                 if(ordersTableRows[row].getAttribute("popuptext")){
                     serviceOrder.orderInstructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Order Instructions:&nbsp;").pop();
                     serviceOrder.locationInstructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
                 }
 
             }
+
+            console.log(serviceOrder);
 
             return serviceOrder;
         }
@@ -5582,6 +5590,9 @@
                 firstContactRow.children[0].click();
             }
 
+
+
+
             if(callback) callback();
         }
 
@@ -5602,9 +5613,9 @@
 
             var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
 
-        //    if(nameInput && nameInput.value.includes(account)){
-        //        console.log("Do nothing: "+account+" "+nameDiv.innerHTML);
-        //    } else {
+            if(!nameInput) return;
+
+            if(!nameInput.value.includes(account)){
 
                 console.log("updateContact: "+account+" "+name+" "+assignee);
 
@@ -5618,11 +5629,22 @@
                 nameInput.value = account+" "+name;
                 nameInput.blur();
 
+                var keyUpEvent = document.createEvent("Event");
+                keyUpEvent.initEvent('keyup');
+                nameInput.dispatchEvent(keyUpEvent);
+
                 setTimeout(function(){
                     var assigneeDiv =  document.getElementsByClassName("assignee")[0];
                     if(assigneeDiv) assigneeDiv.click();
                 }, 500);
-        //    }
+
+            } else {
+
+                var messageTextarea = document.getElementById('message-textarea');
+
+                messageTextarea.focus();
+
+            }
         }
 
     }
