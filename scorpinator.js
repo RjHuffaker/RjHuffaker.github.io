@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.025
+// @version      2.027
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -241,11 +241,12 @@
 
         if(urlContains(["app.pestpac.com"]) && !urlContains(naughtyList)){
 
+            focusListener();
+
             scorpModal();
 
             checkLogin(function(loginData){
                 if(loginData){
-                    console.log(loginData);
                     pestpacValidated();
                 } else {
                     loginPrompt();
@@ -310,7 +311,6 @@
     function pestpacValidated(){
         retrieveCSS();
         retrieveGoogleMaps();
-        focusListener();
         retrieveActiveSetups();
         traversinator();
         autoGenerator();
@@ -327,8 +327,6 @@
     function getLoginData(){
         var loginData = GM_getValue("currentUser") ? GM_getValue("currentUser") : localStorage.getItem("currentUser");
 
-        console.log(loginData);
-
         if(!loginData){
             return false;
         }
@@ -337,10 +335,10 @@
             loginData = JSON.parse(loginData);
         } catch(e){
             GM_deleteValue("currentUser");
+            localStorage.removeItem("currentUser");
+
             return false;
         }
-
-
 
         return loginData;
     }
@@ -375,8 +373,6 @@
 
     function loginPrompt(){
 
-        console.log("loginPrompt");
-
         var modalData = {
             height: "auto",
             width: "300px",
@@ -388,8 +384,6 @@
             followUp: false,
             showHistory: false
         };
-
-        console.log(modalData);
 
         toggleScorpModal(modalData);
 
@@ -1107,8 +1101,6 @@
 
     function monitorInvoiceDetail(){
 
-        console.log("monitorInvoiceDetail");
-
         GM_deleteValue("InvoiceDetail");
 
         GM_addValueChangeListener("InvoiceDetail", function(name, old_value, new_value, remote){
@@ -1176,13 +1168,11 @@
     }
 
     function monitorInvoice(){
-        console.log("monitorInvoice");
-
+        
         var invoiceLinks = GM_getValue("InvoiceLinks");
         if(invoiceLinks){
             invoiceLinks = GM_getValue("InvoiceLinks").split(",");
         }
-
 
         var invoiceDetails = GM_getValue("InvoiceDetails");
         if(invoiceDetails){
@@ -1369,7 +1359,6 @@
     }
 
     function addToHistoryDiv(invoiceDetail){
-        console.log("addToHistoryDiv", invoiceDetail);
 
         var historyDiv = document.getElementById("historyDiv");
 
@@ -1525,6 +1514,7 @@
 
             function recordFocus(){
                 window.name = Date.now();
+
                 GM_setValue("PestPacFocus", window.name);
 
             }
@@ -2174,10 +2164,15 @@
     }
 
     function toggleScorpModal(modalData){
+
+        console.log("toggleScorpModal", modalData);
+
         var scorpOverlay = document.getElementById("scorp-overlay");
         var scorpModal = document.getElementById("scorp-modal");
         var contentDiv = document.getElementById("scorp-modal-content");
         var titleSpan = document.getElementById("scorp-modal-title");
+
+        console.log();
 
         if(!modalData){
             scorpOverlay.style.display = "none";
