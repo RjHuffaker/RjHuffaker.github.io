@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.024
+// @version      2.025
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -245,6 +245,7 @@
 
             checkLogin(function(loginData){
                 if(loginData){
+                    console.log(loginData);
                     pestpacValidated();
                 } else {
                     loginPrompt();
@@ -270,7 +271,7 @@
 
         if(urlContains(["location/detail.asp"])){
             checkLogin(function(loginData){
-                monitorInvoiceDetail();
+                if(loginData) monitorInvoiceDetail();
             });
         }
 
@@ -324,7 +325,9 @@
     }
 
     function getLoginData(){
-        var loginData = GM_getValue("currentUser");
+        var loginData = GM_getValue("currentUser") ? GM_getValue("currentUser") : localStorage.getItem("currentUser");
+
+        console.log(loginData);
 
         if(!loginData){
             return false;
@@ -336,6 +339,8 @@
             GM_deleteValue("currentUser");
             return false;
         }
+
+
 
         return loginData;
     }
@@ -363,6 +368,7 @@
 
     function checkToken(token, callback){
         httpGetAsync(`https://azpestcontrol.services/api/users.php?token=`+token, function(response){
+            console.log(response);
             if(callback) callback(JSON.parse(response));
         });
     }
@@ -382,6 +388,8 @@
             followUp: false,
             showHistory: false
         };
+
+        console.log(modalData);
 
         toggleScorpModal(modalData);
 
@@ -2942,7 +2950,7 @@
                         retrieveLink.onclick = function(){
                             GM_setValue("retrieveAccountData", "activeSetups");
 
-                            var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
+                            var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=https%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
 
                             window.open(retrieveURL);
                         }
@@ -4279,6 +4287,8 @@
 
                 if(taskName){
                     otherButtonsContainer.appendChild(createButton({ text: "Complete", onclick: completeHandler }));
+                } else {
+                    otherButtonsContainer.appendChild(createButton({ text: "Blank Setup Task", onclick: createBlankSetupTask }));
                 }
 
                 return otherButtonsContainer;
@@ -4328,6 +4338,28 @@
 
                 document.getElementById("status").value = "C";
             }
+        }
+
+        function createBlankSetupTask(){
+            event.preventDefault();
+
+            var taskNameInput = document.getElementById("subject");
+            var descriptionInput = document.getElementById('description');
+            var prioritySelect = document.getElementById("priority");
+            var taskTypeSelect = document.getElementById("taskType");
+            var dueDateInput = document.getElementById("dueDate");
+            var taskForSelect = document.getElementById("taskForID");
+
+            prioritySelect.value = "3";
+            taskTypeSelect.value = "16";
+            dueDateInput.value = getFutureDate(false, 0);
+            taskForSelect.value = "2915";
+            taskNameInput.value = "Create New Setup";
+            descriptionInput.value = "Service: \nSchedule: \nTechnician: \nTarget: \nDuration: \nStartDate: "
+            addSetupTask = true;
+
+            document.getElementById("prox-icon").click();
+
         }
 
         function balanceHandler(event){
