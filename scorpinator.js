@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.027
+// @version      2.030
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -237,9 +237,9 @@
 
     function initializeScorpinator(){
 
-        var naughtyList = ["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "PostNote.asp"];
+        var excludedList = ["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "PostNote.asp"];
 
-        if(urlContains(["app.pestpac.com"]) && !urlContains(naughtyList)){
+        if(urlContains(["app.pestpac.com"]) && !urlContains(excludedList)){
 
             focusListener();
 
@@ -560,50 +560,6 @@
                 currentElement = currentElement.parentNode;
             }
         }
-    }
-
-    function debugGMStorage(){
-        var GMText = "DEBUG - GM_Storage variables:";
-
-        GMText = GMText+"\n   PestPacFocus: "+GM_getValue("PestPacFocus");
-        GMText = GMText+"\n   serviceSetup: "+GM_getValue("serviceSetup");
-        GMText = GMText+"\n   autoText: "+GM_getValue("autoText");
-        GMText = GMText+"\n   autoCall: "+GM_getValue("autoCall");
-        GMText = GMText+"\n   findAccount: "+GM_getValue("findAccount");
-        GMText = GMText+"\n   contactInfo: "+GM_getValue("contactInfo");
-        GMText = GMText+"\n   retrieveAccountData: "+GM_getValue("retrieveAccountData");
-        GMText = GMText+"\n   zillowData: "+GM_getValue("zillowData");
-
-        GMText = GMText+"\n   InvoiceList: "+GM_getValue("InvoiceList");
-        GMText = GMText+"\n   InvoiceLinks: "+GM_getValue("InvoiceLinks");
-        GMText = GMText+"\n   InvoiceDetails: "+GM_getValue("InvoiceDetails");
-
-        GMText = GMText+"\n   generateService: "+GM_getValue("generateService");
-
-        console.log(GMText);
-    }
-
-    function debugLocalStorage(){
-        var localText = "DEBUG - localStorage variables:";
-
-        localText = localText+"\n   AltigenSessionState: "+localStorage.getItem("AltigenSessionState");
-
-        console.log(localText);
-    }
-
-    function debugSessionStorage(){
-        var sessionText = "DEBUG - sessionStorage variables:";
-
-        sessionText = sessionText+"\n   serviceSetup: "+sessionStorage.getItem("serviceSetup");
-        sessionText = sessionText+"\n   welcomeLetter: "+sessionStorage.getItem("welcomeLetter");
-        
-        sessionText = sessionText+"\n   paymentNote: "+sessionStorage.getItem("paymentNote");
-        sessionText = sessionText+"\n   duplicateOrder: "+sessionStorage.getItem("duplicateOrder");
-        sessionText = sessionText+"\n   longitude: "+sessionStorage.getItem("longitude");
-        sessionText = sessionText+"\n   latitude: "+sessionStorage.getItem("latitude");
-        sessionText = sessionText+"\n   mapState: "+sessionStorage.getItem("mapState");
-
-        console.log(sessionText);
     }
 
     function spinButton(elem, size){
@@ -1519,8 +1475,6 @@
 
             }
 
-        } else if(urlContains(["app.heymarket.com"])){
-            return;
         }
     }
 
@@ -2504,12 +2458,6 @@
         }
 
         function proxIconListener(){
-
-          //  debugGMStorage();
-
-          //  debugLocalStorage();
-
-          //  debugSessionStorage();
 
             setTimeout(function(){
                 var proxModal = document.getElementById("prox-modal");
@@ -5027,6 +4975,10 @@
             billToEditFixes();
         } else if(urlContains(["leads/detail.asp"])){
             leadDetailFixes();
+        } else if(urlContains(["leads/"])){
+            if(!urlContains(["detailEmail"])){
+                leadsListFixes();
+            }
         }
 
         function menuFixes(){
@@ -5271,6 +5223,49 @@
                     timeStamp: Date.now()
                 }));
 
+            }
+
+        }
+
+        function leadsListFixes(){
+
+            var nameInput = document.getElementById("LeadName");
+            var phoneInput = document.getElementById("LeadPhone");
+
+            var butRefresh = document.getElementById("butRefresh");
+
+            var leadInfo = GM_getValue("findLead");
+
+            if(leadInfo){
+                leadInfo = JSON.parse(leadInfo);
+
+                nameInput.value = leadInfo.name.split(", ")[0];
+
+                GM_deleteValue("findLead");
+
+                butRefresh.click();
+
+            } else {
+
+                GM_addValueChangeListener('findLead', function(name, old_value, new_value, remote){
+                    leadInfo = JSON.parse(new_value);
+
+                    nameInput.value = leadInfo.name.split(", ")[0];
+
+                    GM_deleteValue("findLead");
+
+                    butRefresh.click();
+                });
+
+            }
+
+            butRefresh.parentElement.parentElement.children[1].appendChild(createButton({text: "Clear", onclick: clearFields}));
+
+            function clearFields(e){
+                e.preventDefault();
+                nameInput.value = "";
+                phoneInput.value = "";
+                butRefresh.click();
             }
 
         }
@@ -6002,6 +5997,16 @@
                 if(accountIdMatch){
                     console.log("goToAccount: Account="+accountIdMatch[0]);
                     goToAccount(accountIdMatch[0]);
+                } else if(accountInfo.name.includes("LEAD")){
+                    var leadName = accountInfo.name.replace("LEAD", "").trim();
+
+                    GM_setValue("findLead", JSON.stringify({
+                        name: leadName,
+                        phone: accountInfo.phone,
+                        timeStamp: Date.now()
+                    }));
+
+                    window.location.href = "https://app.pestpac.com/leads/";
                 } else {
                     var phoneNumberMatch = phoneNumberRegExMatcher.exec(accountInfo.phone);
 
