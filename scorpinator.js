@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.030
+// @version      2.031
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -3809,7 +3809,7 @@
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","COM-IN","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","FLEAS","ONE","RE-START","ROACH","TICK-IN","TICKS","WDO TERMITE","WDO INSP E","WDO INSP H"]
+                        if(["BED BUGS","CARPET BEETLE","COM-IN","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","FLEAS","ONE","RE-START","ROACH","TICK-IN","TICKS","WDO TERMITE","WDO INSP E","WDO INSP H"]
                            .indexOf(serviceOrder.service) > -1){
 
                             var taskButton = document.createElement("a");
@@ -3867,6 +3867,14 @@
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
                         taskForSelect.value = "2719";
                         taskName = "Generate follow-up for Bed Bugs on "+getFutureDate(serviceOrder.date, 14);
+                        taskForSelect.value = "2915";
+                        break;
+                    case "CARPET BEETLE":
+                        prioritySelect.value = "3";
+                        taskTypeSelect.value = "12";
+                        dueDateInput.value = getFutureDate(serviceOrder.date, 1);
+                        taskForSelect.value = "2719";
+                        taskName = "Generate follow-up for Carpet Beetles on "+getFutureDate(serviceOrder.date, 14);
                         taskForSelect.value = "2915";
                         break;
                     case "FREE ESTIMATE":
