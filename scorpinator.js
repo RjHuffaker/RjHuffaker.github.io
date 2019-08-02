@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.031
+// @version      2.032
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -241,6 +241,8 @@
 
         if(urlContains(["app.pestpac.com"]) && !urlContains(excludedList)){
 
+            retrieveCSS();
+
             focusListener();
 
             scorpModal();
@@ -309,7 +311,6 @@
     }
 
     function pestpacValidated(){
-        retrieveCSS();
         retrieveGoogleMaps();
         retrieveActiveSetups();
         traversinator();
@@ -1923,40 +1924,46 @@
         monitorScorpModal();
 
         function createUserLogin(){
-            var usernameLabel = document.createElement("label");
-            usernameLabel.style.display = "block";
-            usernameLabel.innerHTML = "Username: ";
 
-            var usernameInput = document.createElement("input");
-            usernameInput.id = "scorpinatorUsername";
-
-            var passwordLabel = document.createElement("label");
-            passwordLabel.style.display = "block";
-            passwordLabel.innerHTML = "Password: ";
-
-            var passwordInput = document.createElement("input");
-            passwordInput.id = "scorpinatorPassword";
-
-            var okButton = createButton({ text: "Ok", onclick: login });
-
-            var cancelButton = createButton({ text: "Cancel", onclick: cancel });
-            usernameLabel.appendChild(usernameInput);
-            passwordLabel.appendChild(passwordInput);
+            var tableData = { rows: [
+                { cells: [
+                    { content: displayText( { title: "Scorpinator Login" } ), colSpan: 2 }
+                ] },
+                { cells: [
+                    { content: displayText( { line: true } ), colSpan: 2 }
+                ] },
+                { cells: [
+                    { content: createLabel("Username") },
+                    { content: createInput("ScorpinatorUsername") }
+                ] },
+                { cells: [
+                    { content: createLabel("Password") },
+                    { content: createInput("ScorpinatorPassword") }
+                ] },
+                { cells: [
+                    { content: displayText( { plain: "Use same credentials as azpestcontrol.services" } ), colSpan: 2 }
+                ] },
+                { cells: [
+                    { content: displayText( { line: true } ), colSpan: 2 }
+                ] },
+                { cells: [
+                    { content: createButton( { text: "Login", onclick: login } ) },
+                    { content: createButton( { text: "Cancel", onclick: cancel } ) }
+                ] }
+            ] };
 
             var _div = document.createElement("div");
             _div.style.display = "none";
             _div.id = "scorpinatorLogin";
 
-            _div.appendChild(usernameLabel);
-            _div.appendChild(passwordLabel);
-            _div.appendChild(okButton);
-            _div.appendChild(cancelButton);
+            _div.appendChild(createTable(tableData));
 
             return _div;
 
+
             function login(){
-                var username = usernameInput.value;
-                var password = passwordInput.value;
+                var username = document.getElementById("ScorpinatorUsernameInput").value;
+                var password = document.getElementById("ScorpinatorPasswordInput").value;
 
                 if(username && password){
                     httpGetAsync(`https://azpestcontrol.services/api/users.php?username=`+username+`&password=`+password, function(response){
@@ -2078,6 +2085,7 @@
         }
 
         function createFollowUp(){
+
             var _div = document.createElement("div");
             _div.style.display = "none";
             _div.id = "follow-up";
@@ -2089,11 +2097,26 @@
             followUpTextarea.style.resize = "none";
             followUpTextarea.id = "follow-up-textarea";
 
-            _div.appendChild(followUpTextarea);
+            _div.appendChild(createTable({
+                rows: [
+                    { cells: [
+                        { content: followUpTextarea, colSpan: 2 }
+                    ] },
+                    { cells: [
+                        { content: createButton({ text: "Text Follow Up", onclick: textFollowUp }) },
+                        { content: createButton({ text: "Cancel", onclick: closeScorpModal }) }
+                    ] },
+                    { cells: [
+                        { content: displayText({ plain: "&nbsp;" }) }
+                    ] }
+                ],
+                width: "100%"
+            }));
 
-            _div.appendChild(createButton({text: "Text Follow Up", onclick: function(){ textFollowUpHandler(followUpTextarea.value); closeScorpModal(); } }));
-
-            _div.appendChild(createButton({text: "Cancel", onclick: closeScorpModal}));
+            function textFollowUp(){
+                textFollowUpHandler(followUpTextarea.value);
+                closeScorpModal();
+            }
 
             return _div
         }
@@ -2152,10 +2175,10 @@
 
             if(modalData.userLogin){
                 userLogin.style.display = "block";
-                document.getElementById("scorpinatorPassword").type = "password";
+                document.getElementById("ScorpinatorPasswordInput").type = "password";
             } else {
                 userLogin.style.display = "none";
-                document.getElementById("scorpinatorPassword").type = "text";
+                document.getElementById("ScorpinatorPasswordInput").type = "text";
             }
 
             if(modalData.sendInvite){
@@ -2288,7 +2311,7 @@
                     {id: "zillow", title: "Zillow", shown: false, content: createZillowDiv()},
                     {id: "service", title: "Service", shown: false, content: createServiceDiv()},
                     {id: "update", title: "Update", shown: false, content: createUpdateDiv()},
-                    {id: "timeCard", title: "TimeCard", shown: false, content: createTimeCardDiv()},
+                //    {id: "timeCard", title: "TimeCard", shown: false, content: createTimeCardDiv()},
                     {id: "profile", title: "Login", shown: false, content: createProfileDiv()}
                 ], 300, 466, "proxContent"));
 
@@ -2837,7 +2860,7 @@
                 function createGeneralTab(){
                     var generalTab = document.createElement("div");
 
-                    generalTab.appendChild(alignLeftRight(createSetupsReturned(), createRetrieveLink()));
+                    generalTab.appendChild(createSetupsReturned());
 
                     generalTab.appendChild(createRadioSelect(MONTHFILTER));
 
@@ -2856,7 +2879,6 @@
                         var wrapperDiv = document.createElement("div");
                         wrapperDiv.style.position = "relative";
                         wrapperDiv.appendChild(createSetupsReturned());
-                        wrapperDiv.appendChild(createRetrieveLink());
 
                         return wrapperDiv;
 
@@ -2881,27 +2903,6 @@
 
                         return wrapperDiv;
 
-                    }
-
-                    function createRetrieveLink(){
-
-                        var retrieveLink = document.createElement("a");
-                        retrieveLink.innerHTML = "Retrieve Account Data";
-                        retrieveLink.style.cursor = "pointer";
-                        retrieveLink.style.fontSize = "9pt";
-
-                        retrieveLink.onclick = function(){
-                            GM_setValue("retrieveAccountData", "activeSetups");
-
-                            var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=https%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
-
-                            window.open(retrieveURL);
-                        }
-
-                        var wrapperDiv = document.createElement("div");
-                        wrapperDiv.appendChild(retrieveLink);
-
-                        return wrapperDiv;
                     }
 
                     function createRadioSelect(dataModel){
@@ -3488,7 +3489,19 @@
                     { content: displayText( { title: "Update Account Data"} ) }
                 ] },
                 { cells: [
-                    { content: createButton( { text: "Update Account Data", onclick: updateClick } ) }
+                    { content: displayText( { line: true } ) }
+                ] },
+                { cells: [
+                    { content: displayText( { plain: "&nbsp;&nbsp;&nbsp; Opens a service setup report in a new window, extracting relevant details and uploading them to azpestcontrol.services database. Gives alert upon completion."} ) }
+                ] },
+                { cells: [
+                    { content: displayText( { plain: "&nbsp;&nbsp;&nbsp; Uploading account data allows the most recent changes to be accessed remotely from authorized users, both through azpestcontrol.services and Scorpinator userscript."} ) }
+                ] },
+                { cells: [
+                    { content: displayText( { line: true } ) }
+                ] },
+                { cells: [
+                    { content: createButton( { text: "Update", onclick: updateClick } ) }
                 ] }
             ] };
 
@@ -3504,7 +3517,7 @@
             function updateClick(){
                 GM_setValue("retrieveAccountData", "activeSetups");
 
-                var retrieveURL = "http://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=http%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
+                var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=https%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
 
                 window.open(retrieveURL);
 
@@ -3519,10 +3532,19 @@
                     { content: displayText( { title: "Scorpinator User Profile" } ) }
                 ] },
                 { cells: [
+                    { content: displayText( { line: true } ) }
+                ] },
+                { cells: [
                     { content: displayText( { bold: "User: ", plain: loginData.username } ) }
                 ] },
                 { cells: [
                     { content: displayText( { bold: "Role: ", plain: loginData.role } ) }
+                ] },
+                { cells: [
+                    { content: displayText( { plain: "Uses same login credentials as azpestcontrol.services" } ) }
+                ] },
+                { cells: [
+                    { content: displayText( { line: true } ) }
                 ] },
                 { cells: [
                     { content: createButton( { text: "Logout", onclick: logoutClick } ) }
@@ -3686,6 +3708,10 @@
                 if(_cellData.colSpan) _cell.colSpan = _cellData.colSpan;
                 if(_cellData.content) _cell.appendChild(_cellData.content);
             }
+        }
+
+        if(tableData.width){
+            _table.style.width = tableData.width;
         }
 
         return _table;
@@ -3905,7 +3931,7 @@
                         addSetupTask = true;
                         setupPrice = getSetupPrice(serviceOrder.locationInstructions);
 
-                        if(serviceOrder.orderInstructions.includes("Name: ")){
+                        if(serviceOrder.orderInstructions.includes("Service: ")){
                             taskName = "Update New Setup";
                         } else {
                             taskName = "Create New Setup";
@@ -4493,12 +4519,8 @@
                     return "JOSEPH A";
                 } else if(name==="Josh"){
                     return "Josh C";
-                } else if(name==="Landon"){
-                    return "JESSE H";
                 } else if(name==="Michael"){
                     return "MICHAEL R";
-                } else if(name==="Raybrown"){
-                    return "RICKY";
                 } else if(name==="Troy"){
                     return "TROY W";
                 } else if(name){
@@ -4643,8 +4665,6 @@
 
         var taskDescription = document.getElementById('description').value;
 
-        var assignee = document.getElementById("Division").value;
-
         if(taskSubject.toLowerCase().includes('follow up')){
 
             var startDate, nextDate, currentDate = new Date();
@@ -4676,7 +4696,6 @@
                     phone: locationPhoneNumberLink.value,
                     name: getContactInfo().name,
                     id: getContactInfo().id,
-                    assignee: assignee,
                     message: message,
                     timeStamp: Date.now()
                 }));
@@ -5225,7 +5244,6 @@
                     phone: contactPhone,
                     name: contactName,
                     id: "LEAD",
-                    assignee: "RyanH",
                     message: "Hi, this is Ryan with Responsible Pest Control. I noticed that you started filling out an online form but didn't get all the way through."+
                         " Just wanted to check if you had any questions or would like help getting service set up. Feel free to text back or give us a call @ 480-924-4111",
                     timeStamp: Date.now()
@@ -5281,37 +5299,7 @@
     }
 
     function pestpac_sockets(){
-        if(urlContains(["app.pestpac.com/location"])){
-            GM_addValueChangeListener('autoCall', function(name, old_value, new_value, remote){
-                console.log("autoCall");
-
-                console.log(GM_getValue('autoCall'));
-
-                if(!checkLastFocus()) return;
-
-                console.log(new_value);
-
-                var _callData = new_value.split("|");
-                var phoneNumber = _callData[0];
-
-                if(!phoneNumber) return;
-
-                $.ajax({
-                    type: "POST",
-                    url:  'https://188107.voiceforpest.com:8443/WebProxy/api/sessions/' + window.localStorage.getItem("AltigenSessionID") + '/calls',
-                    data: {
-                        sessionId: window.localStorage.getItem("AltigenSessionID"),
-                        target: phoneNumber
-                    }
-                })
-                    .success(function(data){
-                    console.log("ClickToCall");
-                    window.localStorage.setItem("AltigenSessionState", "ClickToCall");
-                });
-
-            });
-        }
-
+        
         if(urlContains(["location/detail.asp"])){
             addContactIcons(document.getElementById("location-address-block"));
             addContactIcons(document.getElementById("billto-address-block"));
@@ -5442,8 +5430,6 @@
     function heymarket_sockets(){
         addPestPacIcon();
 
-        watchAssigneeList();
-
         GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
 
             if(!new_value) return;
@@ -5454,7 +5440,7 @@
 
             goToContact(textData.phone, function(){
                 prepareMessage(textData.message);
-                updateContact(textData.id, textData.name, textData.assignee);
+                updateContact(textData.id, textData.name);
             });
 
         });
@@ -5543,72 +5529,8 @@
             }
         }
 
-        function watchAssigneeList(){
-            var observer = new MutationObserver(function(mutations){
-                mutations.forEach(function(mutation){
-
-                    if(mutation.target.id === "assignee-list"){
-
-                        var assigneeList = mutation.target.children[0];
-
-                        if(assigneeList){
-
-                            if(!assigneeList.classList.contains("hidden")){
-
-                                Array.from(assigneeList.children).forEach(function(element){
-
-                                    var _button = element.children[0];
-
-                                    var textData = GM_getValue("autoText");
-
-                                    var _name = _button.innerHTML.toUpperCase();
-
-                                    if(!_button){ return; }
-
-                                    if(!textData){ return; }
-
-                                    textData = JSON.parse(textData);
-
-                                    if(_name.includes(textData.assignee)){
-
-                                        console.log(_name);
-
-                                        console.log(_button);
-
-                                        setTimeout(function(){
-
-                                            _button.click();
-
-                                        }, 1000);
-
-                                        GM_deleteValue("autoText");
-
-                                        return;
-
-                                    }
-
-                                });
-
-                            }
-                        }
-
-                    }
-
-                });
-
-            });
-
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                characterData: true
-            });
-
-        }
-
         function goToContact(textNumber, callback){
-            var inputSearchContact = document.getElementById('inputSearchContact');
+            var inputSearchContact = document.getElementById('contact-search-input');
 
              if(inputSearchContact){
                 var keyUpEvent = document.createEvent("Event");
@@ -5627,7 +5549,7 @@
         }
 
         function prepareMessage(messageBody){
-        //    setTimeout(function(){
+            setTimeout(function(){
                 var messageTextarea = document.getElementById('message-textarea');
 
                 if(messageTextarea){
@@ -5635,19 +5557,18 @@
                     messageTextarea.dispatchEvent(new InputEvent('input'));
                 }
 
-        //    }, 500);
+            }, 100);
         }
 
-        function updateContact(account, name, assignee){
+        function updateContact(account, name){
             
-
             var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
 
             if(!nameInput) return;
 
             if(!nameInput.value.includes(account)){
 
-                console.log("updateContact: "+account+" "+name+" "+assignee);
+                console.log("updateContact: "+account+" "+name);
 
                 var nameList = name.split(" ");
 
@@ -5680,6 +5601,7 @@
     }
 
     function helpscout_sockets(){
+
         var observer = new MutationObserver(function(mutations){
             mutations.forEach(function(mutation){
 
@@ -5691,6 +5613,7 @@
                     if(!node.classList) return;
 
                     if(node.id === "tkContent"){
+
                         var tkContent = document.getElementById("tkContent");
 
                         if(!tkContent) return;
@@ -5712,9 +5635,15 @@
             characterData: true
         });
 
-        addContactIcons(document.getElementById("tkContent"));
+        var tkContent = document.getElementById("tkContent");
 
-        tkContent.appendChild(createPestPacLink());
+        if(tkContent){
+
+            addContactIcons(tkContent);
+
+            tkContent.appendChild(createPestPacLink());
+
+        }
 
         function createPestPacLink(){
             var pestPacIcon = document.createElement("img");
@@ -5843,8 +5772,6 @@
 
                     node.insertBefore(document.createTextNode("  "), node.childNodes[++i]);
                     node.insertBefore(createTextLink(phoneNumber), node.childNodes[++i]);
-                    node.insertBefore(document.createTextNode("  "), node.childNodes[++i]);
-                    node.insertBefore(createPhoneLink(phoneNumber), node.childNodes[++i]);
 
                 }
             }
@@ -5865,7 +5792,6 @@
                     name: getContactInfo().name,
                     id: getContactInfo().id,
                     message: "",
-                    assignee: document.getElementById("Division").value,
                     timeStamp: Date.now()
                 }));
 
@@ -5878,33 +5804,6 @@
                 var image = document.createElement("img");
                 image.id = "textIcon";
                 image.src = "https://rjhuffaker.github.io/heymarket_black.png";
-                image.style.margin = "-4px";
-                image.style.width = "20px";
-                image.style.height = "20px";
-
-                return image;
-            }
-        }
-
-        function createPhoneLink(phoneNumber){
-            var link = document.createElement("a");
-            link.style.cursor = "pointer";
-            link.class = "autoText-link";
-            link.style.marginLeft = "4px";
-            link.style.marginRight = "4px";
-            var phoneIcon = createPhoneIcon();
-            link.appendChild(phoneIcon);
-            link.onclick = function(){
-                GM_setValue("autoCall", phoneNumber+"|"+Date.now());
-                spinButton(phoneIcon, 20);
-            };
-
-            return link;
-
-            function createPhoneIcon(){
-                var image = document.createElement("img");
-                image.id = "phoneIcon";
-                image.src = "https://rjhuffaker.github.io/phone_icon.png";
                 image.style.margin = "-4px";
                 image.style.width = "20px";
                 image.style.height = "20px";
