@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.032
+// @version      2.033
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -5236,7 +5236,7 @@
             function sendText(event){
                 event.preventDefault();
 
-                var contactName = document.getElementById("Contact").value;
+                var contactName = document.getElementById("Contact").value.replace("  ", " ");
 
                 var contactPhone = document.getElementById("Phone").value;
 
@@ -5439,8 +5439,8 @@
             window.focus();
 
             goToContact(textData.phone, function(){
+                updateContact(textData.id, textData.name, textData.phone);
                 prepareMessage(textData.message);
-                updateContact(textData.id, textData.name);
             });
 
         });
@@ -5520,8 +5520,8 @@
                 var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
                 var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
 
-                var name = nameInput.value;
-                var phone = phoneInput.value.replace("(", "").replace(") ", "-");
+                var name = nameInput.value.replace("  ", " ");
+                var phone = phoneInput.value.replace(/[()\-]/g, "").replace(" ","");
 
                 var contactInfo = { name: name, phone: phone, timeStamp: new Date() };
 
@@ -5530,22 +5530,36 @@
         }
 
         function goToContact(textNumber, callback){
-            var inputSearchContact = document.getElementById('contact-search-input');
+            var convoSearchInput = document.getElementById('convo-search-input');
 
-             if(inputSearchContact){
+            var contactSearchInput = document.getElementById('contact-search-input');
+
+            var searchInput = convoSearchInput ? convoSearchInput : contactSearchInput;
+
+            console.log(contactSearchInput);
+
+            if(searchInput){
                 var keyUpEvent = document.createEvent("Event");
                 keyUpEvent.initEvent('keyup');
-                inputSearchContact.value = textNumber;
-                inputSearchContact.dispatchEvent(keyUpEvent);
+                searchInput.focus();
+                searchInput.value = textNumber;
+                searchInput.dispatchEvent(keyUpEvent);
+                searchInput.blur();
 
-                var firstContactRow = document.getElementsByClassName('contact-row')[0];
-                firstContactRow.children[0].click();
+                setTimeout(function(){
+
+                    var firstContactRow = document.getElementsByClassName('contact-link')[0];
+
+                    if(firstContactRow){
+                        firstContactRow.children[0].click();
+                        if(callback) callback();
+                    }
+
+                }, 500);
+
             }
 
-
-
-
-            if(callback) callback();
+            
         }
 
         function prepareMessage(messageBody){
@@ -5560,15 +5574,21 @@
             }, 100);
         }
 
-        function updateContact(account, name){
+        function updateContact(account, name, phone){
             
             var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
 
-            if(!nameInput) return;
+            var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
+
+            if(!nameInput || !phoneInput) return;
+
+            var contactPhone = phone.replace(/[()\-]/g, "").replace(" ","");
+
+            var currentPhone = phoneInput.value.replace(/[()\-]/g, "").replace(" ","");
+
+            if(currentPhone !== contactPhone) return;
 
             if(!nameInput.value.includes(account)){
-
-                console.log("updateContact: "+account+" "+name);
 
                 var nameList = name.split(" ");
 
@@ -5589,7 +5609,7 @@
                     if(assigneeDiv) assigneeDiv.click();
                 }, 500);
 
-            } else {
+            } else if(currentPhone === contactPhone){
 
                 var messageTextarea = document.getElementById('message-textarea');
 
