@@ -45,7 +45,7 @@
 
     var PROXLISTSIZE = 50;
 
-    var GROUPBY = "DAILYTOTAL";
+    var GROUPBY = "GENERAL";
 
     var WEEKDAYS = {
         "MON": { name: "Monday", excluded: false },
@@ -237,7 +237,9 @@
 
     function initializeScorpinator(){
 
-        var excludedList = ["blank", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "PostNote.asp"];
+        console.log(window.location.href);
+
+        var excludedList = ["blank.asp", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "PostNote.asp"];
 
         if(urlContains(["app.pestpac.com"]) && !urlContains(excludedList)){
 
@@ -335,6 +337,8 @@
         try {
             loginData = JSON.parse(loginData);
         } catch(e){
+            console.error(e);
+
             GM_deleteValue("currentUser");
             localStorage.removeItem("currentUser");
 
@@ -368,6 +372,7 @@
     function checkToken(token, callback){
         httpGetAsync(`https://azpestcontrol.services/api/users.php?token=`+token, function(response){
             console.log(response);
+
             if(callback) callback(JSON.parse(response));
         });
     }
@@ -437,7 +442,9 @@
                 for(var i = 0; i < responseList.length; i++){
                     activeSetups.push(new ActiveSetup(responseList[i]));
                 }
-                proximinator();
+
+                addProximinator();
+
             });
         } else {
             alert("Scorpinator Login Expired!!");
@@ -1525,14 +1532,14 @@
             return getColorScale(WEEKS)[setup.schedule.substring(0,1)];
         } else if(GROUPBY === "WEEKDAY"){
             return getColorScale(WEEKDAYS)[setup.schedule.substring(1,4)];
-        } else if(GROUPBY === "DAILYTOTAL"){
-            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
-            dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
-            return getColorScale(DAILYTOTALS)[dailyTotal.toString()];
         } else if(GROUPBY === "TECHNICIAN"){
             return getColorScale(TECHNICIANS)[setup.tech];
         } else if(GROUPBY === "AGE"){
             return getColorScale(AGES)[setup.age];
+        } else {
+            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+            dailyTotal = dailyTotal > 400 ? dailyTotal : 450;
+            return getColorScale(DAILYTOTALS)[dailyTotal.toString()];
         }
 
     }
@@ -1576,12 +1583,12 @@
                 keyList = Object.keys(WEEKS);
             } else if(GROUPBY === "WEEKDAY"){
                 keyList = Object.keys(WEEKDAYS);
-            } else if(GROUPBY === "DAILYTOTAL"){
-                keyList = Object.keys(DAILYTOTALS);
             } else if(GROUPBY === "TECHNICIAN"){
                 keyList = Object.keys(TECHNICIANS);
             } else if(GROUPBY === "AGE"){
                 keyList = Object.keys(AGES);
+            } else {
+                keyList = Object.keys(DAILYTOTALS);
             }
         } else {
             keyList = Object.keys(dataModel);
@@ -1605,10 +1612,6 @@
             return getMarkerScale(WEEKS)[setup.schedule.substring(0,1)];
         } else if(GROUPBY === "WEEKDAY"){
             return getMarkerScale(WEEKDAYS)[setup.schedule.substring(1,4)];
-        } else if(GROUPBY === "DAILYTOTAL"){
-            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
-            dailyTotal = dailyTotal > 449 ? dailyTotal : 450;
-            return getMarkerScale(DAILYTOTALS)[dailyTotal];
         } else if(GROUPBY === "TECHNICIAN"){
             return getMarkerScale(TECHNICIANS)[setup.tech];
         } else if(GROUPBY === "SCHEDULE"){
@@ -1616,7 +1619,9 @@
         } else if(GROUPBY === "AGE"){
             return getMarkerScale(AGES)[setup.age];
         } else {
-            console.error("groupBy not recognized", GROUPBY);
+            var dailyTotal = Math.floor(setup.dailyTotal/50)*50;
+            dailyTotal = dailyTotal > 449 ? dailyTotal : 450;
+            return getMarkerScale(DAILYTOTALS)[dailyTotal];
         }
 
     }
@@ -2239,7 +2244,7 @@
         toggleScorpModal();
     }
 
-    function proximinator(){
+    function addProximinator(){
         if(!urlContains(["LocationID","location/add.asp","serviceSetup/detail.asp"])) return;
         if(urlContains(["letters","dialog","notes"])) return;
 
@@ -2301,21 +2306,28 @@
                 proxContainer.style.zIndex = 10000;
                 proxContainer.style.display = "block";
 
-                var spacerDiv = document.createElement("div");
-                spacerDiv.style.height = "20px";
+                var legendSpacer = document.createElement("div");
+                legendSpacer.id = "legend-spacer";
+                legendSpacer.style.height = "20px";
+
+                var proxTabList = [
+                    {id: "list", title: "List", shown: true, onSelect: showLegend},
+                    {id: "map", title: "Map", shown: false, onSelect: showLegend},
+                    {id: "zillow", title: "Zillow", shown: false, content: createZillowDiv(), onSelect: hideLegend},
+                    {id: "service", title: "Service", shown: false, content: createServiceDiv(), onSelect: hideLegend},
+                    {id: "update", title: "Update", shown: false, content: createUpdateDiv(), onSelect: hideLegend},
+                    {id: "profile", title: "Login", shown: false, content: createProfileDiv(), onSelect: hideLegend},
+                    {id: "rules", title: "Rules", shown: false, content: createRulesDiv(), onSelect: hideLegend}
+                ];
+
+                if(!GM_getValue("zillowData")){
+                    proxTabList.splice(2, 1);
+                }
 
                 proxContainer.appendChild(createProxHeader());
-                proxContainer.appendChild(createProxTabs([
-                    {id: "list", title: "List", shown: true},
-                    {id: "map", title: "Map", shown: false},
-                    {id: "zillow", title: "Zillow", shown: false, content: createZillowDiv()},
-                    {id: "service", title: "Service", shown: false, content: createServiceDiv()},
-                    {id: "update", title: "Update", shown: false, content: createUpdateDiv()},
-                //    {id: "timeCard", title: "TimeCard", shown: false, content: createTimeCardDiv()},
-                    {id: "profile", title: "Login", shown: false, content: createProfileDiv()}
-                ], 300, 466, "proxContent"));
+                proxContainer.appendChild(createProxTabs(proxTabList, 300, 466, "proximator"));
 
-                proxContainer.appendChild(spacerDiv);
+                proxContainer.appendChild(legendSpacer);
 
                 proxContainer.appendChild(createProxLegend());
 
@@ -2372,23 +2384,48 @@
 
                 }
 
+                function showLegend(){
+                    var proxContainer = document.getElementById("proximator-container");
+                    var tabWrapper = document.getElementById("proximator-wrapper");
+                    var proxLegend = document.getElementById("prox-legend");
+                    var legendSpacer = document.getElementById("legend-spacer");
+
+                    tabWrapper.style.height = "280px";
+                    proxContainer.style.height = "300px";
+                    legendSpacer.style.display = "block";
+                    proxLegend.style.display = "block";
+
+                }
+
+                function hideLegend(){
+                    var proxContainer = document.getElementById("proximator-container");
+                    var tabWrapper = document.getElementById("proximator-wrapper");
+                    var proxLegend = document.getElementById("prox-legend");
+                    var legendSpacer = document.getElementById("legend-spacer");
+
+                    tabWrapper.style.height = "432px";
+                    proxContainer.style.height = "432px";
+                    legendSpacer.style.display = "none";
+                    proxLegend.style.display = "none";
+                }
+
             }
 
         }
 
         function createProxTabs(tabList, height, width, containerID){
             var proxTabContainer = document.createElement("div");
-            proxTabContainer.id = "prox-tab-container";
+            proxTabContainer.id = containerID+"-container";
             proxTabContainer.style.height = height+"px";
             proxTabContainer.style.width = width+"px";
             proxTabContainer.style.boxSizing = "border-box";
 
-            proxTabContainer.appendChild(createProxTabLabels(tabList));
-            proxTabContainer.appendChild(createProxTabContent(tabList));
+            proxTabContainer.appendChild(createProxTabLabels(tabList, containerID));
+            proxTabContainer.appendChild(createProxTabWrapper(tabList, containerID));
 
             return proxTabContainer;
 
-            function createProxTabLabels(tabs){
+            function createProxTabLabels(tabs, containerID){
                 var proxTabLabels = document.createElement("div");
                 proxTabLabels.style.height = "20px";
                 proxTabLabels.style.width = "100%";
@@ -2398,7 +2435,7 @@
                 tabs.forEach(function(tab){
                     var tabLabel = document.createElement("div");
                     tabLabel.innerHTML = tab.title;
-                    tabLabel.id = tab.id+"-tab-label";
+                    tabLabel.id = containerID+"-"+tab.id+"-tab-label";
                     tabLabel.classList.add(containerID+"-tab-label");
                     tabLabel.style.cursor = "pointer";
                     tabLabel.style.display = "inline-block";
@@ -2423,9 +2460,11 @@
                     proxTabLabels.appendChild(tabLabel);
 
                     tabLabel.onclick = function(event){
+                        if(tab.onSelect) tab.onSelect(event);
+
                         var tabContentList = Array.from(document.getElementsByClassName(containerID+"-tab-content"));
                         tabContentList.forEach(function(tabContent){
-                            if(tabContent.id===tab.id+"-tab-content"){
+                            if(tabContent.id===containerID+"-"+tab.id+"-tab-content"){
                                 tabContent.style.display = "block";
                             } else {
                                 tabContent.style.display = "none";
@@ -2433,7 +2472,7 @@
                         });
                         var tabLabelList = Array.from(document.getElementsByClassName(containerID+"-tab-label"));
                         tabLabelList.forEach(function(tabLabel){
-                            if(tabLabel.id===tab.id+"-tab-label"){
+                            if(tabLabel.id===containerID+"-"+tab.id+"-tab-label"){
                                 tabLabel.style.backgroundColor = "white";
                                 tabLabel.style.borderBottom = "none";
                             } else {
@@ -2441,6 +2480,7 @@
                                 tabLabel.style.borderBottom = "1px solid";
                             }
                         });
+
                     }
 
                 });
@@ -2448,34 +2488,38 @@
                 return proxTabLabels;
             }
 
-            function createProxTabContent(tabs){
-                var proxTabContent = document.createElement("div");
+            function createProxTabWrapper(tabs, containerID){
+                var proxTabWrapper = document.createElement("div");
+                proxTabWrapper.id = containerID+"-wrapper";
+                proxTabWrapper.style.height = "90%";
+                proxTabWrapper.style.width = "90%";
 
-                proxTabContent.style.height = "90%";
-                proxTabContent.style.width = "90%";
-
-                proxTabContent.style.height = height-20+"px";
-                proxTabContent.style.width = width-20+"px";
-                proxTabContent.style.padding = "10px";
+                proxTabWrapper.style.height = height-20+"px";
+                proxTabWrapper.style.width = width-20+"px";
+                proxTabWrapper.style.padding = "10px";
 
                 tabs.forEach(function(tab){
                     var tabContent = document.createElement("div");
 
-                    tabContent.id = tab.id+"-tab-content";
+                    tabContent.id = containerID+"-"+tab.id+"-tab-content";
                     tabContent.classList.add(containerID+"-tab-content");
 
-                    tabContent.style.height = height-20+"px";
-                    tabContent.style.height = height-20+"px";
+                  //  tabContent.style.height = height-20+"px";
+                  //  tabContent.style.width = width-20+"px";
+
+                    tabContent.style.height = "100%";
+                    tabContent.style.width = "100%";
+
                     tabContent.style.display = tab.shown?"block":"none";
 
                     if(tab.content){
                         tabContent.appendChild(tab.content);
                     }
 
-                    proxTabContent.appendChild(tabContent);
+                    proxTabWrapper.appendChild(tabContent);
                 });
 
-                return proxTabContent;
+                return proxTabWrapper;
             }
 
         }
@@ -2506,19 +2550,19 @@
         function generateProxContent(data){
             generateProxList(data);
 
-            generateProxLegend(data);
-
             if(!PROXMAP){
                 generateProxMap(data);
             } else {
                 updateProxMap(data);
             }
 
+            generateProxLegend();
+
         }
 
         function generateProxList(data){
 
-            var listTabContent = document.getElementById("list-tab-content");
+            var listTabContent = document.getElementById("proximator-list-tab-content");
             listTabContent.innerHTML = "";
             listTabContent.style.height = "100%";
             listTabContent.style.width = "100%";
@@ -2541,7 +2585,7 @@
                     {text: "Zip", width: "12%"},
                     {text: "Schedule", width: "16%"},
                     {text: "Tech/Division", width: "30%"},
-                    {text: "Distance *", width: "18%"},
+                    {text: "Distance", width: "18%"},
                     {text: "Stops", width: "10%"}
                 ];
 
@@ -2692,7 +2736,7 @@
         }
 
         function generateProxMap(data){
-            var mapTabContent = document.getElementById("map-tab-content");
+            var mapTabContent = document.getElementById("proximator-map-tab-content");
             mapTabContent.innerHTML = "";
             mapTabContent.style.height = "100%";
             mapTabContent.style.width = "100%";
@@ -2832,14 +2876,12 @@
 
         }
 
-        function generateProxLegend(data){
+        function generateProxLegend(){
             var proxLegend = document.getElementById("prox-legend");
             var legendContent = document.getElementById("legend-content");
 
             if(!legendContent){
                 proxLegend.appendChild(createLegendContent());
-
-                addProxTabListeners();
             }
 
             function createLegendContent(){
@@ -2847,15 +2889,32 @@
                 legendContent.id = "legend-content";
 
                 legendContent.appendChild(createProxTabs([
-                    {id: "general", title: "General", shown: true, content: createGeneralTab()},
-                    {id: "dailyTotal", title: "DailyTotal", shown: false, content: createDailyTotalTab()},
-                    {id: "week", title: "Week", shown: false, content: createWeekTab()},
-                    {id: "weekDay", title: "WeekDay", shown: false, content: createWeekDayTab()},
-                    {id: "technician", title: "Technician", shown: false, content: createTechnicianTab()},
-                    {id: "age", title: "Age", shown: false, content: createAgeTab()}
-                ], 132, 468, "proxLegend"));
+                    {id: "general", title: "General", shown: GROUPBY==="GENERAL", content: createGeneralTab()},
+                    {id: "dailyTotal", title: "DailyTotal", shown: GROUPBY==="DAILYTOTAL", content: createDailyTotalTab(), onSelect: tabClick},
+                    {id: "week", title: "Week", shown: GROUPBY==="WEEK", content: createWeekTab(), onSelect: tabClick},
+                    {id: "weekDay", title: "WeekDay", shown: GROUPBY==="WEEKDAY", content: createWeekDayTab(), onSelect: tabClick},
+                    {id: "technician", title: "Technician", shown: GROUPBY==="TECHNICIAN", content: createTechnicianTab(), onSelect: tabClick},
+                    {id: "age", title: "Age", shown: GROUPBY==="AGE", content: createAgeTab(), onSelect: tabClick}
+                ], 132, 468, "prox-legend"));
 
                 return legendContent;
+
+
+                function tabClick(event){
+                    GROUPBY = event.target.id.replace("-tab-label", "").replace("prox-legend-", "").toUpperCase();
+
+                    var checkBoxes = Array.from(document.getElementsByClassName("groupByBox"));
+
+                    checkBoxes.forEach(function(checkBox){
+                        checkBox.checked = checkBox.id.replace("GroupByBox","").toUpperCase() === GROUPBY;
+                    });
+
+                    fetchGeocodes(function(data){
+                        getNearestActiveSetups(data, function(data){
+                            generateProxContent(data);
+                        });
+                    });
+                }
 
                 function createGeneralTab(){
                     var generalTab = document.createElement("div");
@@ -3216,37 +3275,6 @@
                 return _checkList;
             }
 
-            function addProxTabListeners(){
-                var dailyTotalTabLabel = document.getElementById("dailyTotal-tab-label");
-                var weekTabLabel = document.getElementById("week-tab-label");
-                var weekDayTabLabel = document.getElementById("weekDay-tab-label");
-                var technicianTabLabel = document.getElementById("technician-tab-label");
-                var ageTabLabel = document.getElementById("age-tab-label");
-
-                dailyTotalTabLabel.addEventListener("click", tabClick);
-                weekTabLabel.addEventListener("click", tabClick);
-                weekDayTabLabel.addEventListener("click", tabClick);
-                technicianTabLabel.addEventListener("click", tabClick);
-                ageTabLabel.addEventListener("click", tabClick);
-
-                function tabClick(event){
-                    GROUPBY = event.target.id.replace("-tab-label", "").toUpperCase();
-
-                    var checkBoxes = Array.from(document.getElementsByClassName("groupByBox"));
-
-                    checkBoxes.forEach(function(checkBox){
-                        checkBox.checked = checkBox.id.replace("GroupByBox","").toUpperCase() === GROUPBY;
-                    });
-
-                    fetchGeocodes(function(data){
-                        getNearestActiveSetups(data, function(data){
-                            generateProxContent(data);
-                        });
-                    });
-                }
-
-            }
-
         }
 
         function updateProxMap(data){
@@ -3312,6 +3340,8 @@
             proxLegend.style.border = "1px solid";
             proxLegend.style.backgroundColor = "white";
 
+
+
             return proxLegend;
         }
 
@@ -3353,6 +3383,8 @@
                         zillowData.date = new Date();
                         GM_setValue("zillowData", JSON.stringify(zillowData));
                     } else {
+
+                    //    GM_deleteValue("zillowData");
                         console.log("No Zillow Data :(");
                     }
                 });
@@ -3591,6 +3623,26 @@
                 });
             }
 
+        }
+
+        function createRulesDiv(){
+            var loginData = getLoginData();
+
+            var rulesDiv = document.createElement("div");
+            rulesDiv.style.height = "430px";
+            rulesDiv.style.width = "444px";
+
+            var rulesUrl = "https://azpestcontrol.services/article/read/2";
+
+            var iframe = document.createElement("iframe");
+            iframe.id = "rulesIframe";
+            iframe.style.height = "100%";
+            iframe.style.width = "100%";
+            iframe.src = rulesUrl;
+
+            rulesDiv.appendChild(iframe);
+
+            return rulesDiv;
         }
 
         function checkAddress(address){
@@ -3878,7 +3930,7 @@
                 var dueDateInput = document.getElementById("dueDate");
                 var taskForSelect = document.getElementById("taskForID");
 
-                var target = getSetupTarget(document.getElementById("tblDirections").value);
+                var target = getSetupTarget(document.getElementById("tblDirections").value+" "+serviceOrder.locationInstructions+" "+serviceOrder.orderInstructions);
 
                 var setupPrice = "";
 
@@ -4517,8 +4569,10 @@
                     return "JESSE H";
                 } else if(name==="Joseph"){
                     return "JOSEPH A";
+                } else if(name==="Jon"){
+                    return "Jon J";
                 } else if(name==="Josh"){
-                    return "Josh C";
+                    return "Jon J";
                 } else if(name==="Michael"){
                     return "MICHAEL R";
                 } else if(name==="Troy"){
@@ -5588,34 +5642,33 @@
 
             if(currentPhone !== contactPhone) return;
 
-            if(!nameInput.value.includes(account)){
+            setTimeout(function(){
+                if(!nameInput.value.includes(account)){
+                    var nameList = name.split(" ");
 
-                var nameList = name.split(" ");
+                    if(nameList.length = 2){
+                        name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
+                    }
 
-                if(nameList.length = 2){
-                    name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
-                }
+                    nameInput.focus();
+                    nameInput.value = account+" "+name;
+                    nameInput.blur();
 
-                nameInput.focus();
-                nameInput.value = account+" "+name;
-                nameInput.blur();
+                    var keyUpEvent = document.createEvent("Event");
+                    keyUpEvent.initEvent('keyup');
+                    nameInput.dispatchEvent(keyUpEvent);
 
-                var keyUpEvent = document.createEvent("Event");
-                keyUpEvent.initEvent('keyup');
-                nameInput.dispatchEvent(keyUpEvent);
-
-                setTimeout(function(){
                     var assigneeDiv =  document.getElementsByClassName("assignee")[0];
                     if(assigneeDiv) assigneeDiv.click();
-                }, 500);
 
-            } else if(currentPhone === contactPhone){
+                } else {
 
-                var messageTextarea = document.getElementById('message-textarea');
+                    var messageTextarea = document.getElementById('message-textarea');
 
-                messageTextarea.focus();
+                    messageTextarea.focus();
+                }
+            }, 500);
 
-            }
         }
 
     }
