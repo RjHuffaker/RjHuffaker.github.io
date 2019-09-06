@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.100
+// @version      2.101
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -38,6 +38,8 @@
     var excludedWeeks = [];
 
     var excludedTechs = [];
+
+    var PROXMODE = "list";
 
     var PROXMAP;
 
@@ -568,6 +570,14 @@
                 currentElement = currentElement.parentNode;
             }
         }
+    }
+
+    function toggleDisplay(elements, display){
+        elements.forEach(function(el){
+            if(el){
+                el.style.display = display
+            };
+        });
     }
 
     function spinButton(elem, size){
@@ -1520,6 +1530,7 @@
 
                     callback(geoCodes);
                 } else {
+                    callback(false);
                     console.log("No Google Maps Data Found :(");
                 }
             });
@@ -2311,18 +2322,17 @@
                 legendSpacer.style.height = "20px";
 
                 var proxTabList = [
-                    {id: "list", title: "List", shown: true, onSelect: showLegend},
-                    {id: "map", title: "Map", shown: false, onSelect: showLegend},
-                    {id: "zillow", title: "Zillow", shown: false, content: createZillowDiv(), onSelect: hideLegend},
-                    {id: "service", title: "Service", shown: false, content: createServiceDiv(), onSelect: hideLegend},
-                    {id: "update", title: "Update", shown: false, content: createUpdateDiv(), onSelect: hideLegend},
-                    {id: "profile", title: "Login", shown: false, content: createProfileDiv(), onSelect: hideLegend},
-                    {id: "rules", title: "Rules", shown: false, content: createRulesDiv(), onSelect: hideLegend}
+                    {id: "list", title: "List", shown: PROXMODE==="list", onSelect: setProxMode},
+                    {id: "map", title: "Map", shown: PROXMODE==="map", onSelect: setProxMode},
+                    {id: "zillow", title: "Zillow", shown: PROXMODE==="zillow", content: createZillowDiv(), onSelect: setProxMode},
+                    {id: "service", title: "Service", shown: PROXMODE==="service", content: createServiceDiv(), onSelect: setProxMode},
+                    {id: "update", title: "Update", shown: PROXMODE==="update", content: createUpdateDiv(), onSelect: setProxMode},
+                    {id: "profile", title: "Login", shown: PROXMODE==="profile", content: createProfileDiv(), onSelect: setProxMode},
+                    {id: "rules", title: "Rules", shown: PROXMODE==="rules", content: createRulesDiv(), onSelect: setProxMode}
                 ];
 
-                if(!GM_getValue("zillowData")){
-                    proxTabList.splice(2, 1);
-                }
+
+                console.log(sessionStorage.getItem("longitude"));
 
                 proxContainer.appendChild(createProxHeader());
                 proxContainer.appendChild(createProxTabs(proxTabList, 300, 466, "proximator"));
@@ -2384,29 +2394,29 @@
 
                 }
 
-                function showLegend(){
+                function setProxMode(event){
+                    var mode = event.target.id.replace("proximator-", "").replace("-tab-label", "");
+
+                    PROXMODE = mode;
+
+                    var showLegend = true;
+
                     var proxContainer = document.getElementById("proximator-container");
                     var tabWrapper = document.getElementById("proximator-wrapper");
                     var proxLegend = document.getElementById("prox-legend");
                     var legendSpacer = document.getElementById("legend-spacer");
 
-                    tabWrapper.style.height = "280px";
-                    proxContainer.style.height = "300px";
-                    legendSpacer.style.display = "block";
-                    proxLegend.style.display = "block";
-
-                }
-
-                function hideLegend(){
-                    var proxContainer = document.getElementById("proximator-container");
-                    var tabWrapper = document.getElementById("proximator-wrapper");
-                    var proxLegend = document.getElementById("prox-legend");
-                    var legendSpacer = document.getElementById("legend-spacer");
-
-                    tabWrapper.style.height = "432px";
-                    proxContainer.style.height = "432px";
-                    legendSpacer.style.display = "none";
-                    proxLegend.style.display = "none";
+                    if(mode==="list" || mode==="map"){
+                        proxContainer.style.height = "300px";
+                        tabWrapper.style.height = "280px";
+                        legendSpacer.style.display = "block";
+                        proxLegend.style.display = "block";
+                    } else {
+                        proxContainer.style.height = "432px";
+                        tabWrapper.style.height = "432px";
+                        legendSpacer.style.display = "none";
+                        proxLegend.style.display = "none";
+                    }
                 }
 
             }
@@ -2504,9 +2514,6 @@
                     tabContent.id = containerID+"-"+tab.id+"-tab-content";
                     tabContent.classList.add(containerID+"-tab-content");
 
-                  //  tabContent.style.height = height-20+"px";
-                  //  tabContent.style.width = width-20+"px";
-
                     tabContent.style.height = "100%";
                     tabContent.style.width = "100%";
 
@@ -2548,15 +2555,38 @@
         }
 
         function generateProxContent(data){
-            generateProxList(data);
 
-            if(!PROXMAP){
-                generateProxMap(data);
+            var address = getLocationAddress();
+
+            var listLabel = document.getElementById("proximator-list-tab-label");
+            var mapLabel = document.getElementById("proximator-map-tab-label");
+            var zillowLabel = document.getElementById("proximator-zillow-tab-label");
+            var serviceLabel = document.getElementById("proximator-service-tab-label");
+
+            var listContent = document.getElementById("proximator-list-tab-content");
+            var mapContent = document.getElementById("proximator-map-tab-content");
+            var zillowContent = document.getElementById("proximator-zillow-tab-content");
+            var serviceContent = document.getElementById("proximator-service-tab-content");
+
+            if(address.street && address.zipcode){
+
+                generateProxList(data);
+
+                if(!PROXMAP){
+                    generateProxMap(data);
+                } else {
+                    updateProxMap(data);
+                }
+
+                generateProxLegend();
+
+                toggleDisplay([listLabel, mapLabel, zillowLabel, serviceLabel], "inline-block");
+
             } else {
-                updateProxMap(data);
-            }
 
-            generateProxLegend();
+                toggleDisplay([listLabel, mapLabel, zillowLabel, serviceLabel, mapContent, listContent, zillowContent, serviceContent], "none");
+
+            }
 
         }
 
@@ -2910,6 +2940,7 @@
                     });
 
                     fetchGeocodes(function(data){
+                        if(!data) return;
                         getNearestActiveSetups(data, function(data){
                             generateProxContent(data);
                         });
@@ -2954,6 +2985,7 @@
                         wrapperDiv.appendChild(createLegendSelect([50, 100, 250, 500, 1000, 10000], PROXLISTSIZE, function(event){
                             PROXLISTSIZE = event.target.value;
                             fetchGeocodes(function(data){
+                                if(!data) return;
                                 getNearestActiveSetups(data, function(data){
                                     generateProxContent(data);
                                 });
@@ -3191,6 +3223,7 @@
                         });
 
                         fetchGeocodes(function(data){
+                            if(!data) return;
                             getNearestActiveSetups(data, function(data){
                                 generateProxContent(data);
                             });
@@ -3375,6 +3408,9 @@
 
                 var queryUrl = baseUrl+"?token="+loginData.token+"&address="+address.street+"&citystatezip="+address.zipcode.replaceAll(" ", "+");
 
+                var zillowLabel = document.getElementById("proximator-zillow-tab-label");
+                var zillowContent = document.getElementById("proximator-zillow-tab-content");
+
                 httpGetXML(queryUrl, function(data){
                     if(!data) return;
                     var searchResults = data['SearchResults:searchresults'];
@@ -3382,15 +3418,22 @@
                         var zillowData = searchResults.response.results.result;
                         zillowData.date = new Date();
                         GM_setValue("zillowData", JSON.stringify(zillowData));
-                    } else {
 
-                    //    GM_deleteValue("zillowData");
-                        console.log("No Zillow Data :(");
+                        console.log("ZILLONATED");
+
+                        console.log(zillowData);
+
+                        if(zillowLabel&&zillowContent){
+                            toggleDisplay([zillowLabel], "inline-block");
+                            toggleDisplay([zillowContent], "block");
+                        }
+                    } else {
+                        if(zillowLabel&&zillowContent){
+                            toggleDisplay([zillowLabel, zillowContent], "none");
+                        }
                     }
                 });
 
-            } else {
-                alert("Scorpinator Login Expired!");
             }
 
         }
@@ -5606,7 +5649,9 @@
 
                     if(firstContactRow){
                         firstContactRow.children[0].click();
-                        if(callback) callback();
+                        setTimeout(function(){
+                            if(callback) callback();
+                        }, 100);
                     }
 
                 }, 500);
@@ -5625,7 +5670,7 @@
                     messageTextarea.dispatchEvent(new InputEvent('input'));
                 }
 
-            }, 100);
+            }, 500);
         }
 
         function updateContact(account, name, phone){
@@ -5663,9 +5708,11 @@
 
                 } else {
 
-                    var messageTextarea = document.getElementById('message-textarea');
+                    setTimeout(function(){
+                        var messageTextarea = document.getElementById('message-textarea');
+                        messageTextarea.focus();
+                    }, 100);
 
-                    messageTextarea.focus();
                 }
             }, 500);
 
