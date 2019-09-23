@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.101
+// @version      2.200
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -181,6 +181,8 @@
 
     var ROUTELIST = [];
 
+    var PHONENUMBERS = [];
+
     var phoneNumberRegEx = /(?:^|[\s\(])(?:\+?1\s*(?:[.-]\s*)?)?(?:\(\s*([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9])\s*\)|([2-9]1[02-9]|[2-9][02-8]1|[2-9][02-8][02-9]))\s*(?:[.-]\s*)?([2-9]1[02-9]|[2-9][02-9]1|[2-9][02-9]{2})\s*(?:[.-]\s*)?([0-9]{4})(?!\.\S|[^\s\)x\.])/;
 
     var phoneNumberRegExMatcher = new RegExp(phoneNumberRegEx);
@@ -238,8 +240,6 @@
     initializeScorpinator();
 
     function initializeScorpinator(){
-
-        console.log(window.location.href);
 
         var excludedList = ["blank.asp", "iframe", "invoice", "appointment", "secure.helpscout.net", "reporting.pestpac.com", "inviteUser.asp", "linkproxy.asp", "preserveSession.asp", "serviceOrder/post", "PostNote.asp"];
 
@@ -373,8 +373,6 @@
 
     function checkToken(token, callback){
         httpGetAsync(`https://azpestcontrol.services/api/users.php?token=`+token, function(response){
-            console.log(response);
-
             if(callback) callback(JSON.parse(response));
         });
     }
@@ -582,11 +580,11 @@
 
     function spinButton(elem, size){
         var _count = 0;
-        var spinterval = setInterval(spinner, 25);
+        var spinterval = setInterval(spinner, 20);
         function spinner(){
             if(_count <= 20){
                 var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
-            //    elem.style.margin = "-"+Math.abs(growth*size*.25)+"px";
+                elem.style.margin = "-"+Math.abs(growth*size*.25)+"px";
                 elem.style.width = Math.abs(growth*size)+"px";
                 elem.style.height = Math.abs(growth*size)+"px";
                 elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
@@ -639,8 +637,6 @@
     }
 
     function getDifferenceInDays(firstDate, secondDate){
-        console.log(firstDate);
-        console.log(secondDate);
 
         if(secondDate){
             var oneDay = 24*60*60*1000; // hours*minutes*seconds*milliseconds
@@ -729,7 +725,7 @@
             accountName = "";
         }
 
-        return { id: accountId, name: accountName };
+        return { id: accountId, name: accountName, phoneNumbers: PHONENUMBERS };
     }
 
     function getLocationAddress(){
@@ -883,11 +879,15 @@
         if(ordersTable){
             ordersTableRows = ordersTable.children[0].children;
 
+            if(ordersTableRows[row])
             if(!ordersTableRows[row].classList.contains("noncollapsible")){
                 var orderColumns = ordersTableRows[row].children;
 
+                var popuptext = ordersTableRows[row].getAttribute("popuptext");
+
                 serviceOrder.id = orderColumns[3].children[0].innerHTML.trim();
                 serviceOrder.date = removeLeadingZeroes(orderColumns[4].innerHTML.slice(14,22));
+                serviceOrder.day = getWeekDay(orderColumns[4].innerHTML.slice(5,8));
                 serviceOrder.tech = orderColumns[9].children[0].innerHTML.trim().replace("&nbsp;","");
 
                 if(orderColumns[10].children[0]){
@@ -896,16 +896,37 @@
                     serviceOrder.service = orderColumns[10].innerHTML.trim().replace("&nbsp;","");
                 }
 
-                if(ordersTableRows[row].getAttribute("popuptext")){
-                    serviceOrder.orderInstructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Order Instructions:&nbsp;").pop();
-                    serviceOrder.locationInstructions = ordersTableRows[row].getAttribute("popuptext").replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
+                if(popuptext){
+                    serviceOrder.timeRange = popuptext.replace(/<\/?[^>]+(>|$)/g, "").split("Time Range:&nbsp;").pop().split("Targets:")[0];
+                    serviceOrder.orderInstructions = popuptext.replace(/<\/?[^>]+(>|$)/g, "").split("Order Instructions:&nbsp;").pop().split("Location Instructions:")[0];
+                    serviceOrder.locationInstructions = popuptext.replace(/<\/?[^>]+(>|$)/g, "").split("Location Instructions:&nbsp;").pop();
+                    if(popuptext.includes("Start Time:")){
+                        serviceOrder.startTime = popuptext.replace(/<\/?[^>]+(>|$)/g, "").split("Start Time:").pop().split("End Time:")[0].trim();
+                        serviceOrder.endTime = popuptext.replace(/<\/?[^>]+(>|$)/g, "").split("End Time:").pop().split("Last Screen Viewed:")[0].trim();
+                    }
                 }
 
             }
 
-            console.log(serviceOrder);
-
             return serviceOrder;
+        }
+
+        function getWeekDay(abrev){
+            if(abrev==="Mon"){
+                return "Monday";
+            } else if(abrev==="Tue"){
+                return "Tuesday";
+            } else if(abrev==="Wed"){
+                return "Wednesday";
+            } else if(abrev==="Thu"){
+                return "Thursday";
+            } else if(abrev==="Fri"){
+                return "Friday";
+            } else if(abrev==="Sat"){
+                return "Saturday";
+            } else if(abrev==="Sun"){
+                return "Sunday";
+            }
         }
     }
 
@@ -1100,7 +1121,6 @@
     }
 
     function monitorHistory(){
-        console.log("monitorHistory");
 
         var body = document.getElementsByTagName("body")[0];
 
@@ -1199,8 +1219,6 @@
 
                 //    invoiceDetails.push(invoice);
 
-                    console.log(JSON.stringify(invoice));
-
                     GM_setValue("InvoiceDetail", JSON.stringify(invoice));
 
                 //    GM_setValue("InvoiceDetails", JSON.stringify(invoiceDetails));
@@ -1242,7 +1260,7 @@
 
         if(inviteData){
             inviteData = JSON.parse(inviteData);
-            console.log(inviteData);
+
             document.getElementById("Email").value = inviteData.email;
         }
 
@@ -1261,8 +1279,6 @@
                 var inviteEmailInput = document.getElementById("Email");
 
                 var accessTemplate = document.getElementById("AccessTemplate");
-
-                console.log(billToId);
 
                 if(inviteData.billToId === billToId || billToId === "undef"){
                     if(inviteData.email && inviteEmailInput && accessTemplate.children[0].value){
@@ -1337,7 +1353,6 @@
         var historyDiv = document.getElementById("historyDiv");
 
         if(historyDiv){
-            console.log(invoiceDetail);
             var invoiceText = displayText( { bold: invoiceDetail.workDate+" --- "+invoiceDetail.serviceCode1+" --- $"+invoiceDetail.unitPrice1+" --- "+invoiceDetail.description1 } );
             historyDiv.appendChild(invoiceText);
         }
@@ -1867,7 +1882,6 @@
     }
 
     function scorpModal(){
-        console.log("scorpModal");
 
         var scorpOverlay = document.createElement("div");
         scorpOverlay.classList.add("ui-widget-overlay");
@@ -2165,8 +2179,6 @@
         var contentDiv = document.getElementById("scorp-modal-content");
         var titleSpan = document.getElementById("scorp-modal-title");
 
-        console.log();
-
         if(!modalData){
             scorpOverlay.style.display = "none";
             scorpModal.style.display = "none";
@@ -2330,9 +2342,6 @@
                     {id: "profile", title: "Login", shown: PROXMODE==="profile", content: createProfileDiv(), onSelect: setProxMode},
                     {id: "rules", title: "Rules", shown: PROXMODE==="rules", content: createRulesDiv(), onSelect: setProxMode}
                 ];
-
-
-                console.log(sessionStorage.getItem("longitude"));
 
                 proxContainer.appendChild(createProxHeader());
                 proxContainer.appendChild(createProxTabs(proxTabList, 300, 466, "proximator"));
@@ -2957,7 +2966,6 @@
                     return generalTab;
 
                     function refreshScorpinator(){
-                        console.log("REFRESH THE SCORPINATOR!!");
                         fetchGeocodes(function(data){
                             getNearestActiveSetups(data, function(data){
                                 generateProxContent(data);
@@ -3213,8 +3221,7 @@
                     return _selectAllSpan;
 
                     function selectAll(){
-                        console.log("select all: "+listType);
-
+                        
                         var checkBoxes = Array.from(document.getElementsByClassName(listType+"Box"))
 
                         checkBoxes.forEach(function(checkBox){
@@ -3909,15 +3916,17 @@
                 }
             }
 
-
         } else if(urlContains(["location/detail.asp"])){
-            addCreateTaskLink();
+            addServiceOrderLinks();
             addTaskButtons();
         }
 
-        function addCreateTaskLink(){
+        function addServiceOrderLinks(){
             var ordersTable = document.getElementById("OrdersTable");
             var ordersTableRows = null;
+
+            var taskServices = ["BED BUGS","CARPET BEETLE","COM-IN","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","FLEAS","ONE","RE-START","ROACH","TICK-IN","TICKS","WDO TERMITE","WDO INSP E","WDO INSP H"];
+
             if(ordersTable){
                 ordersTableRows = ordersTable.children[0].children;
 
@@ -3925,42 +3934,148 @@
                     var container = document.createElement("td");
                     container.style.width = "72px";
                     container.style.textAlign = "center";
+                    container.style.cursor = "default";
+                    container.onclick = function(e){
+                        e.stopPropagation();
+                        e.preventDefault();
+                    }
 
                     ordersTableRows[i].insertBefore(container, ordersTableRows[i].firstChild);
 
                     if(!ordersTableRows[i].classList.contains("noncollapsible")){
                         var serviceOrder = getServiceOrder(i);
-                        if(["BED BUGS","CARPET BEETLE","COM-IN","FREE ESTIMATE","FREE ESTIMATE C","IN","IN.2","FLEAS","ONE","RE-START","ROACH","TICK-IN","TICKS","WDO TERMITE","WDO INSP E","WDO INSP H"]
-                           .indexOf(serviceOrder.service) > -1){
+                        if(serviceOrder.service!==""){
+                            container.style.height = "20px";
+                            container.appendChild(createTextReminderLink(i));
 
-                            var taskButton = document.createElement("a");
-                            taskButton.innerHTML = "Create Task";
-                            taskButton.id = "taskButton"+i;
-                            taskButton.classList.add("primary-link");
-
-                            taskButton.style.fontFamily = "NewRocker";
-
-                            container.appendChild(taskButton);
-
-                            taskButton.addEventListener("click", function(e) {
-                                e.stopPropagation();
-                                setTimeout(function(){
-                                    var addTask = document.getElementById("addTask");
-                                    var collapsedAddTask = document.getElementById("collapsedAddTask");
-                                    var row = e.target.id.replace("taskButton","");
-
-                                    if(addTask){
-                                        addTask.click();
-                                    } else {
-                                        collapsedAddTask.click();
-                                    }
-
-                                    createSetupTask(row);
-                                }, 100);
-                            });
+                            if(taskServices.indexOf(serviceOrder.service) > -1){
+                                container.appendChild(createTaskLink(i));
+                            }
                         }
                     }
                 }
+
+            }
+
+            function createTaskLink(row){
+                var link = document.createElement("a");
+                link.id = "taskLink"+row;
+                link.style.cursor = "pointer";
+                link.style.marginLeft = "4px";
+                link.style.marginRight = "4px";
+                link.style.hover = "";
+
+                var taskIcon = createTaskIcon(row);
+
+                link.appendChild(taskIcon);
+
+                link.addEventListener("click", function(e){
+                    e.stopPropagation();
+                    setTimeout(function(){
+                        var addTask = document.getElementById("addTask");
+                        var collapsedAddTask = document.getElementById("collapsedAddTask");
+                        var row = e.target.id.replace("taskIcon","");
+
+                        console.log(row);
+
+                        if(addTask){
+                            addTask.click();
+                        } else {
+                            collapsedAddTask.click();
+                        }
+
+                        createSetupTask(row);
+                    }, 500);
+
+                    spinButton(taskIcon, 16);
+                });
+
+                return link;
+
+                function createTaskIcon(row){
+                    var image = document.createElement("img");
+                    image.src = "https://rjhuffaker.github.io/clipboard.png";
+                    image.id = "taskIcon"+row;
+                    image.style.margin = "-4px";
+                    image.style.width = "16px";
+                    image.style.height = "16px";
+
+                    return image;
+                }
+            }
+
+            function createTextReminderLink(row){
+                var link = document.createElement("a");
+                link.style.cursor = "pointer";
+                link.class = "autoText-link";
+                link.style.marginLeft = "4px";
+                link.style.marginRight = "8px";
+
+                var textIcon = createTextIcon(JSON.stringify(row));
+
+                link.appendChild(textIcon);
+
+                link.addEventListener("click", function(e){
+
+                    e.stopPropagation();
+
+                    var row = e.target.id.replace("textIcon","");
+
+                    var serviceOrder = getServiceOrder(row);
+
+                    console.log(serviceOrder);
+
+                    var textData = {
+                        phone: getContactInfo().phoneNumbers[0],
+                        name: getContactInfo().name,
+                        id: getContactInfo().id,
+                        message: "",
+                        timeStamp: Date.now()
+                    };
+
+                    if(serviceOrder.service==="IN"){
+                        if(serviceOrder.day==="Saturday" || serviceOrder.day==="Sunday"){
+                            textData.message = "Hi, this is Responsible Pest Control. Thank you for purchasing our services online. It appears you had requested a "
+                                +serviceOrder.day+" appointment. Unfortunately, we don't provide Saturday or Sunday services. "
+                                +"We do however, start as early as 7am and our last appointment is around 4:30-5pm Monday-Friday. "
+                                +"Is there a day or time that would work for you? Thanks again! Responsible Pest Control";
+                        } else if(serviceOrder.tech===""){
+                            alert("Not scheduled!");
+                            return;
+                        } else if(serviceOrder.orderInstructions.includes("Last Screen Viewed:")){
+                            textData.message = "Hi, this is Responsible Pest Control. Thank you for purchasing our services online. We have you scheduled for "
+                                +serviceOrder.day+", "+getServiceDate(serviceOrder.date)
+                                +", with an arrival time between "+serviceOrder.startTime+" and "+serviceOrder.endTime
+                                +". We look forward to serving you. Feel free to contact us with any questions or concerns. Call/text 480-924-4111";
+                        } else {
+                            textData.message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+serviceOrder.day+", "
+                                +getServiceDate(serviceOrder.date)+". If you have any questions or need to reschedule please let me know. If not, we'll see you "
+                                +serviceOrder.day+". Thanks!";
+                        }
+                    } else {
+                        textData.message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+serviceOrder.day+", "
+                            +getServiceDate(serviceOrder.date)+". If you have any questions or need to reschedule please let me know. If not, we'll see you "
+                            +serviceOrder.day+". Thanks!";
+                    }
+
+                    GM_setValue("autoText", JSON.stringify(textData));
+
+                    spinButton(textIcon, 16);
+                });
+
+                return link;
+
+                function createTextIcon(serviceOrder){
+                    var image = document.createElement("img");
+                    image.src = "https://rjhuffaker.github.io/heymarket_black.png";
+                    image.id = "textIcon"+i;
+                    image.style.margin = "-4px";
+                    image.style.width = "16px";
+                    image.style.height = "16px";
+
+                    return image;
+                }
+
             }
 
             function createSetupTask(row){
@@ -4137,7 +4252,7 @@
 
                 function getSetupPrice(data){
                     var setupPrice = "???";
-                    console.log(data);
+
                     var setupNotes = [
                         { input: "40mo", output: "$40M" },
                         { input: "$40mo", output: "$40M" },
@@ -4217,6 +4332,7 @@
                         { input: "75 bimonthly", output: "$75B" },
                         { input: "79eom", output: "$79B" },
                         { input: "79 bimonthly", output: "$79B" },
+
                         { input: "90qtr", output: "$90Q" },
                         { input: "90 quarterly", output: "$90Q" },
                         { input: "95qtr", output: "$95Q" },
@@ -4552,30 +4668,32 @@
 
             var serviceCode, price, schedule, tech, duration, startDate, nextDate;
 
-            if(description.includes("Service: ")){
-                var _service = description.match(/Service: (.*)/g)[0].split(" ")[1];
+            if(description.includes("Service:")){
+
+                var _service = description.match(/Service:(.*)/g)[0].split(":")[1].trim();
 
                 serviceCode = _service.replaceAll(/[^a-zA-Z]+/, "").toUpperCase().replace("M", "MONTHLY").replace("B", "BIMONTHLY").replace("Q", "QUARTERLY").replace("C", "MONTHLY");
 
                 price = _service.replaceAll(/[^0-9]+/, '')+".00";
 
-                schedule = description.match(/Schedule: (.*)/g)[0].split(" ")[1]+serviceCode[0];
+                schedule = description.match(/Schedule:(.*)/g)[0].split(":")[1].trim()+serviceCode[0];
 
-                tech = getTechnician(description.match(/Technician: (.*)/g)[0].split(" ")[1]);
+                tech = getTechnician(description.match(/Technician:(.*)/g)[0].split(":")[1].trim());
+
             }
 
-            if(description.includes("StartDate: ")){
-                startDate = description.match(/StartDate: (.*)/g)[0].split(" ")[1];
+            if(description.includes("StartDate:")){
+                startDate = description.match(/StartDate:(.*)/g)[0].split(":")[1].trim();
             } else {
                 startDate = dueDate;
             }
 
-            if(description.includes("NextDate: ")){
-                nextDate = description.match(/NextDate: (.*)/g)[0].split(" ")[1];
+            if(description.includes("NextDate:")){
+                nextDate = description.match(/NextDate:(.*)/g)[0].split(":")[1].trim();
             }
 
-            if(description.includes("Duration: ")){
-                duration = description.match(/Duration: (.*)/g)[0].split(" ")[1];
+            if(description.includes("Duration:")){
+                duration = description.match(/Duration:(.*)/g)[0].split("Duration:")[1].trim();
             } else {
                 var cost = parseInt(price.toUpperCase().replace("M","").replace("$",""));
 
@@ -4840,8 +4958,7 @@
         }
 
         function addSetupDetails(serviceSetup){
-            console.log(serviceSetup);
-
+            
             sessionStorage.removeItem("serviceSetup");
 
             var serviceCodeInput = document.getElementById("ServiceCode1");
@@ -4993,8 +5110,6 @@
 
                     var nameInput = document.getElementById('Name');
 
-                    console.log(welcomeLetter);
-
                     letter.innerHTML = letter.innerHTML
                         .replace("first week of each month", welcomeLetter.schedule)
                         .replace("DATE", welcomeLetter.nextDate);
@@ -5037,8 +5152,6 @@
             serviceSetup = JSON.parse(serviceSetup);
 
             if(urlContains(["location/detail.asp"])){
-
-                console.log("nextDate: "+serviceSetup.nextDate);
 
                 var daysToNextService = getDifferenceInDays(null, serviceSetup.nextDate);
 
@@ -5139,8 +5252,6 @@
 
             inviteButton.onclick = function(){
 
-            //    var billToId = document.getElementById("BillToAccountNum").innerHTML;
-
                 var location = window.location.href
                 var billToId = location.substr(location.indexOf("BillToID") + 9).substring(0, 5);
 
@@ -5150,8 +5261,6 @@
                 }
 
                 GM_setValue("inviteData", JSON.stringify(inviteData));
-
-                console.log(inviteData);
 
             }
 
@@ -5418,10 +5527,6 @@
 
             if(contact){
 
-                console.log("contact detected");
-
-                console.log(contact);
-
                 if(urlContains(["location/add.asp"])){
 
                     inputContactInfo(JSON.parse(contact));
@@ -5438,8 +5543,6 @@
 
             } else {
 
-                console.log("no contact");
-
                 GM_addValueChangeListener('contactInfo', function(name, old_value, new_value, remote){
 
                     if(urlContains(["location/add.asp"])){
@@ -5447,10 +5550,6 @@
                         if(!checkLastFocus()) return;
 
                         window.focus();
-                        console.log("New:");
-                        console.log(new_value);
-                        console.log("Old:");
-                        console.log(old_value);
 
                         inputContactInfo(JSON.parse(new_value));
 
@@ -5469,11 +5568,8 @@
             }
 
             function inputContactInfo(contact){
-                console.log("updateContactInfo");
-
+                
                 GM_deleteValue("contactInfo");
-
-                console.log("inputContactInfo");
 
                 var fNameInput = document.getElementById("FName");
                 var lNameInput = document.getElementById("LName");
@@ -5632,8 +5728,6 @@
             var contactSearchInput = document.getElementById('contact-search-input');
 
             var searchInput = convoSearchInput ? convoSearchInput : contactSearchInput;
-
-            console.log(contactSearchInput);
 
             if(searchInput){
                 var keyUpEvent = document.createEvent("Event");
@@ -5803,8 +5897,6 @@
                                         headerText = element.children[0].children[0].innerHTML;
                                     }
 
-                                    console.log(element.nextElementSibling);
-
                                     var elementSibling = element.nextElementSibling;
 
                                     if(elementSibling){
@@ -5812,9 +5904,6 @@
                                             contentRow = elementSibling.children[1].innerHTML;
                                         }
                                     }
-
-                                    console.log("headerText",headerText);
-                                    console.log("contentRow",contentRow);
 
                                     if(headerText === "Name"){
                                         contact.name = contentRow.replace(/<(?:.|\n)*?>/gm, '');
@@ -5851,8 +5940,6 @@
 
                     contact.date = Date.now();
 
-                    console.log(contact);
-
                     return contact;
 
                 }
@@ -5887,6 +5974,8 @@
 
                     var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
                     var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
+
+                    PHONENUMBERS.push(phoneNumber);
 
                     child.splitText(phoneNumbers.index + phoneNumbers[0].length);
 
@@ -6013,8 +6102,6 @@
                 window.focus();
 
                 var accountInfo = JSON.parse(new_value);
-
-                console.log(accountInfo);
 
                 var accountIdRegEx = /(?<!\d)\d{5,6}(?!\d)/;
                 var accountIdRegExMatcher = new RegExp(accountIdRegEx);
