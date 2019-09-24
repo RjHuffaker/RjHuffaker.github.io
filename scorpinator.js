@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.200
+// @version      2.300
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -256,6 +256,24 @@
                     pestpacValidated();
                 } else {
                     loginPrompt();
+                }
+            });
+        }
+
+        if(urlContains(["app.pestpac.com/appointment/dialog/changeOrder.asp"])){
+            checkLogin(function(loginData){
+                if(loginData){
+                    retrieveCSS();
+                    appointmentDialogFixes();
+                }
+            });
+        }
+
+        if(urlContains(["app.pestpac.com/appointment/default.asp"])){
+            checkLogin(function(loginData){
+                if(loginData){
+                    retrieveCSS();
+                    appointmentFixes();
                 }
             });
         }
@@ -653,6 +671,48 @@
         }
     }
 
+
+    function getReadableDate(input){
+        var month = input.split("/")[0];
+
+        if(month.length===1){
+            month = month
+                .replace("1", "January").replace("2", "February").replace("3", "March")
+                .replace("4", "April").replace("5", "May").replace("6", "June")
+                .replace("7", "July").replace("8", "August").replace("9", "September");
+        } else {
+            month = month
+                .replace("01", "January").replace("02", "February").replace("03", "March")
+                .replace("04", "April").replace("05", "May").replace("06", "June")
+                .replace("07", "July").replace("08", "August").replace("09", "September")
+                .replace("10", "October").replace("11", "November").replace("12", "December");
+        }
+
+        var date = input.split("/")[1];
+
+        if(date.length===1){
+            date = date
+                .replace("1", "1st").replace("2", "2nd").replace("3", "3rd").replace("4", "4th")
+                .replace("5", "5th").replace("6", "6th").replace("7", "7th").replace("8", "8th").replace("9", "9th");
+        } else {
+            date = date
+                .replace("01", "1st").replace("02", "2nd").replace("03", "3rd").replace("04", "4th").replace("05", "5th")
+                .replace("06", "6th").replace("07", "7th").replace("08", "8th").replace("09", "9th").replace("10", "10th")
+                .replace("11", "11th").replace("12", "12th").replace("13", "13th").replace("14", "14th").replace("15", "15th")
+                .replace("16", "16th").replace("17", "17th").replace("18", "18th").replace("19", "19th").replace("20", "20th")
+                .replace("21", "21st").replace("22", "22nd").replace("23", "23rd").replace("24", "24th").replace("25", "25th")
+                .replace("26", "26th").replace("27", "27th").replace("28", "28th").replace("29", "29th").replace("30", "30th")
+                .replace("31", "31st");
+        }
+
+        return month+" "+date;
+    }
+
+    function getWeekday(input){
+        var date = new Date(input);
+        return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][date.getDay()];
+    }
+
     function getCurrentReadableTime(){
         var hours = new Date().getHours();
         hours = hours<13?hours:hours-12;
@@ -796,42 +856,6 @@
         } else if(schedule.includes("QM")){
             return "001001001001";
         }
-    }
-
-    function getServiceDate(input){
-        var month = input.split("/")[0];
-
-        if(month.length===1){
-            month = month
-                .replace("1", "January").replace("2", "February").replace("3", "March")
-                .replace("4", "April").replace("5", "May").replace("6", "June")
-                .replace("7", "July").replace("8", "August").replace("9", "September");
-        } else {
-            month = month
-                .replace("01", "January").replace("02", "February").replace("03", "March")
-                .replace("04", "April").replace("05", "May").replace("06", "June")
-                .replace("07", "July").replace("08", "August").replace("09", "September")
-                .replace("10", "October").replace("11", "November").replace("12", "December");
-        }
-
-        var day = input.split("/")[1];
-
-        if(day.length===1){
-            day = day
-                .replace("1", "1st").replace("2", "2nd").replace("3", "3rd").replace("4", "4th")
-                .replace("5", "5th").replace("6", "6th").replace("7", "7th").replace("8", "8th").replace("9", "9th");
-        } else {
-            day = day
-                .replace("01", "1st").replace("02", "2nd").replace("03", "3rd").replace("04", "4th").replace("05", "5th")
-                .replace("06", "6th").replace("07", "7th").replace("08", "8th").replace("09", "9th").replace("10", "10th")
-                .replace("11", "11th").replace("12", "12th").replace("13", "13th").replace("14", "14th").replace("15", "15th")
-                .replace("16", "16th").replace("17", "17th").replace("18", "18th").replace("19", "19th").replace("20", "20th")
-                .replace("21", "21st").replace("22", "22nd").replace("23", "23rd").replace("24", "24th").replace("25", "25th")
-                .replace("26", "26th").replace("27", "27th").replace("28", "28th").replace("29", "29th").replace("30", "30th")
-                .replace("31", "31st");
-        }
-
-        return month+" "+day;
     }
 
     function getNextServiceDate(startDate, schedule, frequency){
@@ -4044,17 +4068,17 @@
                             return;
                         } else if(serviceOrder.orderInstructions.includes("Last Screen Viewed:")){
                             textData.message = "Hi, this is Responsible Pest Control. Thank you for purchasing our services online. We have you scheduled for "
-                                +serviceOrder.day+", "+getServiceDate(serviceOrder.date)
+                                +serviceOrder.day+", "+getReadableDate(serviceOrder.date)
                                 +", with an arrival time between "+serviceOrder.startTime+" and "+serviceOrder.endTime
                                 +". We look forward to serving you. Feel free to contact us with any questions or concerns. Call/text 480-924-4111";
                         } else {
                             textData.message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+serviceOrder.day+", "
-                                +getServiceDate(serviceOrder.date)+". If you have any questions or need to reschedule please let me know. If not, we'll see you "
+                                +getReadableDate(serviceOrder.date)+". If you have any questions or need to reschedule please let me know. If not, we'll see you "
                                 +serviceOrder.day+". Thanks!";
                         }
                     } else {
                         textData.message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+serviceOrder.day+", "
-                            +getServiceDate(serviceOrder.date)+". If you have any questions or need to reschedule please let me know. If not, we'll see you "
+                            +getReadableDate(serviceOrder.date)+". If you have any questions or need to reschedule please let me know. If not, we'll see you "
                             +serviceOrder.day+". Thanks!";
                     }
 
@@ -4791,9 +4815,9 @@
             welcomeLetter.nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
 
             if(taskDescription.includes("NextDate:")){
-                welcomeLetter.nextDate = getServiceDate(taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1]);
+                welcomeLetter.nextDate = getReadableDate(taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1]);
             } else {
-                welcomeLetter.nextDate = getServiceDate(serviceSetup.nextDate);
+                welcomeLetter.nextDate = getReadableDate(serviceSetup.nextDate);
             }
             
             taskNameInput.value = "Follow up for Initial";
@@ -5504,6 +5528,144 @@
 
     }
 
+    function appointmentFixes(){
+        var popup = document.getElementById("Popup");
+        console.log(popup);
+
+        var observer = new MutationObserver(function(mutations){
+
+            mutations.forEach(function(mutation){
+
+                if (!mutation.addedNodes) return
+
+                for (var i = 0; i < mutation.addedNodes.length; i++) {
+
+                    var node = mutation.addedNodes[i];
+
+                    phoneSearch(node);
+
+                }
+
+            });
+        });
+
+        observer.observe(popup, {
+            childList: true,
+            subtree: true
+        });
+
+        function phoneSearch(node){
+            if(!node.childNodes) return;
+
+            for(var i = 0; i < node.childNodes.length; ++i){
+                var child = node.childNodes[i];
+                if (child.nodeName == "SCRIPT" || child.nodeName == "NOSCRIPT"
+                    || child.nodeName == "OBJECT" || child.nodeName == "EMBED"
+                    || child.nodeName == "APPLET" || child.nodeName == "IFRAME") {
+                    continue;
+                }
+
+                if(child.childNodes.length > 0){
+                    phoneSearch(child);
+                } else if (child.nodeType == 3){
+                    var phoneNumbers = phoneNumberRegExMatcher.exec(child.nodeValue);
+                    if(phoneNumbers){
+
+                        var nextChild = child.nextSibling;
+                        if(nextChild && nextChild.class == "autoText-link"){
+                            continue;
+                        }
+
+                        var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
+                        var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
+
+                        PHONENUMBERS.push(phoneNumber);
+
+                        GM_setValue("phoneNumber", phoneNumber);
+
+                    }
+                }
+            }
+        }
+
+    }
+
+    function appointmentDialogFixes(){
+
+        var saveButton = document.getElementById("butSave");
+
+        var focusTable = saveButton.parentElement.parentElement.parentElement.parentElement;
+
+        var newRow = focusTable.insertRow();
+        newRow.classList.add("NoConflict");
+
+        var newCell = newRow.insertCell();
+        newCell.setAttribute("colspan", "3");
+        newCell.setAttribute("align", "center");
+        newCell.setAttribute("valign", "middle");
+
+        var textReminderButton = createButton({ text: "Text Reminder", onclick: sendReminderText });
+        var textWithTimeButton = createButton({ text: "Text W/ Time", onclick: sendTextWithTime });
+
+        newCell.appendChild(textReminderButton);
+
+        if(document.getElementById("TimeRange").value){
+            newCell.appendChild(document.createTextNode("\u00A0\u00A0"));
+            newCell.appendChild(textWithTimeButton);
+        }
+
+        function sendReminderText(e){
+            e.preventDefault();
+
+            var workDate = document.getElementById("WorkDate").value;
+            var timeRange = document.getElementById("TimeRange").value;
+
+            var locationInput = document.getElementById("Directions");
+            var locationInstructions = locationInput.value;
+
+            var serviceDate = getReadableDate(workDate);
+            var serviceDay = getWeekday(workDate);
+
+            var message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+
+                serviceDay+", "+serviceDate+
+                ". If you have any questions or need to reschedule please let me know. If not, we'll see you "+serviceDay+". Thanks!";
+
+            var phoneNumber = GM_getValue("phoneNumber");
+
+            GM_setValue("autoText", JSON.stringify({
+                phone: phoneNumber,
+                message: message,
+                timeStamp: Date.now()
+            }));
+        }
+
+        function sendTextWithTime(e){
+            e.preventDefault();
+
+            var workDate = document.getElementById("WorkDate").value;
+            var timeRange = document.getElementById("TimeRange").value;
+
+            var locationInput = document.getElementById("Directions");
+            var locationInstructions = locationInput.value;
+
+            var serviceDate = getReadableDate(workDate);
+            var serviceDay = getWeekday(workDate);
+
+            var message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+
+                serviceDay+", "+serviceDate+" with an arrival between "+timeRange+
+                ". If you have any questions or need to reschedule please let me know. If not, we'll see you "+serviceDay+". Thanks!";
+
+            var phoneNumber = GM_getValue("phoneNumber");
+
+            GM_setValue("autoText", JSON.stringify({
+                phone: phoneNumber,
+                message: message,
+                timeStamp: Date.now()
+            }));
+        }
+
+    };
+
     function pestpac_sockets(){
         
         if(urlContains(["location/detail.asp"])){
@@ -5630,11 +5792,16 @@
             var textData = JSON.parse(new_value);
 
             window.focus();
-
-            goToContact(textData.phone, function(){
-                updateContact(textData.id, textData.name, textData.phone);
-                prepareMessage(textData.message);
-            });
+            if(textData.phone !== ""){
+                goToContact(textData.phone, function(){
+                    updateContact(textData.id, textData.name, textData.phone);
+                    prepareMessage(textData.message);
+                });
+            } else if(textData.id){
+                goToContact(textData.id, function(){
+                    prepareMessage(textData.message);
+                });
+            }
 
         });
 
@@ -5768,7 +5935,7 @@
         }
 
         function updateContact(account, name, phone){
-            
+
             var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
 
             var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
@@ -5783,15 +5950,19 @@
 
             setTimeout(function(){
                 if(!nameInput.value.includes(account)){
-                    var nameList = name.split(" ");
+                    if(name){
+                        var nameList = name.split(" ");
 
-                    if(nameList.length = 2){
-                        name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
+
+
+                        if(nameList.length === 2){
+                            name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
+                        }
+
+                        nameInput.focus();
+                        nameInput.value = account+" "+name;
+                        nameInput.blur();
                     }
-
-                    nameInput.focus();
-                    nameInput.value = account+" "+name;
-                    nameInput.blur();
 
                     var keyUpEvent = document.createEvent("Event");
                     keyUpEvent.initEvent('keyup');
@@ -6298,7 +6469,6 @@
                 duplicatorButton.style.marginRight = "0.5em";
 
                 choicesSpan.insertBefore(duplicatorButton, choicesSpan.children[0]);
-
 
                 function duplicateService(event){
                     event.preventDefault();
