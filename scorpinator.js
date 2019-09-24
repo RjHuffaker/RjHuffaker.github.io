@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.302
+// @version      2.303
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -2398,10 +2398,15 @@
                         return proxHeaderImage;
 
                         function testClick(){
-                            console.log("Help! I've been clicked!");
+                            alert("Help! I've been clicked!");
                             GM_deleteValue("activeSetups");
                             GM_deleteValue("residential");
-                            console.log(GM_getValue("autoText"));
+                            GM_deleteValue("phoneNumber");
+                            GM_deleteValue("phoneNum");
+                            GM_deleteValue("altNum");
+                            GM_deleteValue("mobileNum");
+                            GM_deleteValue("InvoiceDetails");
+                            GM_deleteValue("autoText");
                         }
                     }
 
@@ -5543,7 +5548,28 @@
 
                     var node = mutation.addedNodes[i];
 
-                    phoneSearch(node);
+                    var nodeString = node.innerHTML.toString().replace(/<\/?[^>]+(>|$)/g, "").replaceAll("&nbsp;"," ");
+
+                    if(nodeString.includes("Phone: ")){
+                        var phoneNum = nodeString.match(/Phone: (.*)/)[1].substring(0,12);
+                        GM_setValue("phoneNum", phoneNum);
+                    } else {
+                        GM_deleteValue("phoneNum");
+                    }
+
+                    if(nodeString.includes("Alt: ")){
+                        var altNum = nodeString.match(/Alt: (.*)/)[1].substring(0,12);
+                        GM_setValue("altNum", altNum);
+                    } else {
+                        GM_deleteValue("altNum");
+                    }
+
+                    if(nodeString.includes("Mobile: ")){
+                        var mobileNum = nodeString.match(/Mobile: (.*)/)[1].substring(0,12);
+                        GM_setValue("mobileNum", mobileNum);
+                    } else {
+                        GM_deleteValue("mobileNum");
+                    }
 
                 }
 
@@ -5554,40 +5580,6 @@
             childList: true,
             subtree: true
         });
-
-        function phoneSearch(node){
-            if(!node.childNodes) return;
-
-            for(var i = 0; i < node.childNodes.length; ++i){
-                var child = node.childNodes[i];
-                if (child.nodeName == "SCRIPT" || child.nodeName == "NOSCRIPT"
-                    || child.nodeName == "OBJECT" || child.nodeName == "EMBED"
-                    || child.nodeName == "APPLET" || child.nodeName == "IFRAME") {
-                    continue;
-                }
-
-                if(child.childNodes.length > 0){
-                    phoneSearch(child);
-                } else if (child.nodeType == 3){
-                    var phoneNumbers = phoneNumberRegExMatcher.exec(child.nodeValue);
-                    if(phoneNumbers){
-
-                        var nextChild = child.nextSibling;
-                        if(nextChild && nextChild.class == "autoText-link"){
-                            continue;
-                        }
-
-                        var phoneNumber =  (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + phoneNumbers[3] + phoneNumbers[4];
-                        var formattedPhoneNumber = "(" + (phoneNumbers[1] ? phoneNumbers[1] : phoneNumbers[2]) + ") " + phoneNumbers[3] + "-" + phoneNumbers[4];
-
-                        PHONENUMBERS.push(phoneNumber);
-
-                        GM_setValue("phoneNumber", phoneNumber);
-
-                    }
-                }
-            }
-        }
 
     }
 
@@ -5605,15 +5597,32 @@
         newCell.setAttribute("align", "center");
         newCell.setAttribute("valign", "middle");
 
-        var textReminderButton = createButton({ text: "Text Reminder", onclick: sendReminderText });
-        var textWithTimeButton = createButton({ text: "Text W/ Time", onclick: sendTextWithTime });
+        var phoneNum = GM_getValue("phoneNum");
+        var altNum = GM_getValue("altNum");
+        var mobileNum = GM_getValue("mobileNum");
 
-        newCell.appendChild(textReminderButton);
-
-        if(document.getElementById("TimeRange").value){
-            newCell.appendChild(document.createTextNode("\u00A0\u00A0"));
-            newCell.appendChild(textWithTimeButton);
+        if(phoneNum && mobileNum !== phoneNum){
+            var textPhoneBut = createButton({ text: "Text Phone", onclick: sendReminderText });
+            textPhoneBut.setAttribute("data-phone", phoneNum);
+            textPhoneBut.style.margin = "0 0.25em";
+            newCell.appendChild(textPhoneBut);
         }
+
+        if(altNum){
+            var textAltBut = createButton({ text: "Text Alt", onclick: sendReminderText });
+            textAltBut.setAttribute("data-phone", altNum);
+            textAltBut.style.margin = "0 0.25em";
+            newCell.appendChild(textAltBut);
+        }
+
+        if(mobileNum){
+            var textMobileBut = createButton({ text: "Text Mobile", onclick: sendReminderText });
+            textMobileBut.setAttribute("data-phone", mobileNum);
+            textMobileBut.style.margin = "0 0.25em";
+            newCell.appendChild(textMobileBut);
+        }
+
+
 
         function sendReminderText(e){
             e.preventDefault();
@@ -5627,36 +5636,19 @@
             var serviceDate = getReadableDate(workDate);
             var serviceDay = getWeekday(workDate);
 
-            var message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+
-                serviceDay+", "+serviceDate+
-                ". If you have any questions or need to reschedule please let me know. If not, we'll see you "+serviceDay+". Thanks!";
+            var message = "";
 
-            var phoneNumber = GM_getValue("phoneNumber");
+            if(timeRange){
+                message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+
+                    serviceDay+", "+serviceDate+" with an arrival between "+timeRange+
+                    ". If you have any questions or need to reschedule please let me know. If not, we'll see you "+serviceDay+". Thanks!";
+            } else {
+                message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+
+                    serviceDay+", "+serviceDate+
+                    ". If you have any questions or need to reschedule please let me know. If not, we'll see you "+serviceDay+". Thanks!";
+            }
 
-            GM_setValue("autoText", JSON.stringify({
-                phone: phoneNumber,
-                message: message,
-                timeStamp: Date.now()
-            }));
-        }
-
-        function sendTextWithTime(e){
-            e.preventDefault();
-
-            var workDate = document.getElementById("WorkDate").value;
-            var timeRange = document.getElementById("TimeRange").value;
-
-            var locationInput = document.getElementById("Directions");
-            var locationInstructions = locationInput.value;
-
-            var serviceDate = getReadableDate(workDate);
-            var serviceDay = getWeekday(workDate);
-
-            var message = "Hi, this is Responsible Pest Control. We have your home scheduled for service on "+
-                serviceDay+", "+serviceDate+" with an arrival between "+timeRange+
-                ". If you have any questions or need to reschedule please let me know. If not, we'll see you "+serviceDay+". Thanks!";
-
-            var phoneNumber = GM_getValue("phoneNumber");
+            var phoneNumber = e.target.getAttribute("data-phone");
 
             GM_setValue("autoText", JSON.stringify({
                 phone: phoneNumber,
