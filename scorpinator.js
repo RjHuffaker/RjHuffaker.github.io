@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.300
+// @version      2.301
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -5935,25 +5935,20 @@
         }
 
         function updateContact(account, name, phone){
-
-            var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
-
-            var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
-
-            if(!nameInput || !phoneInput) return;
-
-            var contactPhone = phone.replace(/[()\-]/g, "").replace(" ","");
-
-            var currentPhone = phoneInput.value.replace(/[()\-]/g, "").replace(" ","");
-
-            if(currentPhone !== contactPhone) return;
+            if(name){
+                var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
+                var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
+                if(!nameInput || !phoneInput) return;
+                var contactPhone = phone.replace(/[()\-]/g, "").replace(" ","");
+                var currentPhone = phoneInput.value.replace(/[()\-]/g, "").replace(" ","");
+                if(currentPhone !== contactPhone) return;
+            }
 
             setTimeout(function(){
+                if(account && nameInput.value)
                 if(!nameInput.value.includes(account)){
                     if(name){
                         var nameList = name.split(" ");
-
-
 
                         if(nameList.length === 2){
                             name = name.split(" ")[1]+", "+name.split(" ")[0].replace("&", " & ").replace("amp;", "");
