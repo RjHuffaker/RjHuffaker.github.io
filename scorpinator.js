@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.301
+// @version      2.302
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -2401,6 +2401,7 @@
                             console.log("Help! I've been clicked!");
                             GM_deleteValue("activeSetups");
                             GM_deleteValue("residential");
+                            console.log(GM_getValue("autoText"));
                         }
                     }
 
@@ -5930,6 +5931,8 @@
                     messageTextarea.value = messageBody;
                     messageTextarea.dispatchEvent(new InputEvent('input'));
                 }
+
+                GM_setValue("autoText","");
 
             }, 500);
         }
