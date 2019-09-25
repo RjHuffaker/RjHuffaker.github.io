@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.303
+// @version      2.304
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -269,10 +269,9 @@
             });
         }
 
-        if(urlContains(["app.pestpac.com/appointment/default.asp"])){
+        if(urlContains(["app.pestpac.com/appointment"]) && !urlContains(["iframe"])){
             checkLogin(function(loginData){
                 if(loginData){
-                    retrieveCSS();
                     appointmentFixes();
                 }
             });
@@ -5536,7 +5535,8 @@
 
     function appointmentFixes(){
         var popup = document.getElementById("Popup");
-        console.log(popup);
+
+        if(!popup) return;
 
         var observer = new MutationObserver(function(mutations){
 
@@ -5601,7 +5601,7 @@
         var altNum = GM_getValue("altNum");
         var mobileNum = GM_getValue("mobileNum");
 
-        if(phoneNum && mobileNum !== phoneNum){
+        if(phoneNum){
             var textPhoneBut = createButton({ text: "Text Phone", onclick: sendReminderText });
             textPhoneBut.setAttribute("data-phone", phoneNum);
             textPhoneBut.style.margin = "0 0.25em";
@@ -5615,12 +5615,14 @@
             newCell.appendChild(textAltBut);
         }
 
-        if(mobileNum){
+        if(mobileNum && mobileNum !== phoneNum){
             var textMobileBut = createButton({ text: "Text Mobile", onclick: sendReminderText });
             textMobileBut.setAttribute("data-phone", mobileNum);
             textMobileBut.style.margin = "0 0.25em";
             newCell.appendChild(textMobileBut);
         }
+
+
 
 
 
@@ -5940,7 +5942,6 @@
             }
 
             setTimeout(function(){
-                if(account && nameInput.value)
                 if(!nameInput.value.includes(account)){
                     if(name){
                         var nameList = name.split(" ");
