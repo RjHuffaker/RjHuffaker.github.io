@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.400
+// @version      2.401
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -5639,9 +5639,9 @@
                 var directions = directionsInput.value.trim();
 
                 if(directions.includes(pest)){
-                    directions = directions.replace(pest, "");
+                    directions = directions.replace(pest, "").replace("  ", " ");
                 } else {
-                    directions = directions+" "+pest;
+                    directions = directions.replace("**", "** "+pest).replace("  ", " ").trim();
                 }
 
                 directionsInput.value = directions;
