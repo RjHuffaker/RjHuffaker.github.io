@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.304
+// @version      2.400
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -602,8 +602,8 @@
             if(_count <= 20){
                 var growth = _count <= 10 ? Math.abs(1+_count*.1) : Math.abs(3-_count*.1);
                 elem.style.margin = "-"+Math.abs(growth*size*.25)+"px";
-                elem.style.width = Math.abs(growth*size)+"px";
-                elem.style.height = Math.abs(growth*size)+"px";
+                elem.style.width = Math.round(growth*size)+"px";
+                elem.style.height = Math.round(growth*size)+"px";
                 elem.style.transform = "rotate("+Math.abs(_count*18)+"deg)";
                 _count++;
             } else {
@@ -3765,7 +3765,7 @@
             var _service = descriptionInput.value.match(/Service: (.*)/g)[0].split(" ")[1];
 
             var _schedule = activeSetup.schedule.substring(0,1) + capitalizeFirstLetter(activeSetup.schedule.substring(1,4));
-            var _technician = capitalizeFirstLetter(activeSetup.tech.split(" ")[0]);
+            var _technician = capitalizeFirstLetter(activeSetup.tech);
             var _nextDate = getNextServiceDate(dueDateInput.value, _schedule, _service.slice(-1));
 
             descriptionInput.value = descriptionInput.value
@@ -3825,6 +3825,25 @@
         _button.addEventListener('click', buttonData.onclick);
 
         return _button;
+    }
+
+    function createIcon(iconData){
+
+        var iconImg = document.createElement("img");
+        iconImg.id = iconData.id;
+        iconImg.src = iconData.src;
+        iconImg.style.width = iconData.size;
+        iconImg.style.height = iconData.size;
+
+        var iconLink = document.createElement("a");
+        iconLink.style.cursor = "pointer";
+        iconLink.addEventListener('click', function(){
+            iconData.onclick();
+        });
+
+        iconLink.appendChild(iconImg);
+
+        return iconLink;
     }
 
     function createTable(tableData){
@@ -4062,7 +4081,7 @@
                         timeStamp: Date.now()
                     };
 
-                    if(serviceOrder.service==="IN"){
+                    if(serviceOrder.service==="IN" || serviceOrder.service==="TICK-IN"){
                         if(serviceOrder.day==="Saturday" || serviceOrder.day==="Sunday"){
                             textData.message = "Hi, this is Responsible Pest Control. Thank you for purchasing our services online. It appears you had requested a "
                                 +serviceOrder.day+" appointment. Unfortunately, we don't provide Saturday or Sunday services. "
@@ -5366,6 +5385,11 @@
             if(directionsInput.value===""){
                 directionsInput.value = "** ";
             }
+            var directionsInput = document.getElementById("Directions");
+
+            var directionsBlock = directionsInput.parentElement.previousSibling.previousSibling;
+
+            directionsBlock.appendChild(createTargetIcons());
         }
 
         function locationEditFixes(){
@@ -5374,6 +5398,8 @@
             var addressInput = document.getElementById("Address");
             var mobileInput = document.getElementById("Mobile");
             var directionsInput = document.getElementById("Directions");
+
+            var directionsBlock = directionsInput.parentElement.previousSibling.previousSibling;
 
             if(addressInput.value.indexOf(".") > -1){
 
@@ -5437,6 +5463,9 @@
                 directionsInput.value = "** "+directionsInput.value;
 
             }
+
+            directionsBlock.appendChild(createTargetIcons());
+
         }
 
         function leadDetailFixes(){
@@ -5529,6 +5558,94 @@
                 butRefresh.click();
             }
 
+        }
+
+        function createTargetIcons(){
+            var scorpionData = {
+                id: "scorpionIcon",
+                src: "https://static.thenounproject.com/png/1928919-200.png",
+                size: "18pt",
+                onclick: function(){
+                    toggleTarget("Scorpions");
+                }
+            };
+
+            var spiderData = {
+                id: "spiderIcon",
+                src: "https://static.thenounproject.com/png/2050533-200.png",
+                size: "18pt",
+                onclick: function(){
+                    toggleTarget("Spiders");
+                }
+            };
+
+            var cricketData = {
+                id: "cricketIcon",
+                src: "https://static.thenounproject.com/png/1975340-200.png",
+                size: "18pt",
+                onclick: function(){
+                    toggleTarget("Crickets");
+                }
+            };
+
+            var roachData = {
+                id: "roachIcon",
+                src: "https://static.thenounproject.com/png/1026139-200.png",
+                size: "18pt",
+                onclick: function(){
+                    toggleTarget("Roaches");
+                }
+            };
+
+            var antData = {
+                id: "antIcon",
+                src: "https://static.thenounproject.com/png/93320-200.png",
+                size: "18pt",
+                onclick: function(){
+                    toggleTarget("Ants");
+                }
+            };
+
+            var tickData = {
+                id: "tickIcon",
+                src: "https://static.thenounproject.com/png/1975345-200.png",
+                size: "18pt",
+                onclick: function(event){
+                    toggleTarget("Ticks");
+                }
+            };
+
+            var topDiv = document.createElement("div");
+            topDiv.appendChild(createIcon(scorpionData));
+            topDiv.appendChild(createIcon(spiderData));
+            topDiv.appendChild(createIcon(cricketData));
+
+            var BottomDiv = document.createElement("div");
+            BottomDiv.appendChild(createIcon(roachData));
+            BottomDiv.appendChild(createIcon(antData));
+            BottomDiv.appendChild(createIcon(tickData));
+
+            var containerDiv = document.createElement("div");
+            containerDiv.style.marginTop = "5pt";
+            containerDiv.style.bottomTop = "5pt";
+            containerDiv.appendChild(topDiv);
+            containerDiv.appendChild(BottomDiv);
+
+            return containerDiv;
+
+            function toggleTarget(pest){
+                var directionsInput = document.getElementById("Directions");
+
+                var directions = directionsInput.value.trim();
+
+                if(directions.includes(pest)){
+                    directions = directions.replace(pest, "");
+                } else {
+                    directions = directions+" "+pest;
+                }
+
+                directionsInput.value = directions;
+            }
         }
 
     }
