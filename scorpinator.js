@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      2.401
+// @version      3.0
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -28,10 +28,6 @@
     var activeSetups = [];
 
     var addSetupTask = false;
-
-    var iterating = false;
-
-    var taskSendFollowUpButton;
 
     var excludedWeekDays = [];
 
@@ -323,12 +319,6 @@
             });
         }
 
-        if(urlContains(["/customerConnect/dialog/inviteUser.asp"])){
-            checkLogin(function(loginData){
-                if(loginData) monitorInviteDialog();
-            });
-        }
-
     }
 
     function pestpacValidated(){
@@ -401,7 +391,6 @@
             width: "300px",
             title: "Scorpinator Login",
             userLogin: true,
-            sendInvite: false,
             createSetup: false,
             updateSetup: false,
             followUp: false,
@@ -1185,7 +1174,7 @@
     }
 
     function monitorInvoice(){
-        
+
         var invoiceLinks = GM_getValue("InvoiceLinks");
         if(invoiceLinks){
             invoiceLinks = GM_getValue("InvoiceLinks").split(",");
@@ -1256,59 +1245,6 @@
 
                     window.location.href = invoiceLinks[index];
 
-                }
-
-            }
-
-        });
-
-    }
-
-    function monitorInviteDialog(){
-
-        var butCancel = document.getElementById("butCancel");
-
-        var butClose = document.getElementById("butClose");
-
-        butCancel.onclick = closeModal;
-
-        butClose.onclick = closeModal;
-
-        var inviteData = GM_getValue("inviteData");
-
-        function closeModal(){
-            GM_deleteValue("inviteData");
-            GM_setValue("scorpModal", "closed");
-        }
-
-        if(inviteData){
-            inviteData = JSON.parse(inviteData);
-
-            document.getElementById("Email").value = inviteData.email;
-        }
-
-        GM_addValueChangeListener("inviteData", function(name, old_value, new_value, remote){
-
-            var inviteData = new_value;
-
-            if(inviteData){
-
-                inviteData = JSON.parse(inviteData);
-
-                var location = window.location.href;
-
-                var billToId = location.substr(location.indexOf("BillToID") + 9).substring(0, 5);
-
-                var inviteEmailInput = document.getElementById("Email");
-
-                var accessTemplate = document.getElementById("AccessTemplate");
-
-                if(inviteData.billToId === billToId || billToId === "undef"){
-                    if(inviteData.email && inviteEmailInput && accessTemplate.children[0].value){
-                        inviteEmailInput.value = inviteData.email;
-                    } else if(inviteData.email){
-                        location.reload();
-                    }
                 }
 
             }
@@ -1828,7 +1764,7 @@
                     }
                 });
             }
-            
+
             return returnvar;
         }
 
@@ -1960,7 +1896,6 @@
         contentDiv.id = "scorp-modal-content";
 
         contentDiv.appendChild(createUserLogin());
-        contentDiv.appendChild(createSendInvite());
         contentDiv.appendChild(createFormatSetup());
         contentDiv.appendChild(createFollowUp());
         contentDiv.appendChild(createShowHistory());
@@ -2038,29 +1973,6 @@
                 closeScorpModal();
 
             }
-        }
-
-        function createSendInvite(){
-            var billToLink = document.getElementById("billtoHeaderDetailLink");
-            var billToId, billToRef;
-
-            if(billToLink){
-                billToRef = billToLink.href;
-                billToId = billToRef.substr(billToRef.indexOf("BillToID") + 9).substring(0, 5);
-            }
-
-            var iframe = document.createElement('iframe');
-            iframe.id = "iframe-modal-0";
-            iframe.classList.add("iframe-modal");
-            iframe.src = "/customerConnect/dialog/inviteUser.asp?BillToID="+billToId;
-
-            var _div = document.createElement("div");
-            _div.style.display = "none";
-            _div.style.height = "200px";
-            _div.id = "send-invite";
-            _div.appendChild(iframe);
-
-            return _div
         }
 
         function createFormatSetup(){
@@ -2216,7 +2128,6 @@
             titleSpan.innerHTML = modalData.title;
 
             var userLogin = document.getElementById("scorpinatorLogin");
-            var sendInvite = document.getElementById("send-invite");
             var formatSetup = document.getElementById("format-setup");
             var followUp = document.getElementById("follow-up");
             var showHistory = document.getElementById("show-history");
@@ -2230,12 +2141,6 @@
             } else {
                 userLogin.style.display = "none";
                 document.getElementById("ScorpinatorPasswordInput").type = "text";
-            }
-
-            if(modalData.sendInvite){
-                sendInvite.style.display = "block";
-            } else {
-                sendInvite.style.display = "none";
             }
 
             if(modalData.createSetup || modalData.updateSetup){
@@ -3250,7 +3155,7 @@
                     return _selectAllSpan;
 
                     function selectAll(){
-                        
+
                         var checkBoxes = Array.from(document.getElementsByClassName(listType+"Box"))
 
                         checkBoxes.forEach(function(checkBox){
@@ -4078,6 +3983,7 @@
                         name: getContactInfo().name,
                         id: getContactInfo().id,
                         message: "",
+                        division: document.getElementById("Division").value,
                         timeStamp: Date.now()
                     };
 
@@ -4505,6 +4411,7 @@
 
                     otherButtonsContainer.appendChild(createButton({ text: "Update Setup", onclick: updateSetupHandler }));
                     otherButtonsContainer.appendChild(createButton({ text: "Missed", onclick: missedHandler }));
+                    otherButtonsContainer.appendChild(createButton({ text: "Balance", onclick: balanceHandler }));
                     otherButtonsContainer.appendChild(createHistoryIframe());
 
                 } else if(taskName.includes("create new") && taskDescription.includes("Schedule:")){
@@ -4565,6 +4472,7 @@
                     name: getContactInfo().name,
                     id: getContactInfo().id,
                     message: "Hi, Responsible Pest Control here. It looks like we were scheduled to come by on "+startDate+" but it didn't work out. Please reply or give us a call @ 480-924-4111 to reschedule. Thank you!",
+                    division: document.getElementById("Division").value,
                     timeStamp: Date.now()
                 }));
 
@@ -4616,10 +4524,11 @@
                     id: getContactInfo().id,
                     message: "Responsible Pest Control here, just following up with service provided on "+startDate+
                     ". We'd like to schedule your regular service but we're still seeing a balance on your account. Please give us a call @ 480-924-4111 so we can get this resolved. Thanks!",
+                    division: document.getElementById("Division").value,
                     timeStamp: Date.now()
                 }));
 
-                document.getElementById("subject").value = "Create New Setup - Balance";
+                document.getElementById("subject").value += " - Balance";
 
                 document.getElementById("description").value = taskDescription+"\n"+getCurrentReadableDate()+" Sent Txt (Balance)";
 
@@ -4646,6 +4555,7 @@
                     id: getContactInfo().id,
                     message: "Hi, I was going thru my records saw that we treated your home on "+startDate+
                     ", but didn't settle on an ongoing service. To review, no contract but we do give warranty. We can do monthly @$49, every-other-month @$69, or quarterly @$95. Thank you! - Responsible Pest Control",
+                    division: document.getElementById("Division").value,
                     timeStamp: Date.now()
                 }));
 
@@ -4668,7 +4578,6 @@
                 width: "500px",
                 title: "Update Setup?",
                 userLogin: false,
-                sendInvite: false,
                 createSetup: false,
                 updateSetup: true,
                 followUp: false,
@@ -4692,7 +4601,6 @@
                 width: "500px",
                 title: "Create Setup?",
                 userLogin: false,
-                sendInvite: false,
                 createSetup: true,
                 updateSetup: false,
                 followUp: false,
@@ -4784,8 +4692,8 @@
                     return "Jon J";
                 } else if(name==="Michael"){
                     return "MICHAEL R";
-                } else if(name==="Troy"){
-                    return "TROY W";
+                } else if(name==="Troy" || name==="Troy w"){
+                    return "LUIS A";
                 } else if(name){
                     return name;
                 } else {
@@ -4843,7 +4751,7 @@
             } else {
                 welcomeLetter.nextDate = getReadableDate(serviceSetup.nextDate);
             }
-            
+
             taskNameInput.value = "Follow up for Initial";
 
             dueDateInput.value = getFutureDate(welcomeLetter.startDate, 14);
@@ -4883,7 +4791,6 @@
                 width: "500px",
                 title: "Send Follow Up?",
                 userLogin: false,
-                sendInvite: false,
                 createSetup: false,
                 updateSetup: false,
                 followUp: true,
@@ -4948,27 +4855,37 @@
                 nextDate = taskDescription.match(/NextDate: (.*)/g)[0].split(" ")[1];
             }
 
+            var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
+
+            if(!locationPhoneNumberLink) return;
+            var textNumber = locationPhoneNumberLink.value;
+
             if(new Date(nextDate) > currentDate && getDifferenceInDays(currentDate, nextDate) > 2){
-
-                var locationPhoneNumberLink = document.getElementById('locationPhoneNumberLink');
-
-                if(!locationPhoneNumberLink) return;
-                var textNumber = locationPhoneNumberLink.value;
 
                 GM_setValue("autoText", JSON.stringify({
                     phone: locationPhoneNumberLink.value,
                     name: getContactInfo().name,
                     id: getContactInfo().id,
                     message: message,
+                    division: document.getElementById("Division").value,
                     timeStamp: Date.now()
                 }));
 
-
-                document.getElementById("status").value = "C";
-            } else {
                 document.getElementById("status").value = "C";
 
-                document.getElementById("butSave").click();
+            } else if(confirm("Next service is "+nextDate+". Are you sure you want to text follow up?")){
+
+                GM_setValue("autoText", JSON.stringify({
+                    phone: locationPhoneNumberLink.value,
+                    name: getContactInfo().name,
+                    id: getContactInfo().id,
+                    message: message,
+                    division: document.getElementById("Division").value,
+                    timeStamp: Date.now()
+                }));
+
+                document.getElementById("status").value = "C";
+
             }
         }
     }
@@ -4978,7 +4895,7 @@
         if(urlContains(["serviceSetup/detail.asp"])){
 
             var serviceSetup = JSON.parse(sessionStorage.getItem("serviceSetup"));
-            
+
             if(serviceSetup){
 
                 var editButton = document.getElementById("butEdit");
@@ -4992,7 +4909,7 @@
             }
 
             GM_addValueChangeListener("serviceSetup", function(name, old_value, new_value, remote){
-                
+
                 var serviceSetup = new_value;
 
                 if(serviceSetup){
@@ -5006,7 +4923,7 @@
         }
 
         function addSetupDetails(serviceSetup){
-            
+
             sessionStorage.removeItem("serviceSetup");
 
             var serviceCodeInput = document.getElementById("ServiceCode1");
@@ -5026,7 +4943,7 @@
                 serviceCodeInput.value = serviceSetup.serviceCode;
                 serviceCodeInput.blur();
             }
-            
+
             if(serviceSetup.price){
                 unitPriceInput.focus();
                 unitPriceInput.value = serviceSetup.price;
@@ -5070,7 +4987,7 @@
                 divisionInput.value = serviceSetup.division
                 divisionInput.blur();
             }
-            
+
             if(serviceSetup.tech){
                 techInput.focus();
                 techInput.value = serviceSetup.tech;
@@ -5296,22 +5213,6 @@
                 saveButton.innerHTML = "Save";
             }
 
-            var inviteButton = document.getElementsByName("InviteCCUser")[0];
-
-            inviteButton.onclick = function(){
-
-                var location = window.location.href
-                var billToId = location.substr(location.indexOf("BillToID") + 9).substring(0, 5);
-
-                var inviteData = {
-                    email: emailInput.value,
-                    billToId: billToId
-                }
-
-                GM_setValue("inviteData", JSON.stringify(inviteData));
-
-            }
-
         }
 
         function locationDetailFixes(){
@@ -5338,43 +5239,7 @@
                         contactLinks[i].appendChild(rpcIcon);
                         contactLinks.id = "contactEmail";
 
-                        rpcIcon.onclick = sendInvitePrompt;
-
-                        function sendInvitePrompt(){
-                            var billToLink = document.getElementById("billtoHeaderDetailLink");
-                            var billToId, billToRef;
-                            var inviteEmail = event.target.getAttribute("data-email");
-
-                            if(billToLink){
-                                billToRef = billToLink.href;
-                                billToId = billToRef.substr(billToRef.indexOf("BillToID") + 9).substring(0, 5);
-                            }
-
-                            var inviteData = {
-                                email: inviteEmail,
-                                billToId: billToId
-                            };
-
-                            GM_setValue("inviteData", JSON.stringify(inviteData));
-
-                            var modalData = {
-                                height: "auto",
-                                width: "350px",
-                                title: "Invite User",
-                                userLogin: false,
-                                sendInvite: true,
-                                createSetup: false,
-                                updateSetup: false,
-                                followUp: false,
-                                showHistory: false
-                            };
-
-                            toggleScorpModal(modalData);
-
-                        };
-
                     }
-                    
                 }
             }
 
@@ -5772,6 +5637,7 @@
             GM_setValue("autoText", JSON.stringify({
                 phone: phoneNumber,
                 message: message,
+                division: document.getElementById("Division").value,
                 timeStamp: Date.now()
             }));
         }
@@ -5779,7 +5645,7 @@
     };
 
     function pestpac_sockets(){
-        
+
         if(urlContains(["location/detail.asp"])){
             addContactIcons(document.getElementById("location-address-block"));
             addContactIcons(document.getElementById("billto-address-block"));
@@ -5842,7 +5708,7 @@
             }
 
             function inputContactInfo(contact){
-                
+
                 GM_deleteValue("contactInfo");
 
                 var fNameInput = document.getElementById("FName");
@@ -5904,10 +5770,18 @@
             var textData = JSON.parse(new_value);
 
             window.focus();
+
             if(textData.phone !== ""){
                 goToContact(textData.phone, function(){
-                    updateContact(textData.id, textData.name, textData.phone);
-                    prepareMessage(textData.message);
+                    GM_setValue("updateContact", JSON.stringify({id:textData.id, name:textData.name, phone:textData.phone, division:textData.division}));
+
+                    GM_setValue("currentAssignee", textData.division);
+
+                    if(textData.message){
+                        prepareMessage(textData.message);
+                    } else {
+                        updateContact(textData.id, textData.name, textData.phone, textData.division);
+                    }
                 });
             } else if(textData.id){
                 goToContact(textData.id, function(){
@@ -6002,36 +5876,62 @@
         }
 
         function goToContact(textNumber, callback){
-            var convoSearchInput = document.getElementById('convo-search-input');
 
-            var contactSearchInput = document.getElementById('contact-search-input');
+            addAssigneeListener();
 
-            var searchInput = convoSearchInput ? convoSearchInput : contactSearchInput;
+            var composeIcon = document.getElementsByClassName('ico-compose')[0];
 
-            if(searchInput){
-                var keyUpEvent = document.createEvent("Event");
-                keyUpEvent.initEvent('keyup');
-                searchInput.focus();
-                searchInput.value = textNumber;
-                searchInput.dispatchEvent(keyUpEvent);
-                searchInput.blur();
+            if(composeIcon){
 
-                setTimeout(function(){
-
-                    var firstContactRow = document.getElementsByClassName('contact-link')[0];
-
-                    if(firstContactRow){
-                        firstContactRow.children[0].click();
-                        setTimeout(function(){
-                            if(callback) callback();
-                        }, 100);
-                    }
-
-                }, 500);
+                composeIcon.click();
 
             }
 
-            
+            setTimeout(function(){
+
+                var searchInput = document.getElementById('contact-search-input');
+
+                if(searchInput){
+
+                    var keyUpEvent = document.createEvent("Event");
+                    keyUpEvent.initEvent('keyup');
+                    searchInput.focus();
+                    searchInput.value = textNumber;
+                    searchInput.dispatchEvent(keyUpEvent);
+                    searchInput.blur();
+
+                    setTimeout(function(){
+
+                        var moveToInbox = document.getElementsByClassName('icon-move-to-inbox')[0];
+
+                        if(moveToInbox){
+                            moveToInbox.click();
+                        }
+
+                        var firstContact = document.getElementsByClassName('contact-link')[0];
+
+                        if(firstContact){
+
+                            firstContact.click();
+
+                            setTimeout(function(){
+
+                                if(callback) callback();
+
+                            }, 0);
+
+                        } else {
+
+                            console.log("no firstContact");
+
+                        }
+
+                    }, 500);
+
+                }
+
+            }, 500);
+
         }
 
         function prepareMessage(messageBody){
@@ -6045,13 +5945,41 @@
 
                 GM_setValue("autoText","");
 
+                var sendButton = document.getElementById("btn-send");
+
+                if(!sendButton) return;
+
+                sendButton.onclick = function(){
+
+                    var contactData = GM_getValue("updateContact");
+
+                    if(contactData){
+                        contactData = JSON.parse(contactData);
+
+                        updateContact(contactData.id, contactData.name, contactData.phone, contactData.division);
+                    }
+
+                    GM_setValue("updateContact", "");
+
+                    addAssigneeListener();
+
+                };
+
             }, 500);
+
         }
 
-        function updateContact(account, name, phone){
+        function updateContact(account, name, phone, division){
+            var moveToInbox = document.getElementsByClassName('icon-move-to-inbox')[0];
+
+            var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
+            var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
+
+            if(moveToInbox){
+                moveToInbox.click();
+            }
+
             if(name){
-                var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
-                var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
                 if(!nameInput || !phoneInput) return;
                 var contactPhone = phone.replace(/[()\-]/g, "").replace(" ","");
                 var currentPhone = phoneInput.value.replace(/[()\-]/g, "").replace(" ","");
@@ -6059,6 +5987,10 @@
             }
 
             setTimeout(function(){
+
+                var nameInput = document.querySelectorAll('[name="contact-name"]')[0];
+                var phoneInput = document.querySelectorAll('[name="contact-phone"]')[0];
+
                 if(!nameInput.value.includes(account)){
                     if(name){
                         var nameList = name.split(" ");
@@ -6076,22 +6008,59 @@
                     keyUpEvent.initEvent('keyup');
                     nameInput.dispatchEvent(keyUpEvent);
 
-                    var assigneeDiv =  document.getElementsByClassName("assignee")[0];
-                    if(assigneeDiv) assigneeDiv.click();
-
-                } else {
-
-                    setTimeout(function(){
-                        var messageTextarea = document.getElementById('message-textarea');
-                        messageTextarea.focus();
-                    }, 100);
-
                 }
-            }, 500);
+
+                addAssigneeListener();
+
+            }, 1000);
+
+        }
+
+        function addAssigneeListener(){
+
+            var assigneeDiv = document.getElementsByClassName("assignee")[0];
+
+            if(!assigneeDiv){
+                console.log("NO ASSIGNEE DIV");
+                return;
+            }
+
+            assigneeDiv.onclick = function(event){
+
+                var division = GM_getValue("currentAssignee");
+
+                setTimeout(function(){
+
+                    division = division.split(" ")[0];
+
+                    var optionList = document.getElementsByClassName("each-option");
+
+                    for(var i = 0; i < optionList.length; i++){
+                        var optionButton = optionList[i];
+
+                        var buttonText = optionButton.innerHTML;
+
+                        if(buttonText.toUpperCase().split(" ")[0] === division.toUpperCase().split(" ")[0]){
+
+                            optionButton.style.color = "green";
+
+                            optionButton.style.fontWeight = "bolder";
+
+                        }
+
+                    }
+
+
+                }, 100);
+
+            }
 
         }
 
     }
+
+
+
 
     function helpscout_sockets(){
 
@@ -6280,6 +6249,7 @@
                     name: getContactInfo().name,
                     id: getContactInfo().id,
                     message: "",
+                    division: document.getElementById("Division").value,
                     timeStamp: Date.now()
                 }));
 
@@ -6414,7 +6384,7 @@
     }
 
     function paymentNotificator(){
-        
+
         if(urlContains(["app.pestpac.com/reports/payment/report.asp"])){
             var rowList = document.getElementsByTagName('tr');
 
