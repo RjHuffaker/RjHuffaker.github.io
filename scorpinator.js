@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      3.000
+// @version      3.010
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -5604,10 +5604,6 @@
             newCell.appendChild(textMobileBut);
         }
 
-
-
-
-
         function sendReminderText(e){
             e.preventDefault();
 
@@ -5637,7 +5633,6 @@
             GM_setValue("autoText", JSON.stringify({
                 phone: phoneNumber,
                 message: message,
-                division: document.getElementById("Division").value,
                 timeStamp: Date.now()
             }));
         }
