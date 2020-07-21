@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      3.010
+// @version      3.011
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -5884,7 +5884,15 @@
 
             setTimeout(function(){
 
-                var searchInput = document.getElementById('contact-search-input');
+                var convoSearchInput = document.getElementById('convo-search-input');
+
+                var contactSearchInput = document.getElementById('contact-search-input');
+
+                var searchInput = convoSearchInput ? convoSearchInput : contactSearchInput;
+
+              //  var searchInput = document.getElementById('contact-search-input');
+
+                addAssigneeListener();
 
                 if(searchInput){
 
@@ -5913,7 +5921,7 @@
 
                                 if(callback) callback();
 
-                            }, 0);
+                            }, 100);
 
                         } else {
 
