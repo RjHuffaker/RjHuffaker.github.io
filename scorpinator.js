@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      3.011
+// @version      3.012
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -9,6 +9,7 @@
 // @match        https://app.pestpac.com/*
 // @match        reporting.pestpac.com/reports/serviceSetups/reportRemote.asp
 // @match        *app.heymarket.com/*
+// @match        *app-beta.heymarket.com/*
 // @match        *secure.helpscout.net/conversation/*
 // @match        *azpestcontrol.services*
 // @require      https://unpkg.com/github-api/dist/GitHub.bundle.js
@@ -273,7 +274,7 @@
             });
         }
 
-        if(urlContains(["app.heymarket.com/chats"])){
+        if(urlContains(["app.heymarket.com/chats", "app-beta.heymarket.com/chats"])){
             checkLogin(function(loginData){
                 if(loginData) heymarket_sockets();
             });
@@ -5880,21 +5881,42 @@
 
                 composeIcon.click();
 
+            } else {
+
+                console.log("NO COMPOSE ICON");
+
             }
 
             setTimeout(function(){
 
+                /*
                 var convoSearchInput = document.getElementById('convo-search-input');
 
                 var contactSearchInput = document.getElementById('contact-search-input');
 
-                var searchInput = convoSearchInput ? convoSearchInput : contactSearchInput;
+              //  var searchInput = convoSearchInput ? convoSearchInput : contactSearchInput;
+
+                var chatList = document.getElementById('chat-list');
+
+                var searchInput = null;
+
+                if(chatList.classList.contains('hidden')){
+                   searchInput = document.getElementById('contact-search-input');
+                } else {
+                   searchInput = document.getElementById('convo-search-input');
+                }
 
               //  var searchInput = document.getElementById('contact-search-input');
+
+                */
+
+                var searchInput = document.getElementById('contact-search-input');
 
                 addAssigneeListener();
 
                 if(searchInput){
+
+                    console.log(searchInput);
 
                     var keyUpEvent = document.createEvent("Event");
                     keyUpEvent.initEvent('keyup');
@@ -5921,7 +5943,7 @@
 
                                 if(callback) callback();
 
-                            }, 100);
+                            }, 500);
 
                         } else {
 
@@ -5929,11 +5951,13 @@
 
                         }
 
-                    }, 500);
+                    }, 1000);
 
+                } else {
+                    console.log("NO SEARCHINPUT");
                 }
 
-            }, 500);
+            }, 1500);
 
         }
 
