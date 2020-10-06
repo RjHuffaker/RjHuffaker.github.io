@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      3.012
+// @version      3.013
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -4187,14 +4187,14 @@
                         prioritySelect.value = "2";
                         taskTypeSelect.value = "13";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                        taskForSelect.value = "2853";
+                        taskForSelect.value = "2900";
                         taskName = "Check for Report";
                         break;
                     case "WDO INSP H":
                         prioritySelect.value = "2";
                         taskTypeSelect.value = "13";
                         dueDateInput.value = getFutureDate(serviceOrder.date, 1);
-                        taskForSelect.value = "2853";
+                        taskForSelect.value = "2900";
                         taskName = "Check for Report";
                         break;
                     default:
