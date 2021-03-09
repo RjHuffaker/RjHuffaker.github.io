@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      3.013
+// @version      3.100
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -127,50 +127,6 @@
         "< 3 Months": { name: "< 3 Months", excluded: false },
         "< 1 Month": { name: "< 1 Month", excluded: false }
     };
-
-    var CITIES = [
-        { name: "Phoenix", branch: "35" },
-        { name: "New River", branch: "35" },
-        { name: "Gold Canyon", branch: "35" },
-        { name: "Apache Junction", branch: "35" },
-        { name: "Casa Grande", branch: "35" },
-        { name: "Arizona City", branch: "35" },
-        { name: "Coolidge", branch: "35" },
-        { name: "Florence", branch: "35" },
-        { name: "Maricopa", branch: "35" },
-        { name: "San Tan Valley", branch: "35" },
-        { name: "Queen Creek", branch: "35" },
-        { name: "Casa Grande", branch: "35" },
-        { name: "Mesa", branch: "35" },
-        { name: "Chandler", branch: "35" },
-        { name: "Gilbert", branch: "35" },
-        { name: "Scottsdale", branch: "35" },
-        { name: "Paradise Valley", branch: "35" },
-        { name: "Rio Verde", branch: "35" },
-        { name: "Fountain Hills", branch: "35" },
-        { name: "Tempe", branch: "35" },
-        { name: "Glendale", branch: "35" },
-        { name: "Avondale", branch: "35" },
-        { name: "Buckeye", branch: "35" },
-        { name: "Cave Creek", branch: "35" },
-        { name: "El Mirage", branch: "35" },
-        { name: "Goodyear", branch: "35" },
-        { name: "Laveen", branch: "35" },
-        { name: "Litchfield Park", branch: "35" },
-        { name: "Peoria", branch: "35" },
-        { name: "Tolleson", branch: "35" },
-        { name: "Waddell", branch: "35" },
-        { name: "Sun City", branch: "35" },
-        { name: "Surprise", branch: "35" },
-        { name: "Sun City West", branch: "35" },
-        { name: "Carefree", branch: "35" },
-        { name: "Red Rock", branch: "38" },
-        { name: "Green Valley", branch: "38" },
-        { name: "Sahuarita", branch: "38" },
-        { name: "Vail", branch: "38" },
-        { name: "Marana", branch: "38" },
-        { name: "Tucson", branch: "38" }
-    ];
 
     var TECHNICIANS = {};
 
@@ -823,14 +779,6 @@
         return address;
     }
 
-    function getBranch(city){
-        for(var i = 0; i < CITIES.length; i++){
-            if(city === CITIES[i].name){
-                return CITIES[i].branch;
-            }
-        }
-    }
-
     function getMonths(schedule){
         if(schedule.length === 5 && schedule[4] === "M"){
             return "111111111111";
@@ -1069,8 +1017,6 @@
             var zip = zipInput.value.trim();
 
             if(address && city && state && zip){
-
-                branchInput.value = getBranch(city);
 
                 var butSave = document.getElementById("butSave");
                 var butAdd = document.getElementById("butAdd");
@@ -5758,6 +5704,10 @@
 
     function heymarket_sockets(){
         addPestPacIcon();
+
+        GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
+        });
+
 
         GM_addValueChangeListener("autoText", function(name, old_value, new_value, remote){
 
