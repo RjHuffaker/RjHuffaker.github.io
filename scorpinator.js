@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      3.100
+// @version      3.200
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -2215,7 +2215,7 @@
                     {id: "service", title: "Service", shown: PROXMODE==="service", content: createServiceDiv(), onSelect: setProxMode},
                     {id: "update", title: "Update", shown: PROXMODE==="update", content: createUpdateDiv(), onSelect: setProxMode},
                     {id: "profile", title: "Login", shown: PROXMODE==="profile", content: createProfileDiv(), onSelect: setProxMode},
-                    {id: "rules", title: "Rules", shown: PROXMODE==="rules", content: createRulesDiv(), onSelect: setProxMode}
+                    {id: "callScripts", title: "Call Scripts", shown: PROXMODE==="callScripts", content: createCallScriptsDiv(), onSelect: setProxMode}
                 ];
 
                 proxContainer.appendChild(createProxHeader());
@@ -3556,24 +3556,24 @@
 
         }
 
-        function createRulesDiv(){
+        function createCallScriptsDiv(){
             var loginData = getLoginData();
 
-            var rulesDiv = document.createElement("div");
-            rulesDiv.style.height = "430px";
-            rulesDiv.style.width = "444px";
+            var callScriptsDiv = document.createElement("div");
+            callScriptsDiv.style.height = "430px";
+            callScriptsDiv.style.width = "444px";
 
-            var rulesUrl = "https://azpestcontrol.services/article/read/2";
+            var callScriptsUrl = "https://azpestcontrol.services/callScript/browse";
 
             var iframe = document.createElement("iframe");
-            iframe.id = "rulesIframe";
+            iframe.id = "callScriptsIframe";
             iframe.style.height = "100%";
             iframe.style.width = "100%";
-            iframe.src = rulesUrl;
+            iframe.src = callScriptsUrl;
 
-            rulesDiv.appendChild(iframe);
+            callScriptsDiv.appendChild(iframe);
 
-            return rulesDiv;
+            return callScriptsDiv;
         }
 
         function checkAddress(address){
