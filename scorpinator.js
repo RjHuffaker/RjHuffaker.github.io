@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scorpinator
 // @namespace    http://RjHuffaker.github.io
-// @version      4.000
+// @version      4.100
 // @updateURL    http://RjHuffaker.github.io/scorpinator.js
 // @description  Provides various helper functions to PestPac, customized to our particular use-case.
 // @author       You
@@ -131,7 +131,31 @@
 
     var SCHEDULES = ["1MON","1TUE","1WED","1THU","1FRI", "2MON","2TUE","2WED","2THU","2FRI","3MON","3TUE","3WED","3THU","3FRI","4MON","4TUE","4WED","4THU","4FRI"];
 
-    var ROUTELIST = [];
+    var ROUTELIST = [
+        { route: "PEV 001", tech: "MLYLES", csr: "DNICHOLSON" },
+        { route: "PEV 002", tech: "TSCHEONROC", csr: "DBLACKBURN" },
+        { route: "PEV 003", tech: "JAQUINO", csr: "SBRADFIELD" },
+        { route: "PEV 004", tech: "SMOORE", csr: "GGALARZA" },
+        { route: "PEV 005", tech: "MRUSH", csr: "GGALARZA" },
+        { route: "PEV 006", tech: "JPEKAU", csr: "GGALARZA" },
+        { route: "PEV 007", tech: "MDUNWORTH", csr: "GGALARZA" },
+        { route: "PEV 008", tech: "CLARSEN", csr: "HBROWN" },
+        { route: "PEV 009", tech: "RGRIFFIN", csr: "HBROWN" },
+        { route: "PEV 010", tech: "LSCARLETT", csr: "HBROWN" },
+        { route: "PEV 011", tech: "MCOFFEY", csr: "DBLACKBURN" },
+        { route: "PWV 001", tech: "DPEREZ", csr: "SBRADFIELD" },
+        { route: "PWV 002", tech: "KREYNOLDS", csr: "HBROWN" },
+        { route: "PWV 003", tech: "MCOFFEY", csr: "DBLACKBURN" },
+        { route: "PWV 004", tech: "RCHAVEZ", csr: "DBLACKBURN" },
+        { route: "PWV 005", tech: "CGWYNN", csr: "DBLACKBURN" },
+        { route: "PWV 006", tech: "MCOFFEY", csr: "DBLACKBURN" },
+        { route: "PWV 007", tech: "AANDERSON", csr: "DBLACKBURN" },
+        { route: "PWV 008", tech: "MAZUELA", csr: "DBLACKBURN" },
+        { route: "PWV 009", tech: "MMORALES", csr: "PALVAREZ" },
+        { route: "PWV 010", tech: "JLOPEZ", csr: "MRICHMOND" },
+        { route: "TUC 001", tech: "SWATERS", csr: "PALVAREZ" },
+        { route: "TUC 002", tech: "XPALACIOS", csr: "PALVAREZ" }
+    ];
 
     var PHONENUMBERS = [];
 
@@ -1621,6 +1645,9 @@
     }
 
     function getNearestActiveSetups(data, callback){
+        console.log(activeSetups);
+
+
         var al = activeSetups.length;
         var nearestList = [];
         var _long = parseFloat(data.longitude);
@@ -3505,7 +3532,7 @@
             function updateClick(){
                 GM_setValue("retrieveAccountData", "activeSetups");
 
-                var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=https%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=47&CompanyKey=108175&CompanyID=12";
+                var retrieveURL = "https://app.pestpac.com/reports/gallery/offload.asp?OffloadAction=https%3A%2F%2Freporting.pestpac.com%2Freports%2FserviceSetups%2FreportRemote.asp&ReportID=2105&CompanyKey=134576&CompanyID=1";
 
                 window.open(retrieveURL);
 
@@ -4405,9 +4432,9 @@
             ];
 
             var techCodes = [
-                ["Joseph a","JAQUINO"],["Jose","JLOPEZ"],["Mike","MLYLES"],["Weston","WMERKLEY"],["Damian","DPEREZ"],
+                ["Joseph a","JAQUINO"],["Jose","JLOPEZ"],["Mike_a","MAZUELA"],["Weston","WMERKLEY"],["Damian","DPEREZ"],
                 ["Skyler","SMOORE"],["Michael r","MRUSH"],["Jason p","JPEKAU"],["M_j","MDUNWORTH"],["Fred","FALLEN"],
-                ["Ricky c","RCHAVEZ"],["Todd","TSCHOENROC"],["Adam-a","AANDERSON"],["Bryanj","BJUAREZ"],["Mike a","MAZUELA"],
+                ["Ricky c","RCHAVEZ"],["Todd","TSCHOENROC"],["Adam-a","AANDERSON"],["Bryanj","BJUAREZ"],["Mike","MLYLES"],
                 ["Coffey","MCOFFEY"],["Craig","CLARSEN"],["Keaton","KREYNOLDS"],["Landon","LMERKLEY"],["Ricky g","RGRIFFIN"],
                 ["Liam","LSCARLETT"],["Scott","SWATERS"],["Joe o","JORTA"],["Jacob m","JSTEWART"],["Mikey","MMORALES"]
             ];
@@ -4648,7 +4675,7 @@
                     ["SMOORE","PEV 004"],["MRUSH","PEV 005"],["JPEKAU","PEV 006"],["MDUNWORTH","PEV 007"],
                     ["RCHAVEZ","PWV 004"],["TSCHOENROC",""],["AANDERSON","PWV 007"],["MAZUELA","PWV 008"],
                     ["MCOFFEY","PWV 003"],["CLARSEN","PEV 008"],["KREYNOLDS","PWV 002"],["LMERKLEY",""],["RGRIFFIN","PEV 009"],
-                    ["LSCARLETT","PEV 010"],["SWATERS","TUC 001"],["JORTA",""],["JSTEWART",""],["MMORALES","PWV 009"]
+                    ["LSCARLETT","PEV 010"],["SWATERS","TUC 001"],["XPALACIOS","TUC 002"],["JSTEWART",""],["MMORALES","PWV 009"]
                 ];
 
                 return searchAndReplace(tech, routeCodes);
@@ -5302,9 +5329,21 @@
 
             var buttonsDiv = document.getElementsByClassName("buttons")[0];
 
+            var locationTypeInput = document.getElementById("LocationType");
+
+            var serviceCodeInput = document.getElementById("ServiceCode");
+
+            var salesmanInput = document.getElementById("Salesman");
+
             var emailButton = createButton({ text: "Send Email", onclick: sendEmail });
 
             var textButton = createButton({ text: "Send Text", onclick: sendText });
+
+            locationTypeInput.value = "R";
+
+            serviceCodeInput.value = "R_Pest";
+
+            salesmanInput.value = JSON.parse(GM_getValue("currentUser")).username;
 
             emailButton.style.marginRight = "0.5em";
 
@@ -6573,9 +6612,9 @@
 
         if(GM_getValue("retrieveAccountData") === "activeSetups" && loginData){
 
-            GM_setValue("retrieveAccountData", null);
+        //    GM_setValue("retrieveAccountData", null);
 
-            GM_deleteValue("retrieveAccountData");
+        //    GM_deleteValue("retrieveAccountData");
 
             var rowList = Array.from(document.getElementsByTagName("tr"));
 
@@ -6600,9 +6639,11 @@
                 }
             );
 
+            console.log(accountString);
+
             httpPost("https://azpestcontrol.services/api/activeSetups.php?token="+loginData.token, accountString, function(res){
                 alert("Scorpinator SetupList update complete: "+res);
-                window.close();
+            //    window.close();
             });
 
         }
@@ -6610,6 +6651,34 @@
         function extractAccount(element){
             var tdList = Array.from(element.children);
             var data = "";
+
+            if(tdList.length !== 13){
+                return false;
+            } else {
+
+                var accountString =
+                    tdList[0].children[0].children[0].innerHTML + "\t" +
+                    tdList[1].children[0].innerHTML + "\t" +
+                    tdList[2].children[0].innerHTML + "\t" +
+                    tdList[3].children[0].innerHTML + "\t" +
+                    tdList[4].children[0].innerHTML + "\t" +
+                    tdList[5].children[0].innerHTML + "\t" +
+                    tdList[6].children[0].innerHTML + "\t" +
+                    "RP\t" +
+                    formatSchedule(tdList[7].children[0].innerHTML) + "\t" +
+                    tdList[8].children[0].innerHTML + "\t" +
+                    getAccountAge(tdList[10].children[0].innerHTML.replaceAll("&nbsp;", "")) + "\t" +
+                    tdList[12].children[0].innerHTML;
+
+
+                accountString = accountString.replaceAll("&nbsp;", "");
+
+                console.log(accountString);
+
+            }
+
+
+/*
             tdList.forEach(
                 function(element, index, array){
                     if(element.children[0]){
@@ -6631,19 +6700,10 @@
             );
 
             var accountString = formatSchedule(data);
-
-            if(accountString.includes("Report Totals")
-                || accountString.includes("WEEKLY")
-                    || accountString.includes("BIWEEKLY")
-                        || accountString.includes("28 DAYS")
-                            || accountString.includes("3 WEEKS")
-                                || accountString.includes("6 WEEKS")
-                                    || accountString.includes("TMSJ"))
-            {
+*/
+            if(accountString.includes("Report Totals")){
                 return false;
             } else if(accountString.split("\t").length !== 15){
-                return false;
-            } else if(["","CRISSANNA","DN","GABBY","MYLISSA","SKYE","HALEY",""].indexOf(accountString.split("\t")[12]) > -1){
                 return false;
             } else {
                 return accountString;
@@ -6651,27 +6711,133 @@
 
             function formatSchedule(account){
                 var _account = account;
+
                 var scheduleList = [
-                    {input: "1MON", output: "1\tMON\t1MON"},
-                    {input: "1TUE", output: "1\tTUE\t1TUE"},
-                    {input: "1WED", output: "1\tWED\t1WED"},
-                    {input: "1THU", output: "1\tTHU\t1THU"},
-                    {input: "1FRI", output: "1\tFRI\t1FRI"},
-                    {input: "2MON", output: "2\tMON\t2MON"},
-                    {input: "2TUE", output: "2\tTUE\t2TUE"},
-                    {input: "2WED", output: "2\tWED\t2WED"},
-                    {input: "2THU", output: "2\tTHU\t2THU"},
-                    {input: "2FRI", output: "2\tFRI\t2FRI"},
-                    {input: "3MON", output: "3\tMON\t3MON"},
-                    {input: "3TUE", output: "3\tTUE\t3TUE"},
-                    {input: "3WED", output: "3\tWED\t3WED"},
-                    {input: "3THU", output: "3\tTHU\t3THU"},
-                    {input: "3FRI", output: "3\tFRI\t3FRI"},
-                    {input: "4MON", output: "4\tMON\t4MON"},
-                    {input: "4TUE", output: "4\tTUE\t4TUE"},
-                    {input: "4WED", output: "4\tWED\t4WED"},
-                    {input: "4THU", output: "4\tTHU\t4THU"},
-                    {input: "4FRI", output: "4\tFRI\t4FRI"}
+                    {input: "M1MON", output: "M\t1\tMON\t1MONM"},
+                    {input: "M1TUE", output: "M\t1\tTUE\t1TUEM"},
+                    {input: "M1WED", output: "M\t1\tWED\t1WEDM"},
+                    {input: "M1THU", output: "M\t1\tTHU\t1THUM"},
+                    {input: "M1FRI", output: "M\t1\tFRI\t1FRIM"},
+                    {input: "M2MON", output: "M\t2\tMON\t2MONM"},
+                    {input: "M2TUE", output: "M\t2\tTUE\t2TUEM"},
+                    {input: "M2WED", output: "M\t2\tWED\t2WEDM"},
+                    {input: "M2THU", output: "M\t2\tTHU\t2THUM"},
+                    {input: "M2FRI", output: "M\t2\tFRI\t2FRIM"},
+                    {input: "M3MON", output: "M\t3\tMON\t3MONM"},
+                    {input: "M3TUE", output: "M\t3\tTUE\t3TUEM"},
+                    {input: "M3WED", output: "M\t3\tWED\t3WEDM"},
+                    {input: "M3THU", output: "M\t3\tTHU\t3THUM"},
+                    {input: "M3FRI", output: "M\t3\tFRI\t3FRIM"},
+                    {input: "M4MON", output: "M\t4\tMON\t4MONM"},
+                    {input: "M4TUE", output: "M\t4\tTUE\t4TUEM"},
+                    {input: "M4WED", output: "M\t4\tWED\t4WEDM"},
+                    {input: "M4THU", output: "M\t4\tTHU\t4THUM"},
+                    {input: "M4FRI", output: "M\t4\tFRI\t4FRIM"},
+
+                    {input: "BMJAN1MON", output: "B\t1\tMON\t1MONBJ"},
+                    {input: "BMJAN1TUE", output: "B\t1\tTUE\t1TUEBJ"},
+                    {input: "BMJAN1WED", output: "B\t1\tWED\t1WEDBJ"},
+                    {input: "BMJAN1THU", output: "B\t1\tTHU\t1THUBJ"},
+                    {input: "BMJAN1FRI", output: "B\t1\tFRI\t1FRIBJ"},
+                    {input: "BMJAN2MON", output: "B\t2\tMON\t2MONBJ"},
+                    {input: "BMJAN2TUE", output: "B\t2\tTUE\t2TUEBJ"},
+                    {input: "BMJAN2WED", output: "B\t2\tWED\t2WEDBJ"},
+                    {input: "BMJAN2THU", output: "B\t2\tTHU\t2THUBJ"},
+                    {input: "BMJAN2FRI", output: "B\t2\tFRI\t2FRIBJ"},
+                    {input: "BMJAN3MON", output: "B\t3\tMON\t3MONBJ"},
+                    {input: "BMJAN3TUE", output: "B\t3\tTUE\t3TUEBJ"},
+                    {input: "BMJAN3WED", output: "B\t3\tWED\t3WEDBJ"},
+                    {input: "BMJAN3THU", output: "B\t3\tTHU\t3THUBJ"},
+                    {input: "BMJAN3FRI", output: "B\t3\tFRI\t3FRIBJ"},
+                    {input: "BMJAN4MON", output: "B\t4\tMON\t4MONBJ"},
+                    {input: "BMJAN4TUE", output: "B\t4\tTUE\t4TUEBJ"},
+                    {input: "BMJAN4WED", output: "B\t4\tWED\t4WEDBJ"},
+                    {input: "BMJAN4THU", output: "B\t4\tTHU\t4THUBJ"},
+                    {input: "BMJAN4FRI", output: "B\t4\tFRI\t4FRIBJ"},
+
+                    {input: "BMFEB1MON", output: "B\t1\tMON\t1MONBF"},
+                    {input: "BMFEB1TUE", output: "B\t1\tTUE\t1TUEBF"},
+                    {input: "BMFEB1WED", output: "B\t1\tWED\t1WEDBF"},
+                    {input: "BMFEB1THU", output: "B\t1\tTHU\t1THUBF"},
+                    {input: "BMFEB1FRI", output: "B\t1\tFRI\t1FRIBF"},
+                    {input: "BMFEB2MON", output: "B\t2\tMON\t2MONBF"},
+                    {input: "BMFEB2TUE", output: "B\t2\tTUE\t2TUEBF"},
+                    {input: "BMFEB2WED", output: "B\t2\tWED\t2WEDBF"},
+                    {input: "BMFEB2THU", output: "B\t2\tTHU\t2THUBF"},
+                    {input: "BMFEB2FRI", output: "B\t2\tFRI\t2FRIBF"},
+                    {input: "BMFEB3MON", output: "B\t3\tMON\t3MONBF"},
+                    {input: "BMFEB3TUE", output: "B\t3\tTUE\t3TUEBF"},
+                    {input: "BMFEB3WED", output: "B\t3\tWED\t3WEDBF"},
+                    {input: "BMFEB3THU", output: "B\t3\tTHU\t3THUBF"},
+                    {input: "BMFEB3FRI", output: "B\t3\tFRI\t3FRIBF"},
+                    {input: "BMFEB4MON", output: "B\t4\tMON\t4MONBF"},
+                    {input: "BMFEB4TUE", output: "B\t4\tTUE\t4TUEBF"},
+                    {input: "BMFEB4WED", output: "B\t4\tWED\t4WEDBF"},
+                    {input: "BMFEB4THU", output: "B\t4\tTHU\t4THUBF"},
+                    {input: "BMFEB4FRI", output: "B\t4\tFRI\t4FRIBF"},
+
+                    {input: "QJAN1MON", output: "Q\t1\tMON\t1MONQJ"},
+                    {input: "QJAN1TUE", output: "Q\t1\tTUE\t1TUEQJ"},
+                    {input: "QJAN1WED", output: "Q\t1\tWED\t1WEDQJ"},
+                    {input: "QJAN1THU", output: "Q\t1\tTHU\t1THUQJ"},
+                    {input: "QJAN1FRI", output: "Q\t1\tFRI\t1FRIQJ"},
+                    {input: "QJAN2MON", output: "Q\t2\tMON\t2MONQJ"},
+                    {input: "QJAN2TUE", output: "Q\t2\tTUE\t2TUEQJ"},
+                    {input: "QJAN2WED", output: "Q\t2\tWED\t2WEDQJ"},
+                    {input: "QJAN2THU", output: "Q\t2\tTHU\t2THUQJ"},
+                    {input: "QJAN2FRI", output: "Q\t2\tFRI\t2FRIQJ"},
+                    {input: "QJAN3MON", output: "Q\t3\tMON\t3MONQJ"},
+                    {input: "QJAN3TUE", output: "Q\t3\tTUE\t3TUEQJ"},
+                    {input: "QJAN3WED", output: "Q\t3\tWED\t3WEDQJ"},
+                    {input: "QJAN3THU", output: "Q\t3\tTHU\t3THUQJ"},
+                    {input: "QJAN3FRI", output: "Q\t3\tFRI\t3FRIQJ"},
+                    {input: "QJAN4MON", output: "Q\t4\tMON\t4MONQJ"},
+                    {input: "QJAN4TUE", output: "Q\t4\tTUE\t4TUEQJ"},
+                    {input: "QJAN4WED", output: "Q\t4\tWED\t4WEDQJ"},
+                    {input: "QJAN4THU", output: "Q\t4\tTHU\t4THUQJ"},
+                    {input: "QJAN4FRI", output: "Q\t4\tFRI\t4FRIQJ"},
+
+                    {input: "QFEB1MON", output: "Q\t1\tMON\t1MONQF"},
+                    {input: "QFEB1TUE", output: "Q\t1\tTUE\t1TUEQF"},
+                    {input: "QFEB1WED", output: "Q\t1\tWED\t1WEDQF"},
+                    {input: "QFEB1THU", output: "Q\t1\tTHU\t1THUQF"},
+                    {input: "QFEB1FRI", output: "Q\t1\tFRI\t1FRIQF"},
+                    {input: "QFEB2MON", output: "Q\t2\tMON\t2MONQF"},
+                    {input: "QFEB2TUE", output: "Q\t2\tTUE\t2TUEQF"},
+                    {input: "QFEB2WED", output: "Q\t2\tWED\t2WEDQF"},
+                    {input: "QFEB2THU", output: "Q\t2\tTHU\t2THUQF"},
+                    {input: "QFEB2FRI", output: "Q\t2\tFRI\t2FRIQF"},
+                    {input: "QFEB3MON", output: "Q\t3\tMON\t3MONQF"},
+                    {input: "QFEB3TUE", output: "Q\t3\tTUE\t3TUEQF"},
+                    {input: "QFEB3WED", output: "Q\t3\tWED\t3WEDQF"},
+                    {input: "QFEB3THU", output: "Q\t3\tTHU\t3THUQF"},
+                    {input: "QFEB3FRI", output: "Q\t3\tFRI\t3FRIQF"},
+                    {input: "QFEB4MON", output: "Q\t4\tMON\t4MONQF"},
+                    {input: "QFEB4TUE", output: "Q\t4\tTUE\t4TUEQF"},
+                    {input: "QFEB4WED", output: "Q\t4\tWED\t4WEDQF"},
+                    {input: "QFEB4THU", output: "Q\t4\tTHU\t4THUQF"},
+                    {input: "QFEB4FRI", output: "Q\t4\tFRI\t4FRIQF"},
+
+                    {input: "QMAR1MON", output: "Q\t1\tMON\t1MONQM"},
+                    {input: "QMAR1TUE", output: "Q\t1\tTUE\t1TUEQM"},
+                    {input: "QMAR1WED", output: "Q\t1\tWED\t1WEDQM"},
+                    {input: "QMAR1THU", output: "Q\t1\tTHU\t1THUQM"},
+                    {input: "QMAR1FRI", output: "Q\t1\tFRI\t1FRIQM"},
+                    {input: "QMAR2MON", output: "Q\t2\tMON\t2MONQM"},
+                    {input: "QMAR2TUE", output: "Q\t2\tTUE\t2TUEQM"},
+                    {input: "QMAR2WED", output: "Q\t2\tWED\t2WEDQM"},
+                    {input: "QMAR2THU", output: "Q\t2\tTHU\t2THUQM"},
+                    {input: "QMAR2FRI", output: "Q\t2\tFRI\t2FRIQM"},
+                    {input: "QMAR3MON", output: "Q\t3\tMON\t3MONQM"},
+                    {input: "QMAR3TUE", output: "Q\t3\tTUE\t3TUEQM"},
+                    {input: "QMAR3WED", output: "Q\t3\tWED\t3WEDQM"},
+                    {input: "QMAR3THU", output: "Q\t3\tTHU\t3THUQM"},
+                    {input: "QMAR3FRI", output: "Q\t3\tFRI\t3FRIQM"},
+                    {input: "QMAR4MON", output: "Q\t4\tMON\t4MONQM"},
+                    {input: "QMAR4TUE", output: "Q\t4\tTUE\t4TUEQM"},
+                    {input: "QMAR4WED", output: "Q\t4\tWED\t4WEDQM"},
+                    {input: "QMAR4THU", output: "Q\t4\tTHU\t4THUQM"},
+                    {input: "QMAR4FRI", output: "Q\t4\tFRI\t4FRIQM"}
                 ];
 
                 for(var i = 0; i < scheduleList.length; i++){
